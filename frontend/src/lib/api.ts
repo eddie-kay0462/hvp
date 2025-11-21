@@ -3,7 +3,7 @@
  */
 
 // Backend API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
 /**
  * Maps technical error messages to user-friendly messages
@@ -88,7 +88,10 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Ensure proper URL construction: remove trailing slash from base, ensure endpoint starts with /
+  const baseUrl = API_BASE_URL.replace(/\/+$/, '');
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${path}`;
   
   const defaultHeaders = {
     'Content-Type': 'application/json',
