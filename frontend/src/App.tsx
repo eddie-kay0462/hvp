@@ -12,6 +12,7 @@ import SellerProfile from "./pages/SellerProfile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
+import SetUpService from "./pages/SetUpService";
 import ListService from "./pages/ListService";
 import NotFound from "./pages/NotFound";
 import SellerDashboard from "./pages/seller/SellerDashboard";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/setup-service" element={<SetUpService />} />
             <Route path="/become-a-hustler" element={<BecomeAHustler />} />
             <Route path="/list-service" element={<ListService />} />
             <Route path="/messages" element={<Messages />} />

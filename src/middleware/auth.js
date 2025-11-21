@@ -42,6 +42,30 @@ export const verifyToken = async (req, res, next) => {
 };
 
 /**
+ * Optional token verification
+ * Sets req.user if token is valid, but doesn't fail if token is missing/invalid
+ * Useful for endpoints that work with or without auth
+ */
+export const optionalToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const accessToken = authHeader.replace('Bearer ', '');
+      const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+
+      if (!error && user) {
+        req.user = user;
+      }
+    }
+    next();
+  } catch (error) {
+    // Continue even if token verification fails
+    next();
+  }
+};
+
+/**
  * Verify admin token
  * Checks if user has admin role
  */

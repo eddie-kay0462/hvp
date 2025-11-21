@@ -1,7 +1,7 @@
 import express from 'express';
 import authController from '../controllers/authController.js';
 import { responseHandler } from '../middleware/responseHandler.js';
-import { verifyToken } from '../middleware/auth.js';
+import { verifyToken, optionalToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -43,9 +43,9 @@ router.get('/me', verifyToken, responseHandler(authController.getMe));
 /**
  * @route   POST /api/auth/logout
  * @desc    Logout user
- * @access  Private
+ * @access  Optional (works with or without valid token)
  */
-router.post('/logout', verifyToken, responseHandler(authController.logout));
+router.post('/logout', optionalToken, responseHandler(authController.logout));
 
 
 

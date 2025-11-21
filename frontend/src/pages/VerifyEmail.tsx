@@ -17,48 +17,41 @@ const VerifyEmail = () => {
   const [email, setEmail] = useState('');
   const [verifying, setVerifying] = useState(false);
 
-  // Handle service creation after session is set
-  const handleServiceCreation = async () => {
-    const pendingService = localStorage.getItem('pendingService');
-    if (pendingService) {
-      try {
-        const serviceData = JSON.parse(pendingService);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.access_token) {
-          // First, create seller record in sellers table
-          const sellerData = {
-            title: serviceData.title,
-            description: serviceData.description,
-            category: serviceData.category,
-            default_price: serviceData.price,
-            default_delivery_time: serviceData.default_delivery_time,
-            express_price: serviceData.express_price,
-            express_delivery_time: serviceData.express_delivery_time,
-            portfolio: serviceData.portfolio,
-          };
+  // Check user role and redirect accordingly
+  const handlePostVerification = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Get user profile to check role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
 
-          const sellerResponse = await api.sellers.setupSeller(sellerData) as any;
+        if (profile?.role === 'seller') {
+          // Check if seller already has a service
+          const { data: services } = await supabase
+            .from('services')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true)
+            .limit(1);
 
-          if (sellerResponse.status !== 200) {
-            console.error('Seller setup failed:', sellerResponse);
-            toast.warning('Account verified, but seller setup failed. You can add it later.');
-          }
-
-          // Then, create service in services table
-          const serviceResponse = await api.sellers.createService(sellerData) as any;
-
-          if (serviceResponse.status === 201) {
-            toast.success('Account, seller profile, and service created successfully!');
-            localStorage.removeItem('pendingService');
-          } else {
-            toast.warning('Account verified, but service creation failed. You can add it later.');
+          if (!services || services.length === 0) {
+            // No service yet, redirect to setup
+            navigate('/setup-service');
+            return;
           }
         }
-      } catch (error) {
-        console.error('Error creating seller/service:', error);
-        toast.warning('Account verified, but seller/service creation failed. You can add it later.');
+
+        // Buyer or seller with existing service - go to services page
+        navigate('/services');
       }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      navigate('/services');
     }
   };
 
@@ -84,11 +77,8 @@ const VerifyEmail = () => {
         });
       }
 
-      // Create service if pending
-      await handleServiceCreation();
-
       toast.success('Email verified successfully!');
-      navigate('/services');
+      await handlePostVerification();
     } catch (error: any) {
       console.error('Verification error:', error);
       toast.error(error.message || 'Verification failed');
@@ -145,14 +135,12 @@ const VerifyEmail = () => {
         // Backend validation failed, but continue
       }
 
-      await handleServiceCreation();
-
       toast.success("Email verified!");
 
       // Clean hash
       window.history.replaceState(null, "", window.location.pathname);
 
-      navigate("/services");
+      await handlePostVerification();
       
       setVerifying(false);
       setLoading(false);

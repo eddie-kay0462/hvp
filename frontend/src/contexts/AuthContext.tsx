@@ -15,7 +15,6 @@ interface AuthContextType {
     lastName: string;
     phoneNumber?: string;
     role: string;
-    service?: any;
   }) => Promise<{ error: any }>;
   login: (email: string, password: string) => Promise<{ error: any; data?: any }>;
   signOut: () => Promise<void>;
@@ -57,31 +56,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     lastName: string;
     phoneNumber?: string;
     role: string;
-    service?: any;
   }) => {
     try {
-;      // Call backend signup endpoint
+      // Call backend signup endpoint
       const response = await api.auth.signup({
         email: data.email,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
-        role: data.role, // Send buyer or seller
+        role: data.role,
       }) as any;
 
       if (response.status !== 201) {
         return { error: { message: response.msg || 'Signup failed' } };
-      }
-
-      // If user is a seller and has service data, create the service after signup
-      if (data.service && data.role === 'seller') {
-        
-        // Note: Service creation requires authentication, so we'll need to handle this
-        // after email verification. For now, we'll store it in localStorage to create after verification
-        if (data.service) {
-          localStorage.setItem('pendingService', JSON.stringify(data.service));
-        }
       }
 
       toast.success('Account created! Please check your email to verify your account.');
@@ -131,22 +119,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // Call backend logout endpoint
-      await api.auth.logout();
-      
-      // Also sign out from Supabase
-      await supabase.auth.signOut();
-      
+      // Clear local state FIRST to prevent race conditions
       setUser(null);
       setSession(null);
+      
+      // Try to call backend logout endpoint (may fail if session is invalid, that's okay)
+      try {
+        await api.auth.logout();
+      } catch (backendError) {
+        // Backend logout failed (likely expired session), continue with local logout
+        console.log('Backend logout failed (session may be expired), continuing with local logout');
+      }
+      
+      // Sign out from Supabase with scope: 'local' to clear localStorage
+      try {
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) {
+          // Ignore "Auth session missing" errors - this is expected if session is already cleared/expired
+          const isExpectedError = error.message?.includes('Auth session missing') || 
+                                  error.message?.includes('session missing');
+          if (!isExpectedError) {
+            console.error('Supabase signOut error:', error);
+          }
+        }
+      } catch (supabaseError: any) {
+        // Ignore "Auth session missing" errors - this is expected when session doesn't exist
+        const isExpectedError = supabaseError?.message?.includes('Auth session missing') ||
+                               supabaseError?.message?.includes('session missing') ||
+                               supabaseError?.name === 'AuthSessionMissingError';
+        if (!isExpectedError) {
+          console.log('Supabase logout failed, but local state is cleared');
+        }
+      }
+      
+      // Also manually clear Supabase storage as a fallback
+      try {
+        // Clear all Supabase-related localStorage items
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.log('Error clearing localStorage:', e);
+      }
+      
       navigate('/');
       toast.success('Logged out successfully');
     } catch (error: any) {
       console.error('❌ Logout error:', error);
-      // Still clear local state even if backend call fails
-      await supabase.auth.signOut();
+      // Ensure local state is cleared even on unexpected errors
       setUser(null);
       setSession(null);
+      // Clear localStorage as fallback
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+      navigate('/');
     }
   };
 
