@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Direct Color References */
+    --primary-green: #124919;
+    --cta-orange: #E57E00; /* Muted elegant orange - CTAs and primary actions */
+    --secondary-accent: #F29B23; /* Warm secondary for badges and icons */
+    --accent-pale: #FFD699; /* Pale accent for subtle highlights */
+    --hover-orange: #CC6E00; /* Darker for hover/active states */
+    --text-secondary: #5C5C5C;
+    --background-soft: #FAF8F0;
+
+    /* HSL Tokens for Tailwind */
+    --background: 48 50% 97%; /* #FAF8F0 - Warm off-white */
+    --foreground: 135 60% 18%; /* #124919 - Main Green */
+
+    --card: 48 50% 97%;
+    --card-foreground: 135 60% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 135 60% 18%;
+
+    /* Hustle Village Brand Colors */
+    --primary: 33 100% 45%; /* #E57E00 - Muted elegant orange for CTAs */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 33 100% 40%; /* #CC6E00 - Darker hover state */
+    --secondary-accent: 38 89% 54%; /* #F29B23 - Warm accent for badges/icons */
+    --secondary-accent-foreground: 135 60% 18%; /* Green text on secondary accent */
+
+    --secondary: 0 0% 36%; /* #5C5C5C - Secondary Text Gray */
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 135 60% 18%; /* #124919 - Dark Green */
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 34 100% 80%; /* #FFD699 - Light Orange Accent */
+
+    --muted: 48 40% 95%;
+    --muted-foreground: 0 0% 36%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 48 30% 90%;
+    --input: 48 30% 90%;
+    --ring: 34 100% 51%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 135 60% 8%;
+    --foreground: 48 50% 97%;
+
+    --card: 135 50% 12%;
+    --card-foreground: 48 50% 97%;
+
+    --popover: 135 50% 12%;
+    --popover-foreground: 48 50% 97%;
+
+    --primary: 33 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 33 100% 40%;
+    --secondary-accent: 38 89% 54%;
+    --secondary-accent-foreground: 135 60% 18%;
+
+    --secondary: 0 0% 36%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 135 60% 25%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 34 100% 80%;
+
+    --muted: 135 40% 15%;
+    --muted-foreground: 0 0% 70%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 135 40% 20%;
+    --input: 135 40% 20%;
+    --ring: 34 100% 51%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
