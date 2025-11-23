@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
+import { PasswordChangeModal } from '@/components/PasswordChangeModal';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -32,8 +34,14 @@ const Login = () => {
       toast.error(error.message || 'Login failed');
       setLoading(false);
     } else {
-      // Login successful, navigate to services page
-      navigate('/services');
+      // Check if password update is required
+      if (data?.requiresPasswordUpdate) {
+        setShowPasswordModal(true);
+      } else {
+        // Login successful, navigate to services page
+        navigate('/services');
+      }
+      setLoading(false);
     }
   };
 
@@ -99,6 +107,17 @@ const Login = () => {
         </Card>
       </main>
       <Footer />
+      <PasswordChangeModal
+        open={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false);
+          navigate('/services'); // Allow them to continue
+        }}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+          navigate('/services');
+        }}
+      />
     </div>
   );
 };

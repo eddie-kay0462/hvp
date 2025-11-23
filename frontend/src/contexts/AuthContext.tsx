@@ -80,6 +80,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkPasswordRequirements = (user: User): boolean => {
+    // Check if user has updated password after requirements change
+    // We can't check the actual password, but we can check if user needs to update
+    // Store a flag in user metadata when they update password
+    const needsUpdate = user.user_metadata?.password_updated_after_requirements_change !== true;
+    return !needsUpdate;
+  };
+
   const login = async (email: string, password: string) => {
     try {
       // Call backend login endpoint
@@ -105,6 +113,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Update local state
         setSession(response.data.session);
         setUser(response.data.user);
+        
+        // Check if password needs update
+        const passwordMeetsRequirements = checkPasswordRequirements(response.data.user);
+        if (!passwordMeetsRequirements) {
+          // Return a flag indicating password update is needed
+          return { 
+            error: null, 
+            data: { ...response.data, requiresPasswordUpdate: true } 
+          };
+        }
         
         toast.success('Logged in successfully!');
         return { error: null, data: response.data };

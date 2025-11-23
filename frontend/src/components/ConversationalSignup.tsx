@@ -97,13 +97,26 @@ export const ConversationalSignup = ({ initialData = {}, onComplete, onCancel }:
     {
       id: 'password',
       type: 'password',
-      label: 'Create a password (at least 6 characters)',
+      label: 'Create a password',
       placeholder: 'Enter your password',
       required: true,
+      helperText: 'Password must contain: lowercase, uppercase, digit, symbol, and be at least 6 characters',
       validation: (value) => {
         if (!value) return 'Password is required';
         if (value.length < 6) {
           return 'Password must be at least 6 characters long';
+        }
+        if (!/[a-z]/.test(value)) {
+          return 'Password must contain at least one lowercase letter';
+        }
+        if (!/[A-Z]/.test(value)) {
+          return 'Password must contain at least one uppercase letter';
+        }
+        if (!/\d/.test(value)) {
+          return 'Password must contain at least one digit';
+        }
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)) {
+          return 'Password must contain at least one symbol';
         }
         return null;
       },

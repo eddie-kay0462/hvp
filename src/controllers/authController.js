@@ -8,8 +8,21 @@ export const signup = async (req) => {
       return { status: 400, msg: "Email and password are required", data: null };
     }
 
+    // Enhanced password validation
     if (password.length < 6) {
       return { status: 400, msg: "Password must be at least 6 characters long", data: null };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { status: 400, msg: "Password must contain at least one lowercase letter", data: null };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { status: 400, msg: "Password must contain at least one uppercase letter", data: null };
+    }
+    if (!/\d/.test(password)) {
+      return { status: 400, msg: "Password must contain at least one digit", data: null };
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return { status: 400, msg: "Password must contain at least one symbol", data: null };
     }
 
     const result = await authService.signup({
