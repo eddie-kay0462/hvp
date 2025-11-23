@@ -169,13 +169,4 @@ The project uses ES6 modules. Make sure your `package.json` has `"type": "module
 
 ## License
 
-ISC
-
-
-#EDDIE CHECK HERE
-PORT=3000
-SUPABASE_URL=https://zkaabtgivzhnyvrjcwee.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprYWFidGdpdnpobnl2cmpjd2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNTI3MDUsImV4cCI6MjA3ODcyODcwNX0.0OTsN4nF0r0rv7_-qRvi8IMkDRe-7R4hxgSHjRigBq4
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprYWFidGdpdnpobnl2cmpjd2VlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzE1MjcwNSwiZXhwIjoyMDc4NzI4NzA1fQ.b7dfDjl1wsZ751aYviarAgLOnN7QN5FluSaDNbCQJ8k
-
 
