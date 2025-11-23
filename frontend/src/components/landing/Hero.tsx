@@ -202,7 +202,7 @@ export const Hero = () => {
                       {searchSuggestions.map((suggestion) => (
                         <button
                           key={suggestion}
-                          className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-primary/5 transition"
+                          className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             handleSuggestionSelect(suggestion);
