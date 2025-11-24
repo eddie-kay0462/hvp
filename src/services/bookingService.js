@@ -79,6 +79,28 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       return { status: 403, msg: "Cannot book your own service", data: null };
     }
 
+    // Prevent sellers from being double-booked
+    const activeStatuses = ['pending', 'accepted', 'in_progress', 'delivered'];
+    const { data: activeSellerBookings, error: sellerAvailabilityError } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('service_id', serviceId)
+      .in('status', activeStatuses)
+      .limit(1);
+
+    if (sellerAvailabilityError) {
+      console.error("Error checking seller availability:", sellerAvailabilityError);
+      return { status: 500, msg: "Failed to validate seller availability", data: null };
+    }
+
+    if (activeSellerBookings && activeSellerBookings.length > 0) {
+      return {
+        status: 409,
+        msg: "This seller is currently working on another booking. Please try again once their current job is completed.",
+        data: null
+      };
+    }
+
     // Check for existing active bookings for the same buyer and service
     // Only one active booking per buyer per service is allowed at any time
     // Active bookings are those that are not 'completed' or 'cancelled'
