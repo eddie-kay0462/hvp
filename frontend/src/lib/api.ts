@@ -309,6 +309,27 @@ export const api = {
       apiFetch(`/reviews/booking/${bookingId}/check`, { method: 'GET' }),
   },
 
+  // Payments
+  payments: {
+    initiate: (bookingId: string) =>
+      apiFetch('/payments/initiate', {
+        method: 'POST',
+        body: JSON.stringify({ bookingId }),
+      }),
+    verify: (reference: string) =>
+      apiFetch(`/payments/verify?reference=${encodeURIComponent(reference)}`, {
+        method: 'GET',
+      }),
+  },
+
+  // Invoices
+  invoices: {
+    getById: (invoiceId: string) =>
+      apiFetch(`/invoices/${invoiceId}`, {
+        method: 'GET',
+      }),
+  },
+
   // Health check
   health: () => apiFetch('/health', { method: 'GET' }),
 };

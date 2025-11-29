@@ -103,6 +103,7 @@ export default function BookingDetail() {
   const [hasReview, setHasReview] = useState<boolean | null>(null);
   const [checkingReview, setCheckingReview] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -553,6 +554,41 @@ export default function BookingDetail() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Pay Now (Buyer) */}
+                  {isBuyer && booking.payment_status !== "paid" && (
+                    <Button
+                      onClick={async () => {
+                        try {
+                          setPaying(true);
+                          const result = await (api as any).payments?.initiate?.(booking.id);
+                          if (result?.data?.authorization_url) {
+                            window.location.href = result.data.authorization_url;
+                          } else {
+                            toast.error(result?.msg || "Failed to start payment");
+                          }
+                        } catch (err: any) {
+                          toast.error(err?.message || "Failed to start payment");
+                        } finally {
+                          setPaying(false);
+                        }
+                      }}
+                      disabled={paying}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {paying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Redirecting to Paystack...
+                        </>
+                      ) : (
+                        <>
+                          <DollarSign className="mr-2 h-4 w-4" />
+                          Pay Now
+                        </>
+                      )}
+                    </Button>
+                  )}
+
                   {/* Seller Actions */}
                   {isSeller && booking.status === "pending" && (
                     <>

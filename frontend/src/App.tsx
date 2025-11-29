@@ -26,6 +26,8 @@ import BookingDetail from "./pages/BookingDetail";
 import BecomeAHustler from "./pages/BecomeAHustler";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
+import PaymentCallback from "./pages/PaymentCallback";
+import InvoicePage from "./pages/invoicePage";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +55,8 @@ const App = () => (
             <Route path="/list-service" element={<ListService />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:conversationId" element={<Messages />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
+            <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
             
             {/* ⚠️ DEVELOPMENT PREVIEW - DELETE BEFORE PRODUCTION ⚠️ */}
             <Route path="/seller-dashboard-preview" element={<SellerDashboardPreview />}>
