@@ -1,0 +1,14 @@
+{
+  "background.fullscreen": {
+    "useFront": true,
+    "style": {
+      "background-position": "center",
+      "background-size": "cover",
+      "opacity": 0.5
+    },
+    "images": [ 
+      "file:///C:/Users/eddie/Downloads/illustration-anime-character-rain_23-2151394665.jpg"
+    ]
+  },
+  "background.fullscreen.background": "transparent"
+}
