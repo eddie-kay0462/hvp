@@ -4,7 +4,15 @@ import { supabaseAdmin } from "../config/supabase.js";
 
 export const signup = async ({ email, password, firstName, lastName, phoneNumber, profilePic, role }) => {
   try {
-    const metadata = { firstName, lastName, phoneNumber, profilePic, role };
+    // Include the password_updated_after_requirements_change flag since password already meets requirements
+    const metadata = { 
+      firstName, 
+      lastName, 
+      phoneNumber, 
+      profilePic, 
+      role,
+      password_updated_after_requirements_change: true  // Set to true since password already validated during signup
+    };
 
     // Get frontend URL from environment or use default
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
