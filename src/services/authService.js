@@ -15,7 +15,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
     };
 
     // Get frontend URL from environment or use default
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://hustlevillage.app';
     const redirectUrl = `${frontendUrl}/verify-email`;
 
     // Step 1: Create auth user
@@ -95,7 +95,7 @@ export const login = async (email, password) => {
 export const resendVerification = async (email) => {
   try {
     // Get frontend URL from environment or use default
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://hustlevillage.app';
     const redirectUrl = `${frontendUrl}/verify-email`;
 
     const { error } = await supabase.auth.resend({ 

@@ -8,7 +8,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { initializeTransaction, verifyTransaction } from '../config/paystack.js';
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hustlevillage.app';
 const CURRENCY = process.env.PAYSTACK_CURRENCY || 'GHS';
 
 async function getUserEmailById(userId) {

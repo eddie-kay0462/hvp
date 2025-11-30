@@ -19,8 +19,8 @@ const PORT = process.env.PORT || 3000;
 
 // CORS Configuration - Allow multiple origins
 const allowedOrigins = [
-  'https://www.hustlesvillage.com',
-  'https://hustlesvillage.com',
+  'https://hustlevillage.app',
+  'https://www.hustlevillage.app',
   'http://localhost:8080',
   'http://localhost:5173',
   'http://localhost:3000',

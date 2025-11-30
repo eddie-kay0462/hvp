@@ -21,7 +21,7 @@ BEGIN
   -- Or hardcode it here (change to your production URL when deploying)
   backend_url := COALESCE(
     current_setting('app.backend_url', true),
-    'http://localhost:3000'  -- Change this to your production backend URL
+    'https://hustlevillage.app'  -- Production backend URL
   );
 
   -- Get recipient ID (the other participant in the conversation)
