@@ -138,6 +138,30 @@ const ListService = () => {
       }
 
       // Fallback: Create directly in Supabase
+      // First, ensure seller entry exists
+      const { data: existingSeller } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (!existingSeller) {
+        // Auto-create seller entry if it doesn't exist
+        await supabase
+          .from('sellers')
+          .upsert({
+            user_id: user?.id,
+            title: title.trim(),
+            description: description.trim(),
+            category,
+            default_price: parseFloat(defaultPrice) || null,
+            default_delivery_time: defaultDeliveryTime || null,
+            express_price: expressPrice ? parseFloat(expressPrice) : null,
+            express_delivery_time: expressDeliveryTime || null,
+            portfolio: portfolio || null,
+          }, { onConflict: 'user_id' });
+      }
+
       const { error } = await supabase
         .from('services')
         .insert({

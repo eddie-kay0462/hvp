@@ -32,11 +32,13 @@ export const getAllServices = async (filters = {}) => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    // Fetch sellers for all unique user_ids
+    // Fetch sellers and profiles for all unique user_ids
     const userIds = [...new Set(services?.map(s => s.user_id) || [])];
     let sellersMap = {};
+    let profilesMap = {};
 
     if (userIds.length > 0) {
+      // Fetch sellers
       const { data: sellers, error: sellersError } = await supabase
         .from('sellers')
         .select('id, title, description, category, user_id')
@@ -48,13 +50,49 @@ export const getAllServices = async (filters = {}) => {
           return acc;
         }, {});
       }
+
+      // Fetch profiles as fallback for seller names
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+
+      if (!profilesError && profiles) {
+        profilesMap = profiles.reduce((acc, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {});
+      }
     }
 
-    // Merge seller data with services
-    const servicesWithSellers = (services || []).map(service => ({
-      ...service,
-      seller: sellersMap[service.user_id] || null
-    }));
+    // Merge seller data with services, using profile name as fallback
+    const servicesWithSellers = (services || []).map(service => {
+      const seller = sellersMap[service.user_id] || null;
+      const profile = profilesMap[service.user_id] || null;
+      
+      // Use profile name as seller display name, fallback to seller title, then 'Seller'
+      let displayName = 'Seller';
+      if (profile) {
+        const firstName = profile.first_name || '';
+        const lastName = profile.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        displayName = fullName || seller?.title || 'Seller';
+      } else if (seller?.title) {
+        displayName = seller.title;
+      }
+      
+      // Always include seller object with display_name, even if seller entry doesn't exist
+      return {
+        ...service,
+        seller: seller ? {
+          ...seller,
+          display_name: displayName
+        } : profile ? {
+          user_id: service.user_id,
+          display_name: displayName
+        } : null
+      };
+    });
 
     return {
       status: 200,
@@ -106,9 +144,34 @@ export const getServiceById = async (serviceId) => {
       .eq('user_id', service.user_id)
       .single();
 
+    // Fetch profile as fallback for seller name
+    let displayName = 'Seller';
+    if (!sellerError && seller) {
+      displayName = seller.title || 'Seller';
+    } else {
+      // Fallback to profile if seller entry doesn't exist
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('id', service.user_id)
+        .single();
+
+      if (!profileError && profile) {
+        const firstName = profile.first_name || '';
+        const lastName = profile.last_name || '';
+        displayName = `${firstName} ${lastName}`.trim() || 'Seller';
+      }
+    }
+
     const serviceWithSeller = {
       ...service,
-      seller: sellerError ? null : seller
+      seller: sellerError ? (displayName !== 'Seller' ? {
+        user_id: service.user_id,
+        display_name: displayName
+      } : null) : {
+        ...seller,
+        display_name: displayName
+      }
     };
 
     return {

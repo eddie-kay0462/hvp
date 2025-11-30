@@ -33,6 +33,38 @@ export const setupSeller = async (userId, sellerData) => {
 
 export const createService = async (userId, serviceData) => {
   try {
+    // First, ensure seller entry exists - check if seller exists
+    const { data: existingSeller, error: sellerCheckError } = await supabase
+      .from('sellers')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // If seller doesn't exist, create one using service data
+    if (!existingSeller && !sellerCheckError) {
+      const sellerData = {
+        user_id: userId,
+        title: serviceData.title || 'Seller',
+        description: serviceData.description || '',
+        category: serviceData.category || '',
+        default_price: serviceData.default_price || null,
+        default_delivery_time: serviceData.default_delivery_time || null,
+        express_price: serviceData.express_price || null,
+        express_delivery_time: serviceData.express_delivery_time || null,
+        portfolio: serviceData.portfolio || null,
+      };
+
+      const { error: sellerCreateError } = await supabase
+        .from('sellers')
+        .upsert(sellerData, { onConflict: 'user_id' });
+
+      if (sellerCreateError) {
+        console.warn('Failed to auto-create seller entry:', sellerCreateError);
+        // Continue anyway - service can still be created
+      }
+    }
+
+    // Create the service
     const { data, error } = await supabase
       .from('services') // make sure your table is called "services"
       .insert([{ user_id: userId, ...serviceData }])

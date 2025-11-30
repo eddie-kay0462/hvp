@@ -83,10 +83,11 @@ const Services = () => {
       let allServices: Service[] = response.data?.services || [];
 
       // Map services to include price for backward compatibility
+      // Use display_name (profile name) instead of seller.title to avoid showing first service name
       allServices = allServices.map(service => ({
         ...service,
         price: service.default_price || 0, // Map default_price to price for filtering
-        seller_name: service.seller?.title || 'Unknown Seller',
+        seller_name: service.seller?.display_name || service.seller?.title || 'Unknown Seller',
         seller_verified: true, // Assume verified if service is verified
       }));
 
