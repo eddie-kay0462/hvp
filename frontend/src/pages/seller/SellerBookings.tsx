@@ -173,80 +173,143 @@ export default function SellerBookings() {
         subtitle="Manage all your booking requests and ongoing services"
       />
 
-      <div className="p-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">All Bookings ({bookings.length})</TabsTrigger>
-            <TabsTrigger value="new">New Requests ({bookings.filter(b => b.status === "pending" || b.status === "accepted").length})</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress ({bookings.filter(b => b.status === "in_progress").length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({bookings.filter(b => b.status === "completed").length})</TabsTrigger>
+      <div className="p-4 md:p-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4 md:space-y-6">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="all" className="text-xs sm:text-sm">All ({bookings.length})</TabsTrigger>
+            <TabsTrigger value="new" className="text-xs sm:text-sm">New ({bookings.filter(b => b.status === "pending" || b.status === "accepted").length})</TabsTrigger>
+            <TabsTrigger value="in_progress" className="text-xs sm:text-sm">In Progress ({bookings.filter(b => b.status === "in_progress").length})</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed ({bookings.filter(b => b.status === "completed").length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value={selectedTab} className="space-y-4">
             {filteredBookings.length === 0 ? (
               <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
+                <CardContent className="p-6 md:p-8 text-center text-muted-foreground">
                   {selectedTab === "all" 
                     ? "No bookings yet"
                     : `No ${selectedTab === "new" ? "new booking requests" : selectedTab.replace("_", " ")} bookings at the moment`}
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Booking ID</TableHead>
-                        <TableHead>Buyer</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredBookings.map((booking) => (
-                        <TableRow key={booking.id}>
-                          <TableCell className="font-medium">{booking.id.slice(0, 8)}...</TableCell>
-                          <TableCell>{getBuyerName(booking)}</TableCell>
-                          <TableCell>{booking.service?.title || 'Unknown Service'}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {booking.date && booking.time ? (
-                              <>
-                                {new Date(booking.date).toLocaleDateString()}<br />
-                                <span className="text-xs">{booking.time}</span>
-                              </>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Instant booking</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusBadge(booking.status)}>
+              <>
+                {/* Desktop Table View */}
+                <Card className="hidden md:block">
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Booking ID</TableHead>
+                          <TableHead>Buyer</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Date & Time</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredBookings.map((booking) => (
+                          <TableRow key={booking.id}>
+                            <TableCell className="font-medium">{booking.id.slice(0, 8)}...</TableCell>
+                            <TableCell>{getBuyerName(booking)}</TableCell>
+                            <TableCell>{booking.service?.title || 'Unknown Service'}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {booking.date && booking.time ? (
+                                <>
+                                  {new Date(booking.date).toLocaleDateString()}<br />
+                                  <span className="text-xs">{booking.time}</span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Instant booking</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusBadge(booking.status)}>
+                                {booking.status.replace("_", " ")}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="gap-2"
+                                onClick={() => navigate(`/booking/${booking.id}`)}
+                              >
+                                <Eye className="h-4 w-4" />
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                  {filteredBookings.map((booking) => (
+                    <Card key={booking.id} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-base truncate">
+                                {booking.service?.title || 'Unknown Service'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                ID: {booking.id.slice(0, 8)}...
+                              </p>
+                            </div>
+                            <Badge variant={getStatusBadge(booking.status)} className="shrink-0">
                               {booking.status.replace("_", " ")}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => navigate(`/booking/${booking.id}`)}
-                            >
-                              <Eye className="h-4 w-4" />
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Buyer:</span>
+                              <span className="font-medium">{getBuyerName(booking)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Date & Time:</span>
+                              <span className="font-medium text-right">
+                                {booking.date && booking.time ? (
+                                  <>
+                                    {new Date(booking.date).toLocaleDateString()}<br />
+                                    <span className="text-xs">{booking.time}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Instant booking</span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Amount:</span>
+                              <span className="font-semibold">
+                                {booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => navigate(`/booking/${booking.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
             )}
           </TabsContent>
         </Tabs>

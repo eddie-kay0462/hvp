@@ -103,15 +103,15 @@ export default function Profile() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 bg-background">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold">My Profile</h1>
-            <p className="text-muted-foreground mt-2">
+        <div className="container mx-auto px-4 py-4 md:py-8 max-w-4xl">
+          <div className="mb-4 md:mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold">My Profile</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-2">
               Manage your account information and preferences
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Account Information */}
             <Card>
               <CardHeader>
@@ -120,8 +120,8 @@ export default function Profile() {
                   Account Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardContent className="space-y-3 md:space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name">First Name</Label>
                     <Input

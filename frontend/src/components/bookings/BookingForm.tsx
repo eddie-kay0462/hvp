@@ -131,27 +131,27 @@ export const BookingForm = ({
   today.setHours(0, 0, 0, 0);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
       {/* Service Info */}
       <div className="space-y-2">
-        <Label className="text-base font-semibold">Service</Label>
-        <p className="text-sm text-muted-foreground">{serviceTitle}</p>
+        <Label className="text-sm md:text-base font-semibold">Service</Label>
+        <p className="text-xs md:text-sm text-muted-foreground">{serviceTitle}</p>
       </div>
 
       {/* Price Display */}
       {(defaultPrice || expressPrice) && (
-        <Card className="p-4 bg-muted/50">
+        <Card className="p-3 md:p-4 bg-muted/50">
           <div className="space-y-2">
             {defaultPrice && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Default Price</span>
-                <span className="font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Default Price</span>
+                <span className="text-sm md:text-base font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
               </div>
             )}
             {expressPrice && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Express Price</span>
-                <span className="font-semibold">GH₵{expressPrice.toFixed(2)}</span>
+                <span className="text-xs md:text-sm text-muted-foreground">Express Price</span>
+                <span className="text-sm md:text-base font-semibold">GH₵{expressPrice.toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -159,7 +159,7 @@ export const BookingForm = ({
       )}
 
       {/* Schedule Option */}
-      <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-md">
+      <div className="flex items-center space-x-2 p-3 md:p-4 bg-muted/50 rounded-md">
         <Checkbox
           id="schedule"
           checked={scheduleForLater}
@@ -184,7 +184,7 @@ export const BookingForm = ({
         <>
           {/* Date Picker */}
           <div className="space-y-2">
-            <Label htmlFor="date" className="flex items-center gap-2">
+            <Label htmlFor="date" className="flex items-center gap-2 text-sm md:text-base">
               <CalendarIcon className="h-4 w-4" />
               Select Date *
             </Label>
@@ -198,7 +198,7 @@ export const BookingForm = ({
               />
             </div>
             {selectedDate && (
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-xs md:text-sm text-muted-foreground text-center">
                 Selected: {format(selectedDate, "EEEE, MMMM d, yyyy")}
               </p>
             )}
@@ -206,7 +206,7 @@ export const BookingForm = ({
 
           {/* Time Picker */}
           <div className="space-y-2">
-            <Label htmlFor="time" className="flex items-center gap-2">
+            <Label htmlFor="time" className="flex items-center gap-2 text-sm md:text-base">
               <Clock className="h-4 w-4" />
               Select Time *
             </Label>
@@ -223,7 +223,7 @@ export const BookingForm = ({
               </SelectContent>
             </Select>
             {selectedTime && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Selected: {format(new Date(`2000-01-01T${selectedTime}`), "h:mm a")}
               </p>
             )}
@@ -234,7 +234,7 @@ export const BookingForm = ({
       {/* Preferred Time Note (Optional) */}
       {!scheduleForLater && (
         <div className="space-y-2">
-          <Label htmlFor="note" className="flex items-center gap-2">
+          <Label htmlFor="note" className="flex items-center gap-2 text-sm md:text-base">
             <MessageSquare className="h-4 w-4" />
             Preferred Date/Time (Optional)
           </Label>
@@ -243,7 +243,7 @@ export const BookingForm = ({
             placeholder="E.g., 'Anytime this week' or 'Prefer mornings'..."
             value={preferredTimeNote}
             onChange={(e) => setPreferredTimeNote(e.target.value)}
-            className="min-h-[80px]"
+            className="min-h-[80px] text-sm"
           />
           <p className="text-xs text-muted-foreground">
             Let the seller know if you have a preferred time for this service
@@ -253,13 +253,13 @@ export const BookingForm = ({
 
       {/* Error Message */}
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-          <p className="text-sm text-destructive">{error}</p>
+        <div className="p-2 md:p-3 rounded-md bg-destructive/10 border border-destructive/20">
+          <p className="text-xs md:text-sm text-destructive">{error}</p>
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 md:pt-4">
         {onCancel && (
           <Button
             type="button"

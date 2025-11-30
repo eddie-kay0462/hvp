@@ -124,7 +124,7 @@ export const Hero = () => {
   };
 
   return (
-    <section className="relative py-20 md:py-32">
+    <section className="relative py-12 md:py-20 lg:py-32">
       {/* Background gradient with pattern */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/5 -z-10">
         <div
@@ -137,44 +137,44 @@ export const Hero = () => {
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="max-w-5xl space-y-8">
-          <div className="space-y-6 text-left max-w-3xl">
-            <Badge className="px-3 py-1 text-sm">Student-Powered Marketplace</Badge>
+        <div className="max-w-5xl space-y-6 md:space-y-8">
+          <div className="space-y-4 md:space-y-6 text-left max-w-3xl">
+            <Badge className="px-2 md:px-3 py-1 text-xs md:text-sm">Student-Powered Marketplace</Badge>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
               Your <span className="text-primary">Campus</span>, Your <span className="text-accent">Hustle</span>, Your <span className="text-primary">Village</span>
             </h1>
             
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
               Connect with talented students offering services on your campus. From tutoring to web development, find
               the help you need from your peers.
             </p>
 
-            <div className="flex items-center gap-4 pt-4">
-              <div className="flex -space-x-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 pt-2 md:pt-4">
+              <div className="flex -space-x-2 sm:-space-x-3">
                 {studentProfiles.length > 0 ? (
                   studentProfiles.map((profile, i) => (
-                    <div key={i} className="h-8 w-8 rounded-full border-2 border-background overflow-hidden bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">
+                    <div key={i} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-background overflow-hidden bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">
                       {getInitials(profile)}
                     </div>
                   ))
                 ) : (
                   // Fallback while loading
                   [1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-8 w-8 rounded-full border-2 border-background overflow-hidden bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">
+                    <div key={i} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-background overflow-hidden bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">
                       ?
                     </div>
                   ))
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{studentCount > 0 ? `${studentCount}+` : '500+'}</span> students already using Hustle Village
               </p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="max-w-4xl space-y-3">
+          <div className="space-y-3 md:space-y-4">
+            <div className="max-w-4xl space-y-2 md:space-y-3">
               <div className="relative">
                 <Input
                   placeholder="Try tutoring, brand design, photography..."
@@ -182,27 +182,27 @@ export const Hero = () => {
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setTimeout(() => setIsSearchFocused(false), 120)}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-14 rounded-full pl-14 pr-5 text-base border border-muted/80 shadow-none focus-visible:ring-1 focus-visible:ring-primary/40"
+                  className="h-12 sm:h-14 rounded-full pl-12 sm:pl-14 pr-4 sm:pr-5 text-sm sm:text-base border border-muted/80 shadow-none focus-visible:ring-1 focus-visible:ring-primary/40"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       handleSearch();
                     }
                   }}
                 />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-primary/10 p-2.5">
-                  <Search className="h-5 w-5 text-primary" />
+                <span className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 rounded-full bg-primary/10 p-2 sm:p-2.5">
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </span>
 
                 {searchSuggestions.length > 0 && (isSearchFocused || searchTerm) && (
-                  <div className="absolute left-0 right-0 mt-3 rounded-2xl border border-muted bg-white/95 shadow-xl backdrop-blur z-20">
-                    <div className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                  <div className="absolute left-0 right-0 mt-2 sm:mt-3 rounded-xl sm:rounded-2xl border border-muted bg-white/95 shadow-xl backdrop-blur z-20 max-h-[60vh] overflow-y-auto">
+                    <div className="px-3 sm:px-4 py-2 sm:py-3 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                       Suggestions
                     </div>
                     <div className="divide-y divide-muted/60">
                       {searchSuggestions.map((suggestion) => (
                         <button
                           key={suggestion}
-                          className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                          className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             handleSuggestionSelect(suggestion);
@@ -217,12 +217,12 @@ export const Hero = () => {
               </div>
 
               {categories.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                   <span className="text-foreground/70 whitespace-nowrap">Explore:</span>
                   {categories.slice(0, 5).map((category) => (
                     <button
                       key={category.slug}
-                      className="rounded-full border border-primary/20 px-3 py-1 text-foreground/80 hover:bg-primary/5 transition whitespace-nowrap"
+                      className="rounded-full border border-primary/20 px-2 sm:px-3 py-1 text-foreground/80 hover:bg-primary/5 transition whitespace-nowrap text-xs sm:text-sm"
                       onClick={() => setSearchTerm(category.name || category.slug)}
                     >
                       {category.name || category.slug}

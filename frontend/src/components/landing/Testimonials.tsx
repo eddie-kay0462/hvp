@@ -144,7 +144,7 @@ export const Testimonials = () => {
           <p className="text-muted-foreground mt-2">Real feedback from our community</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {testimonials.map((testimonial) => (
             <Card key={testimonial.id} className="relative overflow-hidden">
               <CardContent className="p-6">

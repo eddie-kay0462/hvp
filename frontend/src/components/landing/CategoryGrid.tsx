@@ -140,12 +140,12 @@ export const CategoryGrid = () => {
             
             return (
       <Card className="overflow-hidden transition-all hover:shadow-md cursor-pointer" onClick={() => navigate(`/services?category=${category.slug}`)}>
-        <CardContent className="p-6 flex flex-col items-center text-center">
-          <div className="rounded-full bg-primary/10 p-3 mb-4">
-            <Icon className="h-8 w-8 text-primary" />
+        <CardContent className="p-4 md:p-6 flex flex-col items-center text-center">
+          <div className="rounded-full bg-primary/10 p-2 md:p-3 mb-3 md:mb-4">
+            <Icon className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                   </div>
-          <h3 className="font-semibold text-lg mb-1">{category.name}</h3>
-          <p className="text-sm text-muted-foreground">{count} {count === 1 ? 'service' : 'services'}</p>
+          <h3 className="font-semibold text-base md:text-lg mb-1">{category.name}</h3>
+          <p className="text-xs md:text-sm text-muted-foreground">{count} {count === 1 ? 'service' : 'services'}</p>
         </CardContent>
               </Card>
             );
@@ -168,17 +168,17 @@ export const CategoryGrid = () => {
   const availableTabs = getAvailableTabs();
 
   return (
-    <section className="container mx-auto py-12 px-4 md:px-6">
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold tracking-tight">Browse Services</h2>
-        <p className="text-muted-foreground mt-2">Discover talented students offering services on your campus</p>
+    <section className="container mx-auto py-8 md:py-12 px-4 md:px-6">
+      <div className="text-center mb-6 md:mb-10">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Browse Services</h2>
+        <p className="text-sm md:text-base text-muted-foreground mt-2">Discover talented students offering services on your campus</p>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <div className="flex justify-center mb-6">
-          <TabsList>
+        <div className="flex justify-center mb-4 md:mb-6 overflow-x-auto">
+          <TabsList className="flex-wrap h-auto w-full sm:w-auto">
             {availableTabs.map((tab) => (
-              <TabsTrigger key={tab} value={tab}>
+              <TabsTrigger key={tab} value={tab} className="text-xs sm:text-sm">
                 {tabLabelMap[tab] || tab.charAt(0).toUpperCase() + tab.slice(1)}
               </TabsTrigger>
             ))}
@@ -190,7 +190,7 @@ export const CategoryGrid = () => {
           
           return (
             <TabsContent key={tabValue} value={tabValue}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {tabCategories.map((category) => {
                   const count = categoryCounts[category.slug] || 0;
                   return (

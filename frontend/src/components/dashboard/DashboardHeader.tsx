@@ -86,25 +86,32 @@ export const DashboardHeader = ({ title, subtitle, mockUser }: DashboardHeaderPr
 
   return (
     <header className="bg-background border-b border-border sticky top-0 z-10">
-      <div className="px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+      <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground truncate">{title}</h1>
+          {subtitle && <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-1">{subtitle}</p>}
         </div>
 
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
+          <Button variant="ghost" size="icon" className="relative h-9 w-9 md:h-10 md:w-10">
+            <Bell className="h-4 w-4 md:h-5 md:w-5" />
             <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full" />
           </Button>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">
                 {getDisplayName()}
               </p>
               <p className="text-xs text-muted-foreground">Seller Account</p>
             </div>
+            <Avatar>
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="sm:hidden">
             <Avatar>
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {getInitials()}

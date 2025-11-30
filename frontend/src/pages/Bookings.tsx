@@ -185,28 +185,28 @@ export default function Bookings() {
       <Navbar />
       
       <main className="flex-1 bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">My Bookings</h1>
-            <p className="text-muted-foreground">
+        <div className="container mx-auto px-4 py-4 md:py-8">
+          <div className="mb-4 md:mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">My Bookings</h1>
+            <p className="text-sm md:text-base text-muted-foreground">
               Manage all your service bookings
             </p>
           </div>
 
-          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">
-                All Bookings ({bookings.length})
+          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4 md:space-y-6">
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">
+                All ({bookings.length})
               </TabsTrigger>
-              <TabsTrigger value="new">
-                New Requests (
+              <TabsTrigger value="new" className="text-xs sm:text-sm">
+                New (
                 {bookings.filter((b) => b.status === "pending" || b.status === "accepted").length}
                 )
               </TabsTrigger>
-              <TabsTrigger value="in_progress">
+              <TabsTrigger value="in_progress" className="text-xs sm:text-sm">
                 In Progress ({bookings.filter((b) => b.status === "in_progress").length})
               </TabsTrigger>
-              <TabsTrigger value="completed">
+              <TabsTrigger value="completed" className="text-xs sm:text-sm">
                 Completed ({bookings.filter((b) => b.status === "completed").length})
               </TabsTrigger>
             </TabsList>
@@ -214,9 +214,9 @@ export default function Bookings() {
             <TabsContent value={selectedTab} className="space-y-4">
               {filteredBookings.length === 0 ? (
                 <Card>
-                  <CardContent className="p-12 text-center">
-                    <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No bookings yet</h3>
+                  <CardContent className="p-8 md:p-12 text-center">
+                    <CalendarIcon className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-base md:text-lg font-semibold mb-2">No bookings yet</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       {selectedTab === "all"
                         ? "You haven't made any bookings yet. Browse services to get started!"
@@ -230,59 +230,112 @@ export default function Bookings() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Service</TableHead>
-                          <TableHead>Date & Time</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredBookings.map((booking) => (
-                          <TableRow key={booking.id}>
-                            <TableCell className="font-medium">
-                              {booking.service?.title || "Unknown Service"}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {booking.date && booking.time ? (
-                                <>
-                                  <div>{formatDate(booking.date)}</div>
-                                  <div className="text-xs">{formatTime(booking.time)}</div>
-                                </>
-                              ) : (
-                                <div className="text-xs text-muted-foreground">Instant booking</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {formatPrice(booking.service?.default_price)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getStatusBadge(booking.status)}>
+                <>
+                  {/* Desktop Table View */}
+                  <Card className="hidden md:block">
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Service</TableHead>
+                            <TableHead>Date & Time</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredBookings.map((booking) => (
+                            <TableRow key={booking.id}>
+                              <TableCell className="font-medium">
+                                {booking.service?.title || "Unknown Service"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {booking.date && booking.time ? (
+                                  <>
+                                    <div>{formatDate(booking.date)}</div>
+                                    <div className="text-xs">{formatTime(booking.time)}</div>
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground">Instant booking</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {formatPrice(booking.service?.default_price)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getStatusBadge(booking.status)}>
+                                  {getStatusLabel(booking.status)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => navigate(`/booking/${booking.id}`)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
+                    {filteredBookings.map((booking) => (
+                      <Card key={booking.id} className="overflow-hidden">
+                        <CardContent className="p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-semibold text-base flex-1">
+                                {booking.service?.title || "Unknown Service"}
+                              </h3>
+                              <Badge variant={getStatusBadge(booking.status)} className="shrink-0">
                                 {getStatusLabel(booking.status)}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-2"
-                                onClick={() => navigate(`/booking/${booking.id}`)}
-                              >
-                                <Eye className="h-4 w-4" />
-                                View
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Date & Time:</span>
+                                <span className="font-medium">
+                                  {booking.date && booking.time ? (
+                                    <>
+                                      {formatDate(booking.date)} {formatTime(booking.time)}
+                                    </>
+                                  ) : (
+                                    <span className="text-muted-foreground">Instant booking</span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Amount:</span>
+                                <span className="font-semibold">
+                                  {formatPrice(booking.service?.default_price)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => navigate(`/booking/${booking.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
           </Tabs>

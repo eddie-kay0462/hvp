@@ -191,15 +191,15 @@ export const ChatWindow = ({
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Chat Header */}
-      <div className="border-b p-4 bg-background flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
+      <div className="border-b p-3 md:p-4 bg-background flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3">
+          <Avatar className="h-8 w-8 md:h-10 md:w-10">
             <AvatarFallback>
               {otherUserName ? getInitials(otherUserName) : '?'}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="font-semibold text-base">
+            <h2 className="font-semibold text-sm md:text-base">
               {otherUserName || 'Unknown User'}
             </h2>
           </div>
@@ -230,7 +230,7 @@ export const ChatWindow = ({
       </div>
 
       {/* Input Area */}
-      <div className="border-t p-4 bg-background flex-shrink-0">
+      <div className="border-t p-2 md:p-4 bg-background flex-shrink-0">
         {/* Attachment Previews */}
         {attachments.length > 0 && (
           <div className="mb-2 flex gap-2 flex-wrap">
@@ -239,15 +239,15 @@ export const ChatWindow = ({
                 <img
                   src={url}
                   alt={`Attachment ${index + 1}`}
-                  className="w-20 h-20 object-cover rounded-lg border"
+                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border"
                 />
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-5 w-5 md:h-6 md:w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => removeAttachment(index)}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 </Button>
               </div>
             ))}
@@ -257,14 +257,14 @@ export const ChatWindow = ({
         {/* Link Preview */}
         {linkUrl && (
           <div className="mb-2">
-            <div className="relative p-3 border rounded-lg bg-muted/50">
+            <div className="relative p-2 md:p-3 border rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
-                <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <LinkIcon className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
                 <a
                   href={linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-sm text-primary hover:underline truncate"
+                  className="flex-1 text-xs md:text-sm text-primary hover:underline truncate"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {linkUrl}
@@ -272,17 +272,17 @@ export const ChatWindow = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 rounded-full flex-shrink-0"
+                  className="h-5 w-5 md:h-6 md:w-6 rounded-full flex-shrink-0"
                   onClick={removeLink}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-1 md:gap-2">
           {/* Image Upload Button */}
           <input
             ref={fileInputRef}
@@ -333,17 +333,18 @@ export const ChatWindow = ({
             }}
             placeholder="Type a message..."
             disabled={sending || uploadingImages}
-            className="flex-1"
+            className="flex-1 text-sm md:text-base"
           />
           <Button
             onClick={handleSend}
             disabled={sending || uploadingImages || (!input.trim() && attachments.length === 0 && !linkUrl)}
             size="icon"
+            className="h-9 w-9 md:h-10 md:w-10"
           >
             {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-3.5 w-3.5 md:h-4 md:w-4" />
             )}
           </Button>
         </div>

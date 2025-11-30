@@ -427,20 +427,21 @@ const ServiceDetail = () => {
       <Navbar />
       
       <main className="flex-1 bg-background">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-4 md:py-8">
           {/* Back button */}
           <Button 
             variant="ghost" 
-            className="mb-4"
+            className="mb-3 md:mb-4"
+            size="sm"
             onClick={() => navigate('/services')}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back to Services
           </Button>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
             {/* Left Column - Images and Details */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
               {/* Image Gallery */}
               <Card className="overflow-hidden">
                 <div className="relative aspect-video bg-muted">
@@ -455,30 +456,30 @@ const ServiceDetail = () => {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute left-4 top-1/2 -translate-y-1/2"
+                        className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 h-8 w-8 md:h-10 md:w-10"
                         onClick={() => setCurrentImageIndex((i) => (i - 1 + images.length) % images.length)}
                       >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                       </Button>
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute right-4 top-1/2 -translate-y-1/2"
+                        className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 h-8 w-8 md:h-10 md:w-10"
                         onClick={() => setCurrentImageIndex((i) => (i + 1) % images.length)}
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                       </Button>
                     </>
                   )}
                 </div>
                 
                 {images.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto">
+                  <div className="flex gap-2 p-2 md:p-4 overflow-x-auto">
                     {images.map((img, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentImageIndex(idx)}
-                        className={`flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden ${
+                        className={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded border-2 overflow-hidden ${
                           idx === currentImageIndex ? 'border-primary' : 'border-transparent'
                         }`}
                       >
@@ -490,14 +491,14 @@ const ServiceDetail = () => {
               </Card>
 
               {/* Description Section */}
-              <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-4">About This Service</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap">{service.description}</p>
+              <Card className="p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">About This Service</h2>
+                <p className="text-sm md:text-base text-muted-foreground whitespace-pre-wrap">{service.description}</p>
               </Card>
 
               {/* Booking Details */}
-              <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-4">What to Expect</h2>
+              <Card className="p-4 md:p-6">
+                <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">What to Expect</h2>
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-semibold mb-2">Default Price</h3>
@@ -525,11 +526,11 @@ const ServiceDetail = () => {
               </Card>
 
               {/* Reviews Section */}
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">Reviews</h2>
+              <Card className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 md:mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold">Reviews</h2>
                   {canReview && (
-                    <Button onClick={() => toast.info('Review functionality coming soon!')}>
+                    <Button size="sm" onClick={() => toast.info('Review functionality coming soon!')}>
                       Write a Review
                     </Button>
                   )}
@@ -602,18 +603,18 @@ const ServiceDetail = () => {
             </div>
 
             {/* Right Column - Service Info Card */}
-            <div className="space-y-6">
-              <Card className="p-6 sticky top-8">
-                <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
+              <Card className="p-4 md:p-6 lg:sticky lg:top-8">
+                <div className="space-y-4 md:space-y-6">
                   {/* Service Title and Badge */}
                   <div>
-                    <Badge variant="category" className="mb-3">{getCategoryLabel(service.category)}</Badge>
-                    <h1 className="text-2xl font-bold mb-4">{service.title}</h1>
-                    <div className="text-3xl font-bold text-primary mb-6">
+                    <Badge variant="category" className="mb-2 md:mb-3">{getCategoryLabel(service.category)}</Badge>
+                    <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">{service.title}</h1>
+                    <div className="text-2xl md:text-3xl font-bold text-primary mb-4 md:mb-6">
                       {formatPrice(service.default_price)}
                     </div>
                     {service.express_price && (
-                      <div className="text-lg text-muted-foreground mb-6">
+                      <div className="text-base md:text-lg text-muted-foreground mb-4 md:mb-6">
                         Express: {formatPrice(service.express_price)}
                       </div>
                     )}
@@ -653,18 +654,18 @@ const ServiceDetail = () => {
                   </div>
 
                   {/* CTA Buttons */}
-                  <div className="space-y-3">
-                    <Button className="w-full" size="lg" onClick={handleBookNow}>
+                  <div className="space-y-2 md:space-y-3">
+                    <Button className="w-full" size="default" onClick={handleBookNow}>
                       Book Now
                     </Button>
                     <Button
                       variant="outline"
                       className="w-full"
-                      size="lg"
+                      size="default"
                       onClick={handleMessageSeller}
                       disabled={conversationLoading}
                     >
-                      <MessageSquare className="w-5 h-5 mr-2" />
+                      <MessageSquare className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                       {conversationLoading ? 'Loading...' : 'Message Seller'}
                     </Button>
                   </div>
@@ -675,9 +676,9 @@ const ServiceDetail = () => {
 
           {/* Related Services */}
           {sellerServices.length > 0 && (
-            <div className="mt-16">
-              <h2 className="text-2xl font-bold mb-6">More from this seller</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="mt-8 md:mt-16">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">More from this seller</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {sellerServices.map((srv) => (
                   <ServiceCard
                     key={srv.id}
@@ -699,9 +700,9 @@ const ServiceDetail = () => {
           )}
 
           {relatedServices.length > 0 && (
-            <div className="mt-16">
-              <h2 className="text-2xl font-bold mb-6">Similar services</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="mt-8 md:mt-16">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Similar services</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {relatedServices.map((srv) => (
                   <ServiceCard
                     key={srv.id}
