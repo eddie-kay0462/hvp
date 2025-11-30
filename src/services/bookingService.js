@@ -459,6 +459,15 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
 
     // If buyer is confirming completion (delivered → completed), release payment
     if (newStatus === 'completed' && currentStatus === 'delivered' && isBuyer) {
+      // CRITICAL: Verify payment was actually made via Paystack before releasing
+      if (booking.payment_status !== 'paid') {
+        return { 
+          status: 400, 
+          msg: `Cannot release payment. Payment must be completed via Paystack first. Current payment status: ${booking.payment_status || 'not paid'}`, 
+          data: null 
+        };
+      }
+
       // Import payment service dynamically to avoid circular dependencies
       const { releasePayment } = await import('./paymentService.js');
       const releaseResult = await releasePayment(bookingId);
@@ -472,6 +481,13 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
             payment_released_at: new Date().toISOString()
           })
           .eq('id', bookingId);
+      } else {
+        // If release failed, return error
+        return { 
+          status: releaseResult.status || 500, 
+          msg: releaseResult.msg || 'Failed to release payment', 
+          data: null 
+        };
       }
     }
 
@@ -516,6 +532,15 @@ export const confirmBookingCompletion = async (userId, bookingId) => {
       return { 
         status: 400, 
         msg: `Cannot confirm completion. Booking must be marked as delivered by the seller first. Current status: ${booking.status}`, 
+        data: null 
+      };
+    }
+
+    // Check if payment has been completed via Paystack
+    if (booking.payment_status !== 'paid') {
+      return { 
+        status: 400, 
+        msg: `Cannot confirm completion. Payment must be completed via Paystack first. Current payment status: ${booking.payment_status || 'not paid'}. Please complete the payment before confirming.`, 
         data: null 
       };
     }

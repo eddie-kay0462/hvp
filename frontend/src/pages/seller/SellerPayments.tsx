@@ -20,6 +20,8 @@ interface Booking {
   id: string;
   service_id: string;
   status: string;
+  payment_status: string | null;
+  payment_amount: number | null;
   created_at: string;
   service?: {
     title: string;
@@ -73,6 +75,8 @@ export default function SellerPayments() {
           service_id,
           buyer_id,
           status,
+          payment_status,
+          payment_amount,
           created_at
         `)
         .in('service_id', serviceIds)
@@ -85,35 +89,40 @@ export default function SellerPayments() {
         servicesMap[service.id] = service;
       });
 
-      // Calculate current month earnings
+      // Calculate current month earnings - only released payments
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       
-      const completedThisMonth = (bookingsData || []).filter(b => {
-        if (b.status !== 'completed') return false;
+      const releasedThisMonth = (bookingsData || []).filter(b => {
+        if (b.payment_status !== 'released') return false;
         const bookingDate = new Date(b.created_at);
         return bookingDate >= startOfMonth;
       });
 
-      const totalEarnedThisMonth = completedThisMonth.reduce((sum, booking) => {
+      const totalEarnedThisMonth = releasedThisMonth.reduce((sum, booking) => {
         const service = servicesMap[booking.service_id];
-        return sum + (service?.default_price || 0);
+        const amount = booking.payment_amount || service?.default_price || 0;
+        return sum + amount;
       }, 0);
 
-      // Available to withdraw = all completed bookings (simplified - in real app would track withdrawals)
-      const allCompleted = (bookingsData || []).filter(b => b.status === 'completed');
-      const availableToWithdraw = allCompleted.reduce((sum, booking) => {
+      // Available to withdraw = only bookings with payment_status === 'released'
+      const releasedBookings = (bookingsData || []).filter(b => 
+        b.payment_status === 'released'
+      );
+      const availableToWithdraw = releasedBookings.reduce((sum, booking) => {
         const service = servicesMap[booking.service_id];
-        return sum + (service?.default_price || 0);
+        const amount = booking.payment_amount || service?.default_price || 0;
+        return sum + amount;
       }, 0);
 
-      // In escrow = pending, accepted, or in_progress bookings
+      // In escrow = paid but not yet released (payment_status === 'paid' but not 'released')
       const inEscrowBookings = (bookingsData || []).filter(b => 
-        b.status === 'pending' || b.status === 'accepted' || b.status === 'in_progress'
+        b.payment_status === 'paid' && b.payment_status !== 'released'
       );
       const inEscrow = inEscrowBookings.reduce((sum, booking) => {
         const service = servicesMap[booking.service_id];
-        return sum + (service?.default_price || 0);
+        const amount = booking.payment_amount || service?.default_price || 0;
+        return sum + amount;
       }, 0);
 
       setStats({
@@ -136,22 +145,26 @@ export default function SellerPayments() {
         buyersMap[buyer.id] = buyer;
       });
 
-      // Create earnings history from completed bookings
-      const history = allCompleted.slice(0, 10).map(booking => {
-        const service = servicesMap[booking.service_id];
-        return {
-          id: booking.id,
-          date: new Date(booking.created_at).toLocaleDateString(),
-          bookingId: booking.id.slice(0, 8) + '...',
-          service: service?.title || 'Unknown Service',
-          amount: service?.default_price || 0,
-          type: 'Released',
-        };
-      });
+      // Create earnings history from released payments only
+      const history = (bookingsData || [])
+        .filter(b => b.payment_status === 'released')
+        .slice(0, 10)
+        .map(booking => {
+          const service = servicesMap[booking.service_id];
+          const amount = booking.payment_amount || service?.default_price || 0;
+          return {
+            id: booking.id,
+            date: new Date(booking.created_at).toLocaleDateString(),
+            bookingId: booking.id.slice(0, 8) + '...',
+            service: service?.title || 'Unknown Service',
+            amount: amount,
+            type: 'Released',
+          };
+        });
 
       setEarningsHistory(history);
 
-      // Create escrow items
+      // Create escrow items - only show paid but not released bookings
       const escrow = inEscrowBookings.slice(0, 10).map(booking => {
         const service = servicesMap[booking.service_id];
         const buyer = buyersMap[booking.buyer_id];
@@ -159,16 +172,30 @@ export default function SellerPayments() {
           ? `${buyer.first_name} ${buyer.last_name}`
           : buyer?.first_name || buyer?.last_name || 'Unknown';
 
-        // Estimate release date (7 days after booking creation)
+        const amount = booking.payment_amount || service?.default_price || 0;
+        
+        // Determine escrow status based on booking status
+        let escrowStatus = 'Funded';
+        if (booking.status === 'delivered') {
+          escrowStatus = 'Awaiting Buyer Confirmation';
+        } else if (booking.status === 'in_progress') {
+          escrowStatus = 'Work In Progress';
+        } else if (booking.status === 'accepted') {
+          escrowStatus = 'Funded';
+        } else {
+          escrowStatus = 'Funded';
+        }
+
+        // Estimate release date (7 days after booking creation, or when buyer confirms)
         const releaseDate = new Date(booking.created_at);
         releaseDate.setDate(releaseDate.getDate() + 7);
 
         return {
           bookingId: booking.id.slice(0, 8) + '...',
           buyer: buyerName,
-          amount: service?.default_price || 0,
-          status: booking.status === 'pending' ? 'Pending' : booking.status === 'accepted' ? 'Funded' : 'Funded',
-          expectedRelease: releaseDate.toLocaleDateString(),
+          amount: amount,
+          status: escrowStatus,
+          expectedRelease: booking.status === 'delivered' ? 'Pending buyer confirmation' : releaseDate.toLocaleDateString(),
         };
       });
 

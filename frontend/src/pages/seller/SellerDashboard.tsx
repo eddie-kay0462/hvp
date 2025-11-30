@@ -94,6 +94,8 @@ export default function SellerDashboard() {
               date,
               time,
               status,
+              payment_status,
+              payment_amount,
               created_at
             `)
             .in('service_id', serviceIds)
@@ -138,32 +140,35 @@ export default function SellerDashboard() {
       const newBookings = mappedBookings.filter(b => b.status === 'pending' || b.status === 'accepted').length;
       const inProgressBookings = mappedBookings.filter(b => b.status === 'in_progress').length;
 
-      // Calculate earnings from completed bookings this month
+      // Calculate earnings from released payments this month
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const completedThisMonth = mappedBookings.filter(b => {
-        if (b.status !== 'completed') return false;
+      const releasedThisMonth = mappedBookings.filter(b => {
+        // Only count bookings where payment has been released
+        if ((b as any).payment_status !== 'released') return false;
         const bookingDate = new Date(b.created_at);
         return bookingDate >= startOfMonth;
       });
 
-      // Get service prices for completed bookings
-      const completedServiceIds = completedThisMonth.map(b => b.service_id);
-      const { data: completedServices } = completedServiceIds.length > 0
+      // Get service prices for released bookings
+      const releasedServiceIds = releasedThisMonth.map(b => b.service_id);
+      const { data: releasedServices } = releasedServiceIds.length > 0
         ? await supabase
             .from('services')
             .select('id, default_price')
-            .in('id', completedServiceIds)
+            .in('id', releasedServiceIds)
         : { data: [] };
 
-      const completedServicesMap: Record<string, any> = {};
-      completedServices?.forEach(service => {
-        completedServicesMap[service.id] = service;
+      const releasedServicesMap: Record<string, any> = {};
+      releasedServices?.forEach(service => {
+        releasedServicesMap[service.id] = service;
       });
 
-      const earningsThisMonth = completedThisMonth.reduce((sum, booking) => {
-        const service = completedServicesMap[booking.service_id];
-        return sum + (service?.default_price || 0);
+      const earningsThisMonth = releasedThisMonth.reduce((sum, booking) => {
+        const service = releasedServicesMap[booking.service_id];
+        // Use payment_amount if available, otherwise fall back to service default_price
+        const amount = (booking as any).payment_amount || service?.default_price || 0;
+        return sum + amount;
       }, 0);
 
       setStats({

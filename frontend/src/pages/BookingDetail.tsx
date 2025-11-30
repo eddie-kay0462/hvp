@@ -554,8 +554,8 @@ export default function BookingDetail() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Pay Now (Buyer) */}
-                  {isBuyer && booking.payment_status !== "paid" && (
+                  {/* Pay Now (Buyer) - Only show if payment is not paid or released */}
+                  {isBuyer && booking.payment_status !== "paid" && booking.payment_status !== "released" && (
                     <Button
                       onClick={async () => {
                         try {
