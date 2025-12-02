@@ -1,5 +1,8 @@
 import { supabase } from '../config/supabase.js';
 
+// Export verifyToken as authenticate for backwards compatibility
+export const authenticate = verifyToken;
+
 /**
  * Verify authentication token and extract user
  * Sets req.user if token is valid
@@ -29,8 +32,18 @@ export const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Attach user to request object
-    req.user = user;
+    // Get user role from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    // Attach user to request object with role from profile
+    req.user = {
+      ...user,
+      role: profile?.role || user.user_metadata?.role || 'buyer'
+    };
     next();
   } catch (error) {
     return res.status(401).json({
@@ -94,8 +107,16 @@ export const verifyAdminToken = async (req, res, next) => {
       });
     }
 
+    // Get user role from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const userRole = profile?.role || user.user_metadata?.role;
+
     // Check if user has admin role
-    const userRole = user.user_metadata?.role;
     if (userRole !== 'admin') {
       return res.status(403).json({
         status: 403,
@@ -104,8 +125,11 @@ export const verifyAdminToken = async (req, res, next) => {
       });
     }
 
-    // Attach user to request object
-    req.user = user;
+    // Attach user to request object with role
+    req.user = {
+      ...user,
+      role: userRole
+    };
     next();
   } catch (error) {
     return res.status(401).json({

@@ -330,6 +330,40 @@ export const api = {
       }),
   },
 
+  // Admin endpoints
+  admin: {
+    // Get pending services
+    getPendingServices: () =>
+      apiFetch('/admin/services/pending', {
+        method: 'GET',
+      }),
+    // Get all services with filters
+    getAllServices: (filters?: { is_verified?: boolean; is_active?: boolean; category?: string }) => {
+      const queryParams = new URLSearchParams();
+      if (filters?.is_verified !== undefined) queryParams.append('is_verified', String(filters.is_verified));
+      if (filters?.is_active !== undefined) queryParams.append('is_active', String(filters.is_active));
+      if (filters?.category) queryParams.append('category', filters.category);
+      const query = queryParams.toString();
+      return apiFetch(`/admin/services${query ? `?${query}` : ''}`, { method: 'GET' });
+    },
+    // Approve a service
+    approveService: (serviceId: string) =>
+      apiFetch(`/admin/services/${serviceId}/approve`, {
+        method: 'POST',
+      }),
+    // Reject a service
+    rejectService: (serviceId: string, rejectionReason: string, adminNotes?: string) =>
+      apiFetch(`/admin/services/${serviceId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ rejectionReason, adminNotes }),
+      }),
+    // Get service statistics
+    getServiceStats: () =>
+      apiFetch('/admin/services/stats', {
+        method: 'GET',
+      }),
+  },
+
   // Health check
   health: () => apiFetch('/health', { method: 'GET' }),
 };

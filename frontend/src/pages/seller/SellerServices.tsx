@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Edit, Pause, Play, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Pause, Play, Loader2, Upload, X, Image as ImageIcon, Info, AlertCircle } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -144,7 +145,7 @@ export default function SellerServices() {
 
       if (error) throw error;
 
-      toast.success('Service created successfully!');
+      toast.success('Service submitted for review! You\'ll be notified once it\'s approved.');
       setDialogOpen(false);
       resetForm();
       fetchServices(); // Reload services
@@ -334,6 +335,17 @@ export default function SellerServices() {
       />
 
       <div className="p-6">
+        {/* Info Alert for Pending Services */}
+        {services.some(s => s.is_verified === false) && (
+          <Alert className="mb-6 border-orange-200 bg-orange-50">
+            <Info className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              You have services pending approval. Our team will review them within 24-48 hours. 
+              You'll receive an email notification once they're approved or if changes are needed.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-lg font-semibold text-foreground">All Services</h2>
@@ -601,9 +613,25 @@ export default function SellerServices() {
                         {service.express_price ? `GH₵ ${service.express_price.toFixed(2)}` : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={service.is_active ? "default" : "secondary"}>
-                          {service.is_active ? "Active" : "Paused"}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          {/* Verification Status */}
+                          {service.is_verified === false ? (
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-300">
+                              ⏳ Pending Review
+                            </Badge>
+                          ) : service.is_verified === true ? (
+                            <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+                              ✓ Verified
+                            </Badge>
+                          ) : null}
+                          
+                          {/* Active/Paused Status - only show if verified */}
+                          {service.is_verified && (
+                            <Badge variant={service.is_active ? "default" : "secondary"}>
+                              {service.is_active ? "Active" : "Paused"}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

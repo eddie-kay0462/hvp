@@ -33,9 +33,16 @@ export const setupSeller = async (userId, sellerData) => {
 
 export const createService = async (userId, serviceData) => {
   try {
+    // Ensure is_verified is set to false for new services (pending approval)
+    const serviceToCreate = {
+      user_id: userId,
+      ...serviceData,
+      is_verified: false // All new services require approval
+    };
+
     const { data, error } = await supabase
-      .from('services') // make sure your table is called "services"
-      .insert([{ user_id: userId, ...serviceData }])
+      .from('services')
+      .insert([serviceToCreate])
       .select()
       .single();
 
@@ -43,7 +50,11 @@ export const createService = async (userId, serviceData) => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    return { status: 201, msg: "Service created successfully", data };
+    return { 
+      status: 201, 
+      msg: "Service submitted for approval. You'll receive an email once it's reviewed.", 
+      data 
+    };
   } catch (e) {
     console.error("Supabase insert error:", e);
     return { status: 500, msg: "Failed to create service", data: null };
