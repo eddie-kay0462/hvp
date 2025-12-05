@@ -1,18 +1,39 @@
-import { LayoutDashboard, Package, Calendar, DollarSign, User, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, Calendar, DollarSign, User, Menu, X, Shield } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
-const navigation = [
-  { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
-  { name: "My Services", href: "/seller/services", icon: Package },
-  { name: "Bookings", href: "/seller/bookings", icon: Calendar },
-  { name: "Payments", href: "/seller/payments", icon: DollarSign },
-  { name: "Profile", href: "/seller/profile", icon: User },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export const SellerSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      setIsAdmin(data?.role === 'admin');
+    };
+    
+    checkAdminStatus();
+  }, [user]);
+
+  const navigation = [
+    { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
+    { name: "My Services", href: "/seller/services", icon: Package },
+    { name: "Bookings", href: "/seller/bookings", icon: Calendar },
+    { name: "Payments", href: "/seller/payments", icon: DollarSign },
+    { name: "Profile", href: "/seller/profile", icon: User },
+    ...(isAdmin ? [{ name: "Admin Dashboard", href: "/admin/services/pending", icon: Shield }] : []),
+  ];
 
   return (
     <>

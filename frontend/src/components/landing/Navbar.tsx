@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Menu, User, LogOut, Package, Calendar, MessageSquare } from "lucide-react";
+import { Menu, User, LogOut, Package, Calendar, MessageSquare, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -23,13 +23,15 @@ export const Navbar = () => {
   const { canListServices } = useUserType();
   const navigate = useNavigate();
   const unreadCount = useUnreadCount();
-  const [userProfile, setUserProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string | null; last_name: string | null; role: string | null } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchUserProfile();
     } else {
       setUserProfile(null);
+      setIsAdmin(false);
     }
   }, [user]);
 
@@ -39,7 +41,7 @@ export const Navbar = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name')
+        .select('first_name, last_name, role')
         .eq('id', user.id)
         .single();
 
@@ -51,7 +53,11 @@ export const Navbar = () => {
       setUserProfile({
         first_name: data?.first_name || null,
         last_name: data?.last_name || null,
+        role: data?.role || null,
       });
+      
+      // Check if user is admin
+      setIsAdmin(data?.role === 'admin');
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
@@ -131,6 +137,12 @@ export const Navbar = () => {
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem onClick={() => navigate('/admin/services/pending')}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => navigate('/messages')}>
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Messages
@@ -206,6 +218,12 @@ export const Navbar = () => {
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </Button>
+                    {isAdmin && (
+                      <Button variant="ghost" className="w-full" onClick={() => navigate('/admin/services/pending')}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </Button>
+                    )}
                     <Button variant="ghost" className="w-full relative" onClick={() => navigate('/messages')}>
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Messages

@@ -234,26 +234,34 @@ const SetUpService = () => {
         return;
       }
 
-      // Then, create service with images
-      const { data: newService, error: serviceError } = await supabase
-        .from('services')
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          default_price: price,
-          default_delivery_time: defaultDeliveryTime || null,
-          express_price: expressPrice ? parseFloat(expressPrice) : null,
-          express_delivery_time: expressDeliveryTime || null,
-          portfolio: formatPortfolio(),
-          image_urls: imageUrls.length > 0 ? imageUrls : null,
-          user_id: user.id,
-          is_active: true,
-        })
-        .select()
-        .single();
+      // Then, create service using API (includes duplicate prevention and email notifications)
+      const serviceResponse = await api.sellers.createService({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        default_price: price,
+        default_delivery_time: defaultDeliveryTime || null,
+        express_price: expressPrice ? parseFloat(expressPrice) : null,
+        express_delivery_time: expressDeliveryTime || null,
+        portfolio: formatPortfolio(),
+      }) as any;
 
-      if (serviceError) throw serviceError;
+      if (serviceResponse.status !== 201) {
+        throw new Error(serviceResponse.msg || 'Failed to create service');
+      }
+
+      // If we have images, update the service with image_urls
+      if (imageUrls.length > 0 && serviceResponse.data?.id) {
+        const { error: imageError } = await supabase
+          .from('services')
+          .update({ image_urls: imageUrls })
+          .eq('id', serviceResponse.data.id);
+
+        if (imageError) {
+          console.error('Failed to update service images:', imageError);
+          // Don't fail the whole operation if image update fails
+        }
+      }
 
       toast.success('Service set up successfully! 🎉');
       navigate('/seller/services');

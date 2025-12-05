@@ -64,10 +64,61 @@ export const createService = async (userId, serviceData) => {
       }
     }
 
-    // Create the service
+    // Duplicate prevention checks
+    const { title, category } = serviceData;
+
+    // Check 1: Exact title match (same seller, same title, same category)
+    const { data: exactMatches, error: exactCheckError } = await supabase
+      .from('services')
+      .select('id, title')
+      .eq('user_id', userId)
+      .eq('category', category)
+      .ilike('title', title.trim());
+
+    if (exactCheckError) {
+      console.error("Error checking for exact duplicates:", exactCheckError);
+      return { status: 500, msg: "Failed to validate service", data: null };
+    }
+
+    if (exactMatches && exactMatches.length > 0) {
+      return { 
+        status: 409, 
+        msg: `You already have a service titled "${title}" in the ${category} category. Please edit your existing service or choose a different title.`, 
+        data: null 
+      };
+    }
+
+    // Check 2: Any service in the same category (prevents "Cake Making" vs "Cake Baking" duplicates)
+    const { data: categoryServices, error: categoryCheckError } = await supabase
+      .from('services')
+      .select('id, title')
+      .eq('user_id', userId)
+      .eq('category', category);
+
+    if (categoryCheckError) {
+      console.error("Error checking for category duplicates:", categoryCheckError);
+      return { status: 500, msg: "Failed to validate service", data: null };
+    }
+
+    if (categoryServices && categoryServices.length > 0) {
+      const existingTitle = categoryServices[0].title;
+      return { 
+        status: 409, 
+        msg: `You already have a service "${existingTitle}" in the ${category} category. Each seller can only have one service per category. Please edit your existing service or choose a different category.`, 
+        data: null 
+      };
+    }
+
+    // Ensure is_verified is set to false for new services (pending approval)
+    const serviceToCreate = {
+      user_id: userId,
+      ...serviceData,
+      is_verified: false // All new services require approval
+    };
+
     const { data, error } = await supabase
-      .from('services') // make sure your table is called "services"
-      .insert([{ user_id: userId, ...serviceData }])
+      .from('services')
+      .insert([serviceToCreate])
       .select()
       .single();
 
@@ -75,7 +126,11 @@ export const createService = async (userId, serviceData) => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    return { status: 201, msg: "Service created successfully", data };
+    return { 
+      status: 201, 
+      msg: "Service submitted for approval. You'll receive an email once it's reviewed.", 
+      data 
+    };
   } catch (e) {
     console.error("Supabase insert error:", e);
     return { status: 500, msg: "Failed to create service", data: null };

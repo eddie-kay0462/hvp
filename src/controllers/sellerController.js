@@ -49,6 +49,9 @@ const setupSeller = async (req) => {
  const createService = async (req) => {
     try {
       const userId = req.user?.id; // set by auth middleware
+      const userEmail = req.user?.email;
+      const userName = `${req.user?.user_metadata?.firstName || ''} ${req.user?.user_metadata?.lastName || ''}`.trim();
+
       if (!userId) {
         return { status: 401, msg: "Unauthorized: user not found", data: null };
       }
@@ -81,6 +84,17 @@ const setupSeller = async (req) => {
         portfolio
       });
   
+      // Send notification emails if service created successfully
+      if (result.status === 201 && result.data) {
+        try {
+          const { sendServiceSubmittedNotification } = await import('../services/emailService.js');
+          await sendServiceSubmittedNotification(result.data, userEmail, userName);
+        } catch (emailError) {
+          console.error("Failed to send service submission notification:", emailError);
+          // Don't fail the service creation if email fails
+        }
+      }
+
       return {
         status: result.status,
         msg: result.msg,

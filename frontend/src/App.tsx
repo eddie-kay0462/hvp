@@ -28,6 +28,7 @@ import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import PaymentCallback from "./pages/PaymentCallback";
 import InvoicePage from "./pages/invoicePage";
+import AdminPendingServices from "./pages/admin/AdminPendingServices";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,9 @@ const App = () => (
             <Route path="/my-services" element={<SellerDashboardLayout />}>
               <Route index element={<SellerServices />} />
             </Route>
+            
+            {/* Admin Routes */}
+            <Route path="/admin/services/pending" element={<AdminPendingServices />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

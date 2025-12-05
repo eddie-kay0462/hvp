@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Edit, Pause, Play, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit, Pause, Play, Loader2, Upload, X, Image as ImageIcon, Info, AlertCircle } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -123,52 +124,36 @@ export default function SellerServices() {
     setSubmitting(true);
 
     try {
-      // First, ensure seller entry exists
-      const { data: existingSeller } = await supabase
-        .from('sellers')
-        .select('id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
+      // Call backend API to create service (includes duplicate prevention and email notifications)
+      const response: any = await api.sellers.createService({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        default_price: parseFloat(defaultPrice) || null,
+        default_delivery_time: defaultDeliveryTime || null,
+        express_price: expressPrice ? parseFloat(expressPrice) : null,
+        express_delivery_time: expressDeliveryTime || null,
+        portfolio: portfolio.trim(),
+      });
 
-      if (!existingSeller) {
-        // Auto-create seller entry if it doesn't exist
-        await supabase
-          .from('sellers')
-          .upsert({
-            user_id: user?.id,
-            title: title.trim(),
-            description: description.trim(),
-            category,
-            default_price: parseFloat(defaultPrice) || null,
-            default_delivery_time: defaultDeliveryTime || null,
-            express_price: expressPrice ? parseFloat(expressPrice) : null,
-            express_delivery_time: expressDeliveryTime || null,
-            portfolio: portfolio.trim(),
-          }, { onConflict: 'user_id' });
+      if (response.status !== 201) {
+        throw new Error(response.msg || 'Failed to create service');
       }
 
-      // Create service directly in Supabase to include image_urls
-      const { data: newService, error } = await supabase
-        .from('services')
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          default_price: parseFloat(defaultPrice) || null,
-          default_delivery_time: defaultDeliveryTime || null,
-          express_price: expressPrice ? parseFloat(expressPrice) : null,
-          express_delivery_time: expressDeliveryTime || null,
-          portfolio: portfolio.trim(),
-          image_urls: imageUrls.length > 0 ? imageUrls : null,
-          user_id: user?.id,
-          is_active: true,
-        })
-        .select()
-        .single();
+      // If we have images, update the service with image_urls
+      if (imageUrls.length > 0 && response.data?.id) {
+        const { error: imageError } = await supabase
+          .from('services')
+          .update({ image_urls: imageUrls })
+          .eq('id', response.data.id);
 
-      if (error) throw error;
+        if (imageError) {
+          console.error('Failed to update service images:', imageError);
+          // Don't fail the whole operation if image update fails
+        }
+      }
 
-      toast.success('Service created successfully!');
+      toast.success('Service submitted for review! You\'ll be notified once it\'s approved.');
       setDialogOpen(false);
       resetForm();
       fetchServices(); // Reload services
@@ -358,6 +343,17 @@ export default function SellerServices() {
       />
 
       <div className="p-6">
+        {/* Info Alert for Pending Services */}
+        {services.some(s => s.is_verified === false) && (
+          <Alert className="mb-6 border-orange-200 bg-orange-50">
+            <Info className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              You have services pending approval. Our team will review them within 24-48 hours. 
+              You'll receive an email notification once they're approved or if changes are needed.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-lg font-semibold text-foreground">All Services</h2>
@@ -625,9 +621,25 @@ export default function SellerServices() {
                         {service.express_price ? `GH₵ ${service.express_price.toFixed(2)}` : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={service.is_active ? "default" : "secondary"}>
-                          {service.is_active ? "Active" : "Paused"}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          {/* Verification Status */}
+                          {service.is_verified === false ? (
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-300">
+                              ⏳ Pending Review
+                            </Badge>
+                          ) : service.is_verified === true ? (
+                            <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+                              ✓ Verified
+                            </Badge>
+                          ) : null}
+                          
+                          {/* Active/Paused Status - only show if verified */}
+                          {service.is_verified && (
+                            <Badge variant={service.is_active ? "default" : "secondary"}>
+                              {service.is_active ? "Active" : "Paused"}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
