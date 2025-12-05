@@ -231,7 +231,7 @@ export default function AdminPendingServices() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
               <h3 className="text-xl font-semibold mb-2">All caught up!</h3>
-              <p className="text-muted-foreground">There are no pending services to review.</p>
+              <p className="text-muted-foreground">There are no pending services to review!.</p>
             </CardContent>
           </Card>
         ) : (
