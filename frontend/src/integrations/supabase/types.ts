@@ -235,6 +235,7 @@ export type Database = {
           created_at: string | null
           updated_at: string | null
           is_active: boolean | null
+          image_urls: string[] | null
         }
         Insert: {
           id?: string
@@ -251,6 +252,7 @@ export type Database = {
           created_at?: string | null
           updated_at?: string | null
           is_active?: boolean | null
+          image_urls?: string[] | null
         }
         Update: {
           id?: string
@@ -267,6 +269,7 @@ export type Database = {
           created_at?: string | null
           updated_at?: string | null
           is_active?: boolean | null
+          image_urls?: string[] | null
         }
         Relationships: [
           {

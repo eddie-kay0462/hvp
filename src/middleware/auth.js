@@ -1,8 +1,5 @@
 import { supabase } from '../config/supabase.js';
 
-// Export verifyToken as authenticate for backwards compatibility
-export const authenticate = verifyToken;
-
 /**
  * Verify authentication token and extract user
  * Sets req.user if token is valid
@@ -140,3 +137,5 @@ export const verifyAdminToken = async (req, res, next) => {
   }
 };
 
+// Export verifyToken as authenticate for backwards compatibility
+export const authenticate = verifyToken;

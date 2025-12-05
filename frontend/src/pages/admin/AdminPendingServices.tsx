@@ -49,15 +49,12 @@ export default function AdminPendingServices() {
   const [adminNotes, setAdminNotes] = useState('');
 
   useEffect(() => {
-    // Check if user is admin
-    if (user && user.user_metadata?.role !== 'admin') {
-      toast.error('Access denied. Admin privileges required.');
-      navigate('/');
-      return;
+    // Backend handles admin authentication - just fetch the data
+    // If user is not admin, the API will return 403 and we'll show the error
+    if (user) {
+      fetchPendingServices();
+      fetchStats();
     }
-
-    fetchPendingServices();
-    fetchStats();
   }, [user, navigate]);
 
   const fetchPendingServices = async () => {
@@ -320,7 +317,7 @@ export default function AdminPendingServices() {
                         Reject
                       </Button>
                       <Button
-                        onClick={() => navigate(`/services/${service.id}`)}
+                        onClick={() => navigate(`/service/${service.id}`)}
                         variant="outline"
                       >
                         <Eye className="h-4 w-4 mr-2" />

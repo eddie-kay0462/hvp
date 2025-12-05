@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Navbar } from '@/components/landing/Navbar';
 import { useCategories } from '@/hooks/useCategories';
 import { Upload, X, Loader2 } from 'lucide-react';
+import api from '@/lib/api';
 
 const ListService = () => {
   const [title, setTitle] = useState('');
@@ -105,58 +106,36 @@ const ListService = () => {
     setLoading(true);
 
     try {
-      // Try backend API first, but if it fails or doesn't support image_urls, create directly in Supabase
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/sellers/create-service`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          },
-          body: JSON.stringify({
-            title,
-            description,
-            category,
-            default_price: parseFloat(defaultPrice) || null,
-            default_delivery_time: defaultDeliveryTime || null,
-            express_price: expressPrice ? parseFloat(expressPrice) : null,
-            express_delivery_time: expressDeliveryTime || null,
-            portfolio: portfolio || null,
-            image_urls: imageUrls.length > 0 ? imageUrls : null,
-          }),
-        });
+      // Call backend API to create service (this sends email notifications!)
+      const response: any = await api.sellers.createService({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        default_price: parseFloat(defaultPrice) || null,
+        default_delivery_time: defaultDeliveryTime || null,
+        express_price: expressPrice ? parseFloat(expressPrice) : null,
+        express_delivery_time: expressDeliveryTime || null,
+        portfolio: portfolio || null,
+      });
 
-        const result = await response.json();
-
-        if (response.ok) {
-          toast.success('Service listed successfully!');
-          navigate('/my-services');
-          return;
-        }
-      } catch (apiError) {
-        // Backend API not available, fallback to direct Supabase creation
+      if (response.status !== 201) {
+        throw new Error(response.msg || 'Failed to create service');
       }
 
-      // Fallback: Create directly in Supabase
-      const { error } = await supabase
-        .from('services')
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          default_price: parseFloat(defaultPrice) || null,
-          default_delivery_time: defaultDeliveryTime || null,
-          express_price: expressPrice ? parseFloat(expressPrice) : null,
-          express_delivery_time: expressDeliveryTime || null,
-          portfolio: portfolio.trim(),
-          image_urls: imageUrls.length > 0 ? imageUrls : null,
-          user_id: user?.id,
-          is_active: true,
-        });
+      // If we have images, update the service with image_urls
+      if (imageUrls.length > 0 && response.data?.id) {
+        const { error: imageError } = await supabase
+          .from('services')
+          .update({ image_urls: imageUrls })
+          .eq('id', response.data.id);
 
-      if (error) throw error;
+        if (imageError) {
+          console.error('Failed to update service images:', imageError);
+          // Don't fail the whole operation if image update fails
+        }
+      }
 
-      toast.success('Service listed successfully!');
+      toast.success('Service submitted for review! You\'ll be notified once it\'s approved.');
       navigate('/my-services');
     } catch (error: any) {
       console.error('Error creating service:', error);

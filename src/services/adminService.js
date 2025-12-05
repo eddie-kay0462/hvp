@@ -5,17 +5,10 @@ import { supabase, supabaseAdmin } from '../config/supabase.js';
  */
 export const getPendingServices = async () => {
   try {
+    // First get services
     const { data, error } = await supabase
       .from('services')
-      .select(`
-        *,
-        profiles:user_id (
-          first_name,
-          last_name,
-          phone,
-          profile_pic
-        )
-      `)
+      .select('*')
       .eq('is_verified', false)
       .order('created_at', { ascending: false });
 
@@ -23,18 +16,28 @@ export const getPendingServices = async () => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    // Get seller emails from auth.users (requires admin client)
-    const servicesWithEmails = await Promise.all(
-      data.map(async (service) => {
+    // Then get profile and email data for each service
+    const servicesWithDetails = await Promise.all(
+      (data || []).map(async (service) => {
+        // Get profile data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone, profile_pic')
+          .eq('id', service.user_id)
+          .single();
+
+        // Get email from auth.users (requires admin client)
         const { data: userData } = await supabaseAdmin.auth.admin.getUserById(service.user_id);
+
         return {
           ...service,
+          profiles: profile,
           seller_email: userData?.user?.email || null
         };
       })
     );
 
-    return { status: 200, msg: "Pending services retrieved", data: servicesWithEmails };
+    return { status: 200, msg: "Pending services retrieved", data: servicesWithDetails };
   } catch (e) {
     console.error("Get pending services error:", e);
     return { status: 500, msg: "Failed to retrieve pending services", data: null };
@@ -48,15 +51,7 @@ export const getAllServices = async (filters = {}) => {
   try {
     let query = supabase
       .from('services')
-      .select(`
-        *,
-        profiles:user_id (
-          first_name,
-          last_name,
-          phone,
-          profile_pic
-        )
-      `);
+      .select('*');
 
     // Apply filters
     if (filters.is_verified !== undefined) {
@@ -77,7 +72,23 @@ export const getAllServices = async (filters = {}) => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    return { status: 200, msg: "Services retrieved", data };
+    // Get profile data for each service
+    const servicesWithProfiles = await Promise.all(
+      (data || []).map(async (service) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone, profile_pic')
+          .eq('id', service.user_id)
+          .single();
+
+        return {
+          ...service,
+          profiles: profile
+        };
+      })
+    );
+
+    return { status: 200, msg: "Services retrieved", data: servicesWithProfiles };
   } catch (e) {
     console.error("Get all services error:", e);
     return { status: 500, msg: "Failed to retrieve services", data: null };
@@ -93,16 +104,23 @@ export const approveService = async (serviceId, adminId) => {
       return { status: 400, msg: "Service ID and Admin ID are required", data: null };
     }
 
-    // Get service details for email notification
+    // Get service details
     const { data: service, error: fetchError } = await supabase
       .from('services')
-      .select('*, profiles:user_id(first_name, last_name)')
+      .select('*')
       .eq('id', serviceId)
       .single();
 
     if (fetchError || !service) {
       return { status: 404, msg: "Service not found", data: null };
     }
+
+    // Get seller profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', service.user_id)
+      .single();
 
     // Update service to approved
     const { data, error } = await supabase
@@ -131,7 +149,7 @@ export const approveService = async (serviceId, adminId) => {
       data: {
         service: data,
         sellerEmail,
-        sellerName: `${service.profiles?.first_name || ''} ${service.profiles?.last_name || ''}`.trim()
+        sellerName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
       }
     };
   } catch (e) {
@@ -149,16 +167,23 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       return { status: 400, msg: "Service ID, Admin ID, and rejection reason are required", data: null };
     }
 
-    // Get service details for email notification
+    // Get service details
     const { data: service, error: fetchError } = await supabase
       .from('services')
-      .select('*, profiles:user_id(first_name, last_name)')
+      .select('*')
       .eq('id', serviceId)
       .single();
 
     if (fetchError || !service) {
       return { status: 404, msg: "Service not found", data: null };
     }
+
+    // Get seller profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', service.user_id)
+      .single();
 
     // Update service with rejection
     const { data, error } = await supabase
@@ -188,7 +213,7 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       data: {
         service: data,
         sellerEmail,
-        sellerName: `${service.profiles?.first_name || ''} ${service.profiles?.last_name || ''}`.trim()
+        sellerName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
       }
     };
   } catch (e) {
