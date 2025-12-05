@@ -68,13 +68,14 @@ export const CategoryGrid = () => {
 
   const fetchCategoryCounts = async () => {
     try {
-      // Get counts for each category
+      // Get counts for each category - only count verified and active services
       const categorySlugs = categories.map(cat => cat.slug);
       
       const { data, error } = await supabase
         .from('services')
         .select('category')
         .eq('is_active', true)
+        .eq('is_verified', true) // Only count verified services
         .in('category', categorySlugs);
 
       if (error) throw error;

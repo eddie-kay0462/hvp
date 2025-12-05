@@ -124,26 +124,34 @@ export default function SellerServices() {
     setSubmitting(true);
 
     try {
-      // Create service directly in Supabase to include image_urls
-      const { data: newService, error } = await supabase
-        .from('services')
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          default_price: parseFloat(defaultPrice) || null,
-          default_delivery_time: defaultDeliveryTime || null,
-          express_price: expressPrice ? parseFloat(expressPrice) : null,
-          express_delivery_time: expressDeliveryTime || null,
-          portfolio: portfolio.trim(),
-          image_urls: imageUrls.length > 0 ? imageUrls : null,
-          user_id: user?.id,
-          is_active: true,
-        })
-        .select()
-        .single();
+      // Call backend API to create service (includes duplicate prevention and email notifications)
+      const response: any = await api.sellers.createService({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        default_price: parseFloat(defaultPrice) || null,
+        default_delivery_time: defaultDeliveryTime || null,
+        express_price: expressPrice ? parseFloat(expressPrice) : null,
+        express_delivery_time: expressDeliveryTime || null,
+        portfolio: portfolio.trim(),
+      });
 
-      if (error) throw error;
+      if (response.status !== 201) {
+        throw new Error(response.msg || 'Failed to create service');
+      }
+
+      // If we have images, update the service with image_urls
+      if (imageUrls.length > 0 && response.data?.id) {
+        const { error: imageError } = await supabase
+          .from('services')
+          .update({ image_urls: imageUrls })
+          .eq('id', response.data.id);
+
+        if (imageError) {
+          console.error('Failed to update service images:', imageError);
+          // Don't fail the whole operation if image update fails
+        }
+      }
 
       toast.success('Service submitted for review! You\'ll be notified once it\'s approved.');
       setDialogOpen(false);

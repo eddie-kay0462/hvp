@@ -68,6 +68,16 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
     return 'The requested resource was not found.';
   }
 
+  // Duplicate/conflict errors (409)
+  if (statusCode === 409 || lowerMessage.includes('already have') || lowerMessage.includes('duplicate')) {
+    // If the message is already user-friendly (from backend), return as-is
+    // Otherwise provide a generic friendly message
+    if (errorMessage.includes('already have') || errorMessage.includes('duplicate')) {
+      return errorMessage; // Backend already provides friendly message
+    }
+    return 'This item already exists. Please check your existing items or try a different name.';
+  }
+
   if (statusCode === 500 || lowerMessage.includes('internal server error')) {
     return 'A server error occurred. Please try again later.';
   }
