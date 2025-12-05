@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, XCircle, Eye, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Eye, Clock, AlertCircle, ArrowLeft, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -163,8 +163,20 @@ export default function AdminPendingServices() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Service Approval Dashboard</h1>
-          <p className="text-muted-foreground">Review and approve pending services</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Service Approval Dashboard</h1>
+              <p className="text-muted-foreground">Review and approve pending services</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/services')}
+              className="flex items-center gap-2"
+            >
+              <Store className="h-4 w-4" />
+              Back to Market
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
