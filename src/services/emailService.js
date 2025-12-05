@@ -23,7 +23,7 @@ const getFrontendUrl = () => {
 export const sendServiceApprovalEmail = async (sellerEmail, sellerName, service) => {
   try {
     const frontendUrl = getFrontendUrl();
-    const serviceUrl = `${frontendUrl}/services/${service.id}`;
+    const serviceUrl = `${frontendUrl}/service/${service.id}`;
     const dashboardUrl = `${frontendUrl}/seller/services`;
 
     // Use Supabase Auth to send email
