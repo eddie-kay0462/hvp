@@ -136,10 +136,15 @@ All colors MUST be HSL.
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes wordSwapIn {
+  from { opacity: 0; transform: translateY(0.45em); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ── Animation Utility Classes ── */
 .animate-fade-in-up { animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-slide-down { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-word-swap  { animation: wordSwapIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ── Stagger Delay Helpers ── */
 .delay-100 { animation-delay: 100ms; }

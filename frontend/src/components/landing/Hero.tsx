@@ -11,13 +11,36 @@ interface StudentProfile {
   last_name: string | null;
 }
 
+const ROTATING_WORDS = [
+  "tutors",
+  "designers",
+  "developers",
+  "creators",
+  "DJs",
+  "bakers",
+];
+
 export const Hero = () => {
   const navigate = useNavigate();
   const [studentCount, setStudentCount] = useState<number | null>(null);
   const [studentProfiles, setStudentProfiles] = useState<StudentProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [wordIndex, setWordIndex] = useState(0);
   const { categories } = useCategories();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const longestWord = useMemo(
+    () =>
+      ROTATING_WORDS.reduce((a, b) => (a.length >= b.length ? a : b), ""),
+    [],
+  );
 
   const searchSuggestions = useMemo(() => {
     const names = categories.map((c) => c.name || c.slug);
@@ -76,13 +99,24 @@ export const Hero = () => {
     studentCount !== null && studentCount > 0 && studentProfiles.length > 0;
 
   return (
-    <section className="bg-background border-b border-border">
-      <div className="container mx-auto px-4 md:px-6 pt-16 pb-14 md:pt-24 md:pb-20">
+    <section className="bg-background border-b border-border overflow-hidden">
+      <div className="container mx-auto px-4 md:px-6 pt-16 pb-12 md:pt-24 md:pb-20">
         <div className="max-w-3xl mx-auto text-center space-y-6 md:space-y-8">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-[1.1] tracking-tight">
-            Hire trusted student talent
+            Hire trusted student{" "}
+            <span className="relative inline-block align-baseline">
+              <span aria-hidden="true" className="invisible whitespace-nowrap">
+                {longestWord}
+              </span>
+              <span
+                key={wordIndex}
+                className="absolute left-0 top-0 right-0 text-primary animate-word-swap whitespace-nowrap"
+              >
+                {ROTATING_WORDS[wordIndex]}
+              </span>
+            </span>
             <br />
-            <span className="text-primary">right on your campus.</span>
+            right on your campus.
           </h1>
 
           <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
@@ -172,6 +206,15 @@ export const Hero = () => {
               </p>
             </div>
           )}
+        </div>
+
+        <div className="mt-12 md:mt-16 max-w-5xl mx-auto px-2 md:px-0">
+          <img
+            src="/hero-mockup.png?v=2"
+            alt="Hustle Village replaces sketchy WhatsApp DMs with a verified campus marketplace, secure escrow payments, and a real seller dashboard."
+            className="block w-full h-auto select-none pointer-events-none"
+            draggable={false}
+          />
         </div>
       </div>
     </section>
