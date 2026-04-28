@@ -210,7 +210,7 @@ export const Hero = () => {
 
         <div className="mt-12 md:mt-16 max-w-5xl mx-auto px-2 md:px-0">
           <img
-            src="/hero-mockup.png?v=2"
+            src="/hero-mockup.png?v=3"
             alt="Hustle Village replaces sketchy WhatsApp DMs with a verified campus marketplace, secure escrow payments, and a real seller dashboard."
             className="block w-full h-auto select-none pointer-events-none"
             draggable={false}
