@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, Quote } from "lucide-react";
+import { Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Testimonial {
@@ -30,20 +29,21 @@ export const Testimonials = () => {
   const fetchTestimonials = async () => {
     try {
       setLoading(true);
-      
-      // Fetch reviews with reviewer info
+
       const { data: reviewsData, error } = await supabase
-        .from('reviews')
-        .select(`
+        .from("reviews")
+        .select(
+          `
           id,
           review_text,
           rating,
           created_at,
           reviewer_id,
           service_id
-        `)
-        .not('review_text', 'is', null)
-        .order('created_at', { ascending: false })
+        `,
+        )
+        .not("review_text", "is", null)
+        .order("created_at", { ascending: false })
         .limit(6);
 
       if (error) throw error;
@@ -53,52 +53,51 @@ export const Testimonials = () => {
         return;
       }
 
-      // Fetch reviewer profiles
-      const reviewerIds = [...new Set(reviewsData.map(r => r.reviewer_id))];
+      const reviewerIds = [...new Set(reviewsData.map((r) => r.reviewer_id))];
       const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, profile_pic')
-        .in('id', reviewerIds);
+        .from("profiles")
+        .select("id, first_name, last_name, profile_pic")
+        .in("id", reviewerIds);
 
       const profilesMap: Record<string, any> = {};
-      profilesData?.forEach(profile => {
+      profilesData?.forEach((profile) => {
         profilesMap[profile.id] = profile;
       });
 
-      // Fetch service titles if service_id exists
       const serviceIds = reviewsData
-        .map(r => r.service_id)
-        .filter(id => id !== null) as string[];
-      
+        .map((r) => r.service_id)
+        .filter((id) => id !== null) as string[];
+
       let servicesMap: Record<string, any> = {};
       if (serviceIds.length > 0) {
         const { data: servicesData } = await supabase
-          .from('services')
-          .select('id, title')
-          .in('id', serviceIds);
-        
-        servicesData?.forEach(service => {
+          .from("services")
+          .select("id, title")
+          .in("id", serviceIds);
+
+        servicesData?.forEach((service) => {
           servicesMap[service.id] = service;
         });
       }
 
-      // Map reviews to testimonials
-      const mappedTestimonials: Testimonial[] = reviewsData.map((review: any) => ({
-        id: review.id,
-        review_text: review.review_text,
-        rating: review.rating,
-        created_at: review.created_at,
-        reviewer: profilesMap[review.reviewer_id] || {
-          first_name: null,
-          last_name: null,
-          profile_pic: null,
-        },
-        service: review.service_id ? servicesMap[review.service_id] : undefined,
-      }));
+      const mappedTestimonials: Testimonial[] = reviewsData.map(
+        (review: any) => ({
+          id: review.id,
+          review_text: review.review_text,
+          rating: review.rating,
+          created_at: review.created_at,
+          reviewer: profilesMap[review.reviewer_id] || {
+            first_name: null,
+            last_name: null,
+            profile_pic: null,
+          },
+          service: review.service_id ? servicesMap[review.service_id] : undefined,
+        }),
+      );
 
       setTestimonials(mappedTestimonials);
     } catch (error) {
-      console.error('Error fetching testimonials:', error);
+      console.error("Error fetching testimonials:", error);
       setTestimonials([]);
     } finally {
       setLoading(false);
@@ -106,98 +105,108 @@ export const Testimonials = () => {
   };
 
   const getInitials = (firstName: string | null, lastName: string | null) => {
-    const first = firstName?.charAt(0).toUpperCase() || '';
-    const last = lastName?.charAt(0).toUpperCase() || '';
-    return `${first}${last}` || 'U';
+    const first = firstName?.charAt(0).toUpperCase() || "";
+    const last = lastName?.charAt(0).toUpperCase() || "";
+    return `${first}${last}` || "U";
   };
 
   const getName = (firstName: string | null, lastName: string | null) => {
     if (firstName && lastName) return `${firstName} ${lastName}`;
-    return firstName || lastName || 'Student';
+    return firstName || lastName || "Student";
   };
 
   if (loading) {
     return (
-      <section className="py-20 bg-background">
+      <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight">What Students Say</h2>
-            <p className="text-muted-foreground mt-2">Real feedback from our community</p>
-          </div>
-          <div className="text-center text-muted-foreground py-8">
-            Loading testimonials...
-          </div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
+            What students say
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Loading testimonials…
+          </p>
         </div>
       </section>
     );
   }
 
   if (testimonials.length === 0) {
-    return null; // Don't show section if no testimonials
+    return null;
   }
 
   return (
-    <section className="py-20 bg-background">
+    <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold tracking-tight">What Students Say</h2>
-          <p className="text-muted-foreground mt-2">Real feedback from our community</p>
-        </div>
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
+          What students say
+        </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {testimonials.map((testimonial) => (
-            <Card key={testimonial.id} className="relative overflow-hidden">
-              <CardContent className="p-6">
-                <Quote className="absolute top-4 right-4 h-8 w-8 text-primary/20" />
-                
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < testimonial.rating
-                          ? 'fill-amber-400 text-amber-400'
-                          : 'text-muted'
-                      }`}
-                    />
-                  ))}
-                </div>
+            <article
+              key={testimonial.id}
+              className="rounded-xl border border-border bg-white p-6"
+            >
+              <div className="flex items-center gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${
+                      i < testimonial.rating
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-muted-foreground/30"
+                    }`}
+                  />
+                ))}
+              </div>
 
-                <p className="text-muted-foreground mb-6 italic">
-                  "{testimonial.review_text}"
+              <p className="text-sm text-foreground/90 leading-relaxed mb-6">
+                "{testimonial.review_text}"
+              </p>
+
+              {testimonial.service && (
+                <p className="text-xs text-muted-foreground mb-4">
+                  Service:{" "}
+                  <span className="font-medium text-foreground">
+                    {testimonial.service.title}
+                  </span>
                 </p>
+              )}
 
-                {testimonial.service && (
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Service: {testimonial.service.title}
+              <div className="flex items-center gap-3 pt-4 border-t border-border">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage
+                    src={testimonial.reviewer.profile_pic || undefined}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {getInitials(
+                      testimonial.reviewer.first_name,
+                      testimonial.reviewer.last_name,
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {getName(
+                      testimonial.reviewer.first_name,
+                      testimonial.reviewer.last_name,
+                    )}
                   </p>
-                )}
-
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={testimonial.reviewer.profile_pic || undefined} />
-                    <AvatarFallback>
-                      {getInitials(testimonial.reviewer.first_name, testimonial.reviewer.last_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {getName(testimonial.reviewer.first_name, testimonial.reviewer.last_name)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(testimonial.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </p>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(testimonial.created_at).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        year: "numeric",
+                      },
+                    )}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </article>
           ))}
         </div>
       </div>
     </section>
   );
 };
-

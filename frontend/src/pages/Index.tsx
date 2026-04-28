@@ -1,22 +1,24 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
+import { TrustBadges } from "@/components/landing/TrustBadges";
 import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { FeaturedServices } from "@/components/landing/FeaturedServices";
-import { Testimonials } from "@/components/landing/Testimonials";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { TrustBadges } from "@/components/landing/TrustBadges";
+import { Testimonials } from "@/components/landing/Testimonials";
 import { Footer } from "@/components/landing/Footer";
 
 const Index = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background font-sans antialiased">
       <Navbar />
-      <Hero />
-      <CategoryGrid />
-      <FeaturedServices />
-      <Testimonials />
-      <HowItWorks />
-      <TrustBadges />
+      <main>
+        <Hero />
+        <TrustBadges />
+        <FeaturedServices />
+        <CategoryGrid />
+        <HowItWorks />
+        <Testimonials />
+      </main>
       <Footer />
     </div>
   );

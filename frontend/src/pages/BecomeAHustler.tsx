@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  DollarSign, 
-  Clock, 
-  Users, 
-  TrendingUp, 
+import {
+  DollarSign,
+  Clock,
+  Users,
+  TrendingUp,
   Shield, 
   Zap,
   CheckCircle2,
@@ -214,34 +212,36 @@ export const BecomeAHustler = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      
+
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-primary/5 to-background">
+        <section className="py-14 md:py-20 border-b border-border">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-4xl mx-auto text-center space-y-6">
-              <Badge className="px-4 py-2 text-sm mb-4">Join the Hustle</Badge>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                Turn Your Skills Into <span className="text-primary">Income</span>
+            <div className="max-w-3xl mx-auto text-center space-y-5">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]">
+                Turn your skills into
+                <br />
+                <span className="text-primary">steady campus income</span>
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Join hundreds of students already earning on campus. Offer your services, set your prices, and start building your hustle today.
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+                List your services, set your rates, and get booked by students on
+                campus. Payments are secure and setup takes just a few minutes.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Button 
-                  size="lg" 
-                  className="bg-primary hover:bg-primary/90"
-                  onClick={() => navigate('/signup')}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                <Button
+                  size="lg"
+                  className="rounded-lg px-6"
+                  onClick={() => navigate("/signup")}
                 >
-                  Get Started Free
+                  Get started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
-                  onClick={() => navigate('/services')}
+                  className="rounded-lg px-6"
+                  onClick={() => navigate("/services")}
                 >
                   Browse Services
                 </Button>
@@ -250,55 +250,54 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        {/* Stats Section */}
-        <section className="py-12 border-b">
+        <section className="py-12 md:py-14 bg-white border-b border-border">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto">
               {stats.map((stat, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                    {stat.value}
+                <div
+                  key={idx}
+                  className="rounded-xl border border-border bg-background p-4 md:p-5 text-center"
+                >
+                  <div className="text-2xl md:text-3xl font-bold text-foreground">
+                    {loading ? "..." : stat.value}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stat.label}
-                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Benefits Section */}
-        <section className="py-20 bg-muted/30">
+        <section className="py-12 md:py-20 bg-muted/30 border-b border-border">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                  Why Become a Hustler?
+              <div className="mb-8 md:mb-10">
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  Why students sell on Hustle Village
                 </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  Everything you need to start earning on campus
-                </p>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {benefits.map((benefit, idx) => {
                   const Icon = benefit.icon;
                   return (
-                    <Card key={idx} className="p-6 hover:shadow-lg transition-shadow">
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-border bg-white p-5 md:p-6"
+                    >
                       <div className="flex items-start gap-4">
-                        <div className="rounded-full bg-primary/10 p-3 flex-shrink-0">
-                          <Icon className="h-6 w-6 text-primary" />
+                        <div className="rounded-lg bg-primary/10 p-2.5 flex-shrink-0">
+                          <Icon className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-lg mb-2">
+                          <h3 className="font-semibold text-base text-foreground mb-1.5">
                             {benefit.title}
                           </h3>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
                             {benefit.description}
                           </p>
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   );
                 })}
               </div>
@@ -306,13 +305,12 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        {/* How It Works Section */}
-        <section className="py-20">
+        <section className="py-20 bg-background border-b border-border">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                  How It Works
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+                  How to start
                 </h2>
                 <p className="text-lg text-muted-foreground">
                   Start earning in 4 simple steps
@@ -325,7 +323,7 @@ export const BecomeAHustler = () => {
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-4">
                         {step.number}
                       </div>
-                      <h3 className="font-semibold text-lg mb-2">
+                      <h3 className="font-semibold text-lg mb-2 text-foreground">
                         {step.title}
                       </h3>
                       <p className="text-sm text-muted-foreground">
@@ -333,8 +331,8 @@ export const BecomeAHustler = () => {
                       </p>
                     </div>
                     {idx < steps.length - 1 && (
-                      <div className="hidden lg:block absolute top-8 left-full w-full">
-                        <ArrowRight className="h-6 w-6 text-muted-foreground mx-auto" />
+                      <div className="hidden lg:flex absolute top-8 -right-7 h-16 items-center z-10">
+                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
                   </div>
@@ -344,45 +342,45 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-20 bg-primary/5">
+        <section className="py-12 md:py-16 bg-white">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-3xl mx-auto text-center space-y-6">
-              <h2 className="text-3xl md:text-4xl font-bold">
-                Ready to Start Your Hustle?
+            <div className="max-w-3xl mx-auto rounded-xl border border-border bg-background p-6 md:p-10 text-center space-y-6">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                Ready to get your first booking?
               </h2>
-              <p className="text-lg text-muted-foreground">
-                Join hundreds of students already earning on campus. It's free to get started.
+              <p className="text-base text-muted-foreground">
+                Create your account and list your first service today.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Button 
-                  size="lg" 
-                  className="bg-primary hover:bg-primary/90"
-                  onClick={() => navigate('/signup')}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                <Button
+                  size="lg"
+                  className="rounded-lg px-6"
+                  onClick={() => navigate("/signup")}
                 >
-                  Create Your Account
+                  Create account
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   variant="outline"
-                  onClick={() => navigate('/login')}
+                  className="rounded-lg px-6"
+                  onClick={() => navigate("/login")}
                 >
-                  Already have an account? Sign in
+                  Sign in
                 </Button>
               </div>
-              <div className="flex items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>No credit card required</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   <span>Free to join</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span>Start earning today</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>No setup fee</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>Start listing in minutes</span>
                 </div>
               </div>
             </div>
