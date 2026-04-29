@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -7,18 +7,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2, FileText } from "lucide-react";
 import { api } from "@/lib/api";
 
+interface InvoiceData {
+  invoice_number: string;
+  amount: number | null;
+  service?: { title?: string };
+}
+
 export default function PaymentCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [invoice, setInvoice] = useState<any>(null);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [reference, setReference] = useState<string | null>(null);
 
+  const verifyAndFetch = useCallback(async (ref: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await (api as any).payments.verify(ref);
+
+      if (result?.status === 200 && result?.data?.success) {
+        const invId: string | null = result.data.invoice_id || null;
+        setInvoiceId(invId);
+
+        if (invId) {
+          try {
+            const inv = await (api as any).invoices.getById(invId);
+            if (inv?.status === 200) setInvoice(inv.data);
+          } catch {
+            // Invoice fetch failing is non-fatal — payment was still recorded
+          }
+        }
+      } else {
+        setError(result?.msg || "Payment verification failed.");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Payment verification failed.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    // Paystack may send both ?reference and ?trxref – use either
+    // Paystack may send ?reference or ?trxref
     const ref = searchParams.get("reference") || searchParams.get("trxref");
     setReference(ref);
     if (!ref) {
@@ -26,53 +60,8 @@ export default function PaymentCallback() {
       setLoading(false);
       return;
     }
-
-    const verify = async (refToUse: string) => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('Verifying payment with reference:', refToUse);
-        const result = await (api as any).payments.verify(refToUse);
-        console.log('Payment verification result:', result);
-        
-        if (result?.status === 200 && result?.data?.success) {
-          const invId = result?.data?.invoice_id || null;
-          const bId = result?.data?.booking_id || null;
-          setInvoiceId(invId);
-          setBookingId(bId);
-          
-          if (invId) {
-            try {
-              console.log('Fetching invoice:', invId);
-              const inv = await (api as any).invoices.getById(invId);
-              console.log('Invoice fetch result:', inv);
-              if (inv?.status === 200) {
-                setInvoice(inv.data);
-              } else {
-                console.warn('Invoice fetch returned non-200 status:', inv?.status, inv?.msg);
-                // Don't set error - payment was successful, just invoice fetch failed
-              }
-            } catch (invError: any) {
-              console.error('Error fetching invoice:', invError);
-              // Don't set error - payment was successful, just invoice fetch failed
-            }
-          }
-          setError(null);
-        } else {
-          const errorMsg = result?.msg || "Payment verification failed.";
-          console.error('Payment verification failed:', errorMsg, result);
-          setError(errorMsg);
-        }
-      } catch (e: any) {
-        const errorMsg = e?.message || "Payment verification failed.";
-        console.error('Payment verification error:', e);
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    verify(ref);
-  }, [searchParams]);
+    verifyAndFetch(ref);
+  }, [searchParams, verifyAndFetch]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -101,48 +90,7 @@ export default function PaymentCallback() {
                   )}
                   <div className="flex gap-3">
                     {reference && (
-                      <Button
-                        onClick={async () => {
-                          if (!reference) return;
-                          try {
-                            setLoading(true);
-                            setError(null);
-                            console.log('Retrying payment verification with reference:', reference);
-                            const result = await (api as any).payments.verify(reference);
-                            console.log('Retry verification result:', result);
-                            
-                            if (result?.status === 200 && result?.data?.success) {
-                              const invId = result?.data?.invoice_id || null;
-                              const bId = result?.data?.booking_id || null;
-                              setInvoiceId(invId);
-                              setBookingId(bId);
-                              
-                              if (invId) {
-                                try {
-                                  console.log('Fetching invoice:', invId);
-                                  const inv = await (api as any).invoices.getById(invId);
-                                  console.log('Invoice fetch result:', inv);
-                                  if (inv?.status === 200) {
-                                    setInvoice(inv.data);
-                                  } else {
-                                    console.warn('Invoice fetch returned non-200 status:', inv?.status, inv?.msg);
-                                  }
-                                } catch (invError: any) {
-                                  console.error('Error fetching invoice:', invError);
-                                }
-                              }
-                              setError(null);
-                            } else {
-                              setError(result?.msg || "Payment verification failed.");
-                            }
-                          } catch (e: any) {
-                            console.error('Retry verification error:', e);
-                            setError(e?.message || "Payment verification failed.");
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                      >
+                      <Button onClick={() => verifyAndFetch(reference)}>
                         Retry verification
                       </Button>
                     )}
@@ -192,5 +140,3 @@ export default function PaymentCallback() {
     </div>
   );
 }
-
-

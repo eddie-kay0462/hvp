@@ -13,7 +13,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       return { status: 400, msg: "User ID and Service ID are required", data: null };
     }
 
-    const { date, time, status = 'pending', note } = bookingData;
+    const { date, time, status = 'pending' } = bookingData;
 
     // Date and time are now optional (for instant bookings)
     // Only validate if both are provided (scheduled booking)
@@ -236,80 +236,64 @@ export const getBookingById = async (userId, bookingId) => {
  * @param {string} role - 'buyer' or 'seller'
  * @returns {Promise<Object>} List of bookings
  */
-export const getUserBookings = async (userId, role = 'buyer') => {
+export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offset = 0 } = {}) => {
   try {
+    const serviceSelect = `
+      id,
+      title,
+      description,
+      category,
+      default_price,
+      express_price
+    `;
+
     if (role === 'buyer') {
-      // Get bookings where user is the buyer
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          service:services (
-            id,
-            title,
-            description,
-            category,
-            default_price,
-            express_price
-          )
-        `)
+        .select(`*, service:services (${serviceSelect})`)
         .eq('buyer_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
-      if (error) {
-        return { status: 400, msg: error.message, data: null };
-      }
+      if (error) return { status: 400, msg: error.message, data: null };
 
       return {
         status: 200,
         msg: "Bookings retrieved successfully",
-        data: { bookings: bookings || [] }
+        data: { bookings: bookings || [], limit, offset }
       };
-    } else if (role === 'seller') {
-      // For seller, first get their services, then get bookings for those services
+    }
+
+    if (role === 'seller') {
       const { data: services, error: servicesError } = await supabase
         .from('services')
         .select('id')
         .eq('user_id', userId);
 
-      if (servicesError) {
-        return { status: 400, msg: "Failed to fetch seller services", data: null };
-      }
+      if (servicesError) return { status: 400, msg: "Failed to fetch seller services", data: null };
 
-      const serviceIds = services.map(s => s.id);
+      const serviceIds = (services || []).map(s => s.id);
       if (serviceIds.length === 0) {
-        return { status: 200, msg: "No bookings found", data: { bookings: [] } };
+        return { status: 200, msg: "No bookings found", data: { bookings: [], limit, offset } };
       }
 
-      // Get bookings for seller's services
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          service:services (
-            id,
-            title,
-            description,
-            category,
-            default_price,
-            express_price
-          )
-        `)
+        .select(`*, service:services (${serviceSelect})`)
         .in('service_id', serviceIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
-      if (error) {
-        return { status: 400, msg: error.message, data: null };
-      }
+      if (error) return { status: 400, msg: error.message, data: null };
 
       return {
         status: 200,
         msg: "Bookings retrieved successfully",
-        data: { bookings: bookings || [] }
+        data: { bookings: bookings || [], limit, offset }
       };
-    } else {
-      return { status: 400, msg: "Invalid role. Must be 'buyer' or 'seller'", data: null };
     }
+
+    return { status: 400, msg: "Invalid role. Must be 'buyer' or 'seller'", data: null };
   } catch (e) {
     console.error("getUserBookings error:", e);
     return { status: 500, msg: "Failed to retrieve bookings", data: null };

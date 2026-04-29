@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SellerDashboardLayout } from "@/layouts/SellerDashboardLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Services from "./pages/Services";
 import ServiceDetail from "./pages/ServiceDetail";
@@ -21,7 +22,6 @@ import SellerServices from "./pages/seller/SellerServices";
 import SellerBookings from "./pages/seller/SellerBookings";
 import SellerPayments from "./pages/seller/SellerPayments";
 import SellerProfilePage from "./pages/seller/SellerProfile";
-import SellerDashboardPreview from "./pages/SellerDashboardPreview";
 import Bookings from "./pages/Bookings";
 import BookingDetail from "./pages/BookingDetail";
 import BecomeAHustler from "./pages/BecomeAHustler";
@@ -35,11 +35,9 @@ const queryClient = new QueryClient();
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
-
   return null;
 };
 
@@ -52,52 +50,51 @@ const App = () => (
         <ScrollToTop />
         <AuthProvider>
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/services" element={<Services />} />
             <Route path="/service/:id" element={<ServiceDetail />} />
             <Route path="/sellers/:id" element={<SellerProfile />} />
-            <Route path="/bookings" element={<Bookings />} />
-            <Route path="/my-bookings" element={<Bookings />} />
-            <Route path="/booking/:id" element={<BookingDetail />} />
-            <Route path="/profile" element={<Profile />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/setup-service" element={<SetUpService />} />
             <Route path="/become-a-hustler" element={<BecomeAHustler />} />
-            <Route path="/list-service" element={<ListService />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/messages/:conversationId" element={<Messages />} />
-            <Route path="/payment/callback" element={<PaymentCallback />} />
-            <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
-            
-            {/* ⚠️ DEVELOPMENT PREVIEW - DELETE BEFORE PRODUCTION ⚠️ */}
-            <Route path="/seller-dashboard-preview" element={<SellerDashboardPreview />}>
-              <Route index element={<SellerDashboard />} />
-              <Route path="services" element={<SellerServices />} />
-              <Route path="bookings" element={<SellerBookings />} />
-              <Route path="payments" element={<SellerPayments />} />
-              <Route path="profile" element={<SellerProfilePage />} />
-            </Route>
-            
-            {/* Seller Dashboard Routes */}
-            <Route path="/seller" element={<SellerDashboardLayout />}>
+
+            {/* Protected: any authenticated user */}
+            <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
+            <Route path="/my-bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
+            <Route path="/booking/:id" element={<ProtectedRoute><BookingDetail /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/messages/:conversationId" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/payment/callback" element={<ProtectedRoute><PaymentCallback /></ProtectedRoute>} />
+            <Route path="/invoice/:invoiceId" element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />
+            <Route path="/setup-service" element={<ProtectedRoute><SetUpService /></ProtectedRoute>} />
+            <Route path="/list-service" element={<ProtectedRoute><ListService /></ProtectedRoute>} />
+
+            {/* Protected: seller dashboard */}
+            <Route path="/seller" element={<ProtectedRoute><SellerDashboardLayout /></ProtectedRoute>}>
               <Route path="dashboard" element={<SellerDashboard />} />
               <Route path="services" element={<SellerServices />} />
               <Route path="bookings" element={<SellerBookings />} />
               <Route path="payments" element={<SellerPayments />} />
               <Route path="profile" element={<SellerProfilePage />} />
             </Route>
-            
-            {/* My Services route - redirects to seller services */}
-            <Route path="/my-services" element={<SellerDashboardLayout />}>
+
+            <Route path="/my-services" element={<ProtectedRoute><SellerDashboardLayout /></ProtectedRoute>}>
               <Route index element={<SellerServices />} />
             </Route>
-            
-            {/* Admin Routes */}
-            <Route path="/admin/services/pending" element={<AdminPendingServices />} />
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Protected: admin only */}
+            <Route
+              path="/admin/services/pending"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminPendingServices />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

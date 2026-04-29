@@ -8,8 +8,8 @@ const router = express.Router();
 // Initiate payment (authenticated)
 router.post('/initiate', verifyToken, responseHandler(paymentController.initiate));
 
-// Verify payment (callback - no auth required)
-router.get('/verify', responseHandler(paymentController.verify));
+// Verify payment — requires auth so only the booking owner can trigger verification
+router.get('/verify', verifyToken, responseHandler(paymentController.verify));
 
 export default router;
 

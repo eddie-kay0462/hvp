@@ -11,7 +11,7 @@ const bookNow = async (req) => {
       return { status: 401, msg: "Unauthorized: user not found", data: null };
     }
 
-    const { serviceId, date, time, status, note } = req.body;
+    const { serviceId, date, time, status } = req.body;
 
     // Validation
     if (!serviceId) {
@@ -46,7 +46,6 @@ const bookNow = async (req) => {
       date: date || null,
       time: time || null,
       status: status || 'pending',
-      note: note || null
     });
 
     return {
@@ -100,13 +99,18 @@ const getUserBookings = async (req) => {
       return { status: 401, msg: "Unauthorized: user not found", data: null };
     }
 
-    const { role = 'buyer' } = req.query;
+    const { role = 'buyer', limit, offset } = req.query;
 
     if (role !== 'buyer' && role !== 'seller') {
       return { status: 400, msg: "Role must be 'buyer' or 'seller'", data: null };
     }
 
-    const result = await bookingService.getUserBookings(userId, role);
+    const pagination = {
+      limit: Math.min(parseInt(limit) || 50, 100),
+      offset: Math.max(parseInt(offset) || 0, 0),
+    };
+
+    const result = await bookingService.getUserBookings(userId, role, pagination);
 
     return {
       status: result.status,

@@ -26,24 +26,27 @@ export const createRequest = async (userId, requestData) => {
 
   export const acceptRequest = async (sellerId, requestId) => {
     try {
-      // Fetch request
       const { data: request, error: fetchError } = await supabase
         .from('requests')
         .select('*')
         .eq('id', requestId)
         .single();
-  
+
       if (fetchError || !request) return { status: 404, msg: "Request not found", data: null };
       if (request.status !== 'active') return { status: 400, msg: `Cannot accept request with status ${request.status}`, data: null };
-  
-      // Update status to accepted
+
+      // Prevent a user from accepting their own request
+      if (request.user_id === sellerId) {
+        return { status: 403, msg: "You cannot accept your own request", data: null };
+      }
+
       const { data, error: updateError } = await supabase
         .from('requests')
         .update({ status: 'accepted', accepted_by: sellerId, updated_at: new Date().toISOString() })
         .eq('id', requestId)
         .select()
         .single();
-  
+
       if (updateError) return { status: 400, msg: updateError.message, data: null };
       return { status: 200, msg: "Request accepted successfully", data };
     } catch (error) {

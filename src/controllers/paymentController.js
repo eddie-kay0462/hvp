@@ -27,11 +27,15 @@ const initiate = async (req) => {
  */
 const verify = async (req) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return { status: 401, msg: 'Unauthorized', data: null };
+    }
     const { reference } = req.query || {};
     if (!reference) {
       return { status: 400, msg: 'reference is required', data: null };
     }
-    const result = await verifyPaymentReference(reference);
+    const result = await verifyPaymentReference(reference, userId);
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (e) {
     console.error('verify payment controller error:', e);

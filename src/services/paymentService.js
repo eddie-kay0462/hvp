@@ -176,13 +176,29 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
   }
 };
 
-export const verifyPaymentReference = async (reference) => {
+export const verifyPaymentReference = async (reference, requestingUserId = null) => {
   try {
     if (!reference) {
       return { status: 400, msg: 'Reference is required', data: null };
     }
 
     const db = supabaseAdmin || supabase;
+
+    // Idempotency: if this reference was already processed, return the existing invoice
+    const { data: existingInvoice } = await db
+      .from('invoices')
+      .select('id, booking_id')
+      .eq('paystack_reference', reference)
+      .maybeSingle();
+
+    if (existingInvoice) {
+      return {
+        status: 200,
+        msg: 'Payment already verified',
+        data: { success: true, booking_id: existingInvoice.booking_id, invoice_id: existingInvoice.id }
+      };
+    }
+
     const verifyRes = await verifyTransaction(reference);
     if (!verifyRes?.status || !verifyRes?.data) {
       return { status: 502, msg: 'Failed to verify transaction with Paystack', data: null };
@@ -193,16 +209,14 @@ export const verifyPaymentReference = async (reference) => {
       return { status: 400, msg: 'Payment not successful', data: { paystack_status: v.status } };
     }
 
-    // Find booking by reference or metadata
-    let bookingId = null;
-    if (v?.metadata?.booking_id) {
-      bookingId = v.metadata.booking_id;
-    } else {
+    // Find booking by metadata or by stored reference
+    let bookingId = v?.metadata?.booking_id || null;
+    if (!bookingId) {
       const { data: bookingByRef } = await db
         .from('bookings')
         .select('id')
         .eq('payment_transaction_id', reference)
-        .single();
+        .maybeSingle();
       bookingId = bookingByRef?.id || null;
     }
 
@@ -219,6 +233,11 @@ export const verifyPaymentReference = async (reference) => {
 
     if (bookingError || !booking) {
       return { status: 404, msg: 'Booking not found', data: null };
+    }
+
+    // Ownership check: the requesting user must be the buyer
+    if (requestingUserId && booking.buyer_id !== requestingUserId) {
+      return { status: 403, msg: 'You do not have permission to verify this payment', data: null };
     }
 
     // Update booking as paid
@@ -255,7 +274,6 @@ export const verifyPaymentReference = async (reference) => {
 
     if (invoiceError) {
       console.error('Failed to create invoice:', invoiceError);
-      // Still return success for payment, but note invoice creation failure
       return {
         status: 200,
         msg: 'Payment verified. Invoice creation failed.',
@@ -282,52 +300,9 @@ export const verifyPaymentReference = async (reference) => {
  * @returns {Promise<Object>} Payment result
  */
 export const capturePayment = async (bookingId, amount, currency = 'GHS') => {
-  try {
-    if (!bookingId || !amount) {
-      return { status: 400, msg: "Booking ID and amount are required", data: null };
-    }
-
-    // TODO: Implement actual payment capture when payment API is ready
-    // Example structure for future implementation:
-    /*
-    const paymentGateway = require('../config/paymentGateway');
-    
-    const paymentResult = await paymentGateway.charge({
-      amount: amount * 100, // Convert to cents
-      currency: currency,
-      booking_id: bookingId,
-      description: `Booking payment for ${bookingId}`
-    });
-    
-    return {
-      status: 200,
-      msg: "Payment captured successfully",
-      data: {
-        transaction_id: paymentResult.id,
-        status: 'captured',
-        captured_at: new Date().toISOString(),
-        amount: amount,
-        currency: currency
-      }
-    };
-    */
-
-    // STUB: For now, return success without actual payment processing
-    return {
-      status: 200,
-      msg: "Payment captured (stub - not actually charged)",
-      data: {
-        transaction_id: `stub_${Date.now()}_${bookingId}`,
-        status: 'captured',
-        captured_at: new Date().toISOString(),
-        amount: amount,
-        currency: currency
-      }
-    };
-  } catch (e) {
-    console.error("capturePayment error:", e);
-    return { status: 500, msg: "Failed to capture payment", data: null };
-  }
+  // Payments are captured via Paystack initiate/verify flow, not this function.
+  // This stub is kept for API compatibility; remove once callers are updated.
+  return { status: 501, msg: "Use /api/payments/initiate to capture payment via Paystack.", data: null };
 };
 
 /**
@@ -336,49 +311,14 @@ export const capturePayment = async (bookingId, amount, currency = 'GHS') => {
  * @returns {Promise<Object>} Release result
  */
 export const releasePayment = async (bookingId) => {
-  try {
-    if (!bookingId) {
-      return { status: 400, msg: "Booking ID is required", data: null };
-    }
-
-    // TODO: Implement actual payment release when payment API is ready
-    // Example structure:
-    /*
-    const paymentGateway = require('../config/paymentGateway');
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('payment_transaction_id, payment_amount')
-      .eq('id', bookingId)
-      .single();
-    
-    const releaseResult = await paymentGateway.release({
-      transaction_id: booking.payment_transaction_id,
-      amount: booking.payment_amount
-    });
-    
-    return {
-      status: 200,
-      msg: "Payment released successfully",
-      data: {
-        released_at: new Date().toISOString(),
-        transaction_id: releaseResult.id
-      }
-    };
-    */
-
-    // STUB: For now, return success without actual payment processing
-    return {
-      status: 200,
-      msg: "Payment released (stub - not actually released)",
-      data: {
-        released_at: new Date().toISOString(),
-        transaction_id: `release_${Date.now()}_${bookingId}`
-      }
-    };
-  } catch (e) {
-    console.error("releasePayment error:", e);
-    return { status: 500, msg: "Failed to release payment", data: null };
-  }
+  // TODO: Implement real Paystack Transfer API to pay the seller.
+  // Until implemented, block completion so sellers are not promised money that never moves.
+  // Reference: https://paystack.com/docs/transfers/single-transfers
+  return {
+    status: 501,
+    msg: "Payment release to seller is not yet implemented. Please contact support to process your payment.",
+    data: null
+  };
 };
 
 /**
@@ -388,52 +328,9 @@ export const releasePayment = async (bookingId) => {
  * @returns {Promise<Object>} Refund result
  */
 export const refundPayment = async (bookingId, reason = 'Cancelled by user') => {
-  try {
-    if (!bookingId) {
-      return { status: 400, msg: "Booking ID is required", data: null };
-    }
-
-    // TODO: Implement actual payment refund when payment API is ready
-    // Example structure:
-    /*
-    const paymentGateway = require('../config/paymentGateway');
-    const { data: booking } = await supabase
-      .from('bookings')
-      .select('payment_transaction_id, payment_amount')
-      .eq('id', bookingId)
-      .single();
-    
-    const refundResult = await paymentGateway.refund({
-      transaction_id: booking.payment_transaction_id,
-      amount: booking.payment_amount,
-      reason: reason
-    });
-    
-    return {
-      status: 200,
-      msg: "Payment refunded successfully",
-      data: {
-        refunded_at: new Date().toISOString(),
-        transaction_id: refundResult.id,
-        reason: reason
-      }
-    };
-    */
-
-    // STUB: For now, return success without actual payment processing
-    return {
-      status: 200,
-      msg: "Payment refunded (stub - not actually refunded)",
-      data: {
-        refunded_at: new Date().toISOString(),
-        transaction_id: `refund_${Date.now()}_${bookingId}`,
-        reason: reason
-      }
-    };
-  } catch (e) {
-    console.error("refundPayment error:", e);
-    return { status: 500, msg: "Failed to refund payment", data: null };
-  }
+  // TODO: Implement Paystack refund via their Refunds API.
+  // Reference: https://paystack.com/docs/payments/refunds
+  return { status: 501, msg: "Refunds are not yet automated. Contact support to process a refund.", data: null };
 };
 
 /**
