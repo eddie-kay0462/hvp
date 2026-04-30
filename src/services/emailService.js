@@ -5,13 +5,16 @@ import nodemailer from 'nodemailer';
 // Credentials come from environment variables — never hardcode them.
 // ---------------------------------------------------------------------------
 
+const SMTP_PORT = parseInt(process.env.ZOHO_SMTP_PORT || '587');
+
 const transporter = nodemailer.createTransport({
   host: process.env.ZOHO_SMTP_HOST || 'smtp.zoho.com',
-  port: parseInt(process.env.ZOHO_SMTP_PORT || '465'),
-  secure: true, // port 465 uses SSL; set false and port 587 for STARTTLS
+  port: SMTP_PORT,
+  secure: SMTP_PORT === 465,
+  requireTLS: SMTP_PORT === 587,
   auth: {
-    user: process.env.ZOHO_SMTP_USER, // e.g. noreply@hustlevillage.app
-    pass: process.env.ZOHO_SMTP_PASS, // Zoho app password (not account password)
+    user: process.env.ZOHO_SMTP_USER,
+    pass: process.env.ZOHO_SMTP_PASS,
   },
 });
 
