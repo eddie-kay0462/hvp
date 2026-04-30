@@ -46,6 +46,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
         .from('profiles')
         .insert({
           id: data.user.id,           // match auth.users.id
+          email: email || null,
           first_name: firstName || null,
           last_name: lastName || null,
           phone: phoneNumber || null,

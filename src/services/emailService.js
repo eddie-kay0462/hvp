@@ -16,67 +16,23 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM_NAME = 'Hustle Village';
-const FROM_ADDRESS =
-  process.env.FROM_EMAIL || process.env.ZOHO_SMTP_USER || 'noreply@hustlevillage.app';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@hustlevillage.app';
+const FROM_ADDRESS = process.env.ZOHO_SMTP_USER;
 
 const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://hustlevillage.app';
 
-function smtpConfigured() {
-  return Boolean(process.env.ZOHO_SMTP_USER && process.env.ZOHO_SMTP_PASS);
-}
-
-/**
- * Resend HTTP API (works on hosts that block outbound SMTP).
- * Only called when RESEND_API_KEY is set.
- */
-async function sendViaResend({ to, subject, html, text }) {
-  const key = process.env.RESEND_API_KEY;
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `${FROM_NAME} <${FROM_ADDRESS}>`,
-      to: [to],
-      subject,
-      html,
-      text,
-    }),
-  });
-
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = body.message || JSON.stringify(body) || `HTTP ${res.status}`;
-    throw new Error(`Resend: ${msg}`);
+function getAdminEmail() {
+  const email = process.env.ADMIN_EMAIL;
+  if (!email) {
+    console.warn('[email] ADMIN_EMAIL env var is not set — admin notifications will not be delivered.');
   }
-
-  return { messageId: body.id };
+  return email || 'admin@hustlevillage.app';
 }
 
 // ---------------------------------------------------------------------------
-// Shared send helper — Resend first (if configured), then Zoho SMTP
+// Shared send helper — Zoho SMTP
 // ---------------------------------------------------------------------------
 
 async function sendMail({ to, subject, html, text }) {
-  if (process.env.RESEND_API_KEY) {
-    try {
-      return await sendViaResend({ to, subject, html, text });
-    } catch (err) {
-      console.error('[email] Resend send failed:', err.message);
-      if (!smtpConfigured()) throw err;
-      console.warn('[email] Falling back to Zoho SMTP');
-    }
-  }
-
-  if (!smtpConfigured()) {
-    throw new Error(
-      'No email provider configured. Set RESEND_API_KEY (and FROM_EMAIL), or ZOHO_SMTP_USER and ZOHO_SMTP_PASS.'
-    );
-  }
-
   return transporter.sendMail({
     from: `"${FROM_NAME}" <${FROM_ADDRESS}>`,
     to,
@@ -312,7 +268,7 @@ Review: ${adminDashboardUrl}
     `.trim();
 
     const info = await sendMail({
-      to: ADMIN_EMAIL,
+      to: getAdminEmail(),
       subject: 'New Service Pending Approval',
       html,
       text,

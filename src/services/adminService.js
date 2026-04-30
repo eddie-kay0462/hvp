@@ -6,16 +6,24 @@ import { supabase, supabaseAdmin } from '../config/supabase.js';
 async function getSellerContact(userId) {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('first_name, last_name')
+    .select('first_name, last_name, email')
     .eq('id', userId)
     .single();
 
   const fromProfile = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
-  let sellerEmail = null;
 
+  // Primary path: email stored directly in profiles (populated since add_email_to_profiles migration)
+  if (profile?.email) {
+    return {
+      sellerEmail: profile.email,
+      sellerName: fromProfile || profile.email.split('@')[0] || 'Seller',
+    };
+  }
+
+  // Fallback: look up email via admin auth API (requires SUPABASE_SERVICE_ROLE_KEY)
   if (!supabaseAdmin) {
     console.error(
-      '[admin] SUPABASE_SERVICE_ROLE_KEY is not set; cannot look up seller email for notifications.'
+      '[admin] No email in profiles and SUPABASE_SERVICE_ROLE_KEY is not set; cannot look up seller email.'
     );
     return {
       sellerEmail: null,
@@ -32,7 +40,7 @@ async function getSellerContact(userId) {
     };
   }
 
-  sellerEmail = userData?.user?.email ?? null;
+  const sellerEmail = userData?.user?.email ?? null;
   const sellerName = fromProfile || sellerEmail?.split('@')[0] || 'Seller';
 
   return { sellerEmail, sellerName };
