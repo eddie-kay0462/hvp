@@ -18,6 +18,7 @@ const ROTATING_WORDS = [
   "creators",
   "DJs",
   "bakers",
+  "hair stylists",
 ];
 
 export const Hero = () => {
