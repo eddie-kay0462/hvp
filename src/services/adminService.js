@@ -1,6 +1,44 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 
 /**
+ * Resolve seller display name and auth email (requires service role for email).
+ */
+async function getSellerContact(userId) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name')
+    .eq('id', userId)
+    .single();
+
+  const fromProfile = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
+  let sellerEmail = null;
+
+  if (!supabaseAdmin) {
+    console.error(
+      '[admin] SUPABASE_SERVICE_ROLE_KEY is not set; cannot look up seller email for notifications.'
+    );
+    return {
+      sellerEmail: null,
+      sellerName: fromProfile || 'Seller',
+    };
+  }
+
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (userErr) {
+    console.error('[admin] getUserById failed:', userErr.message);
+    return {
+      sellerEmail: null,
+      sellerName: fromProfile || 'Seller',
+    };
+  }
+
+  sellerEmail = userData?.user?.email ?? null;
+  const sellerName = fromProfile || sellerEmail?.split('@')[0] || 'Seller';
+
+  return { sellerEmail, sellerName };
+}
+
+/**
  * Get all pending services waiting for approval
  */
 export const getPendingServices = async () => {
@@ -39,7 +77,7 @@ export const getPendingServices = async () => {
       const emailResults = await Promise.allSettled(emailRequests);
       emailResults.forEach((result, idx) => {
         if (result.status === 'fulfilled') {
-          emailMap[userIds[idx]] = result.value.data?.user?.email || null;
+          emailMap[userIds[idx]] = result.value?.data?.user?.email || null;
         }
       });
     }
@@ -122,13 +160,7 @@ export const approveService = async (serviceId, adminId) => {
       return { status: 404, msg: "Service not found", data: null };
     }
 
-    const [profileResult, userResult] = await Promise.allSettled([
-      supabase.from('profiles').select('first_name, last_name').eq('id', service.user_id).single(),
-      supabaseAdmin?.auth.admin.getUserById(service.user_id),
-    ]);
-
-    const profile = profileResult.status === 'fulfilled' ? profileResult.value.data : null;
-    const sellerEmail = userResult.status === 'fulfilled' ? userResult.value.data?.user?.email : null;
+    const { sellerEmail, sellerName } = await getSellerContact(service.user_id);
 
     const { data, error } = await supabase
       .from('services')
@@ -152,7 +184,7 @@ export const approveService = async (serviceId, adminId) => {
       data: {
         service: data,
         sellerEmail,
-        sellerName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+        sellerName,
       },
     };
   } catch (e) {
@@ -180,13 +212,7 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       return { status: 404, msg: "Service not found", data: null };
     }
 
-    const [profileResult, userResult] = await Promise.allSettled([
-      supabase.from('profiles').select('first_name, last_name').eq('id', service.user_id).single(),
-      supabaseAdmin?.auth.admin.getUserById(service.user_id),
-    ]);
-
-    const profile = profileResult.status === 'fulfilled' ? profileResult.value.data : null;
-    const sellerEmail = userResult.status === 'fulfilled' ? userResult.value.data?.user?.email : null;
+    const { sellerEmail, sellerName } = await getSellerContact(service.user_id);
 
     const { data, error } = await supabase
       .from('services')
@@ -211,7 +237,7 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       data: {
         service: data,
         sellerEmail,
-        sellerName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+        sellerName,
       },
     };
   } catch (e) {

@@ -30,6 +30,8 @@ interface Service {
   image_urls: string[] | null;
   user_id: string;
   created_at: string;
+  is_verified?: boolean | null;
+  is_active?: boolean | null;
 }
 
 interface Seller {
@@ -56,7 +58,7 @@ interface Review {
 const ServiceDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { categories } = useCategories();
   const { getOrCreateConversation, loading: conversationLoading } = useConversation();
   const [service, setService] = useState<Service | null>(null);
@@ -66,19 +68,24 @@ const ServiceDetail = () => {
   const [relatedServices, setRelatedServices] = useState<any[]>([]);
   const [sellerServices, setSellerServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listingUnavailable, setListingUnavailable] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [canReview, setCanReview] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
-    if (id) {
-      fetchServiceDetails();
-    }
+    setListingUnavailable(false);
   }, [id]);
+
+  useEffect(() => {
+    if (!id || authLoading) return;
+    fetchServiceDetails();
+  }, [id, authLoading, user?.id]);
 
   const fetchServiceDetails = async () => {
     try {
       setLoading(true);
+      setListingUnavailable(false);
 
       // Step 1: Fetch service details first (needed for everything else)
       const { data: serviceData, error: serviceError } = await supabase
@@ -88,6 +95,19 @@ const ServiceDetail = () => {
         .single();
 
       if (serviceError) throw serviceError;
+
+      const isOwner = user?.id === serviceData.user_id;
+      const isPublicListing =
+        serviceData.is_verified === true && serviceData.is_active === true;
+
+      if (!isPublicListing && !isOwner) {
+        setService(null);
+        setSeller(null);
+        setListingUnavailable(true);
+        setLoading(false);
+        return;
+      }
+
       setService(serviceData as unknown as Service);
       
       // Set images from service data
@@ -117,23 +137,29 @@ const ServiceDetail = () => {
           .eq('reviewee_id', serviceData.user_id)
           .order('created_at', { ascending: false }),
         
-        // Fetch related services (same category, different seller)
+        // Fetch related services (same category, different seller) — approved listings only
         supabase
           .from('services')
           .select('*')
           .eq('category', serviceData.category)
           .eq('is_active', true)
+          .eq('is_verified', true)
           .neq('user_id', serviceData.user_id)
           .limit(4),
         
-        // Fetch more services from this seller
-        supabase
-          .from('services')
-          .select('*')
-          .eq('user_id', serviceData.user_id)
-          .eq('is_active', true)
-          .neq('id', id)
-          .limit(4),
+        // More from this seller: buyers only see verified; owner sees all their active listings
+        (() => {
+          let q = supabase
+            .from('services')
+            .select('*')
+            .eq('user_id', serviceData.user_id)
+            .eq('is_active', true)
+            .neq('id', id as string);
+          if (user?.id !== serviceData.user_id) {
+            q = q.eq('is_verified', true);
+          }
+          return q.limit(4);
+        })(),
         
         // Check if user can review (parallel with other queries)
         user
@@ -381,7 +407,7 @@ const ServiceDetail = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -395,6 +421,24 @@ const ServiceDetail = () => {
               </div>
               <Skeleton className="h-96 w-full" />
             </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (listingUnavailable) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 bg-background flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <h2 className="text-2xl font-bold mb-2">This listing isn&apos;t available</h2>
+            <p className="text-muted-foreground mb-6">
+              It may still be pending review. Browse live services to book a hustler.
+            </p>
+            <Button onClick={() => navigate('/services')}>Browse services</Button>
           </div>
         </main>
         <Footer />
@@ -438,6 +482,13 @@ const ServiceDetail = () => {
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back to Services
           </Button>
+
+          {user?.id === service.user_id &&
+            (service.is_verified !== true || service.is_active !== true) && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                This listing is still under review. Only you can see it until an admin approves it.
+              </div>
+            )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
             {/* Left Column - Images and Details */}

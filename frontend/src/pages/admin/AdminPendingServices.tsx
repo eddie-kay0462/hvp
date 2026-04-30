@@ -91,6 +91,9 @@ export default function AdminPendingServices() {
       const response: any = await api.admin.approveService(serviceId);
       if (response.status === 200) {
         toast.success('Service approved successfully!');
+        if (response.data?.emailError) {
+          toast.warning(`Seller was not emailed: ${response.data.emailError}`);
+        }
         fetchPendingServices();
         fetchStats();
       } else {
@@ -125,7 +128,10 @@ export default function AdminPendingServices() {
         adminNotes || undefined
       );
       if (response.status === 200) {
-        toast.success('Service rejected and seller notified');
+        toast.success('Service rejected.');
+        if (response.data?.emailError) {
+          toast.warning(`Seller was not emailed: ${response.data.emailError}`);
+        }
         setRejectDialogOpen(false);
         fetchPendingServices();
         fetchStats();

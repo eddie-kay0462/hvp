@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,6 +123,29 @@ export const Hero = () => {
           <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             A marketplace for Ashesi students offering tutoring, design, tech,
             photography, and more. Booked and paid for with mobile money.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Button
+              size="lg"
+              className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold shadow-sm"
+              onClick={() => navigate("/services")}
+            >
+              Browse services
+              <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-white"
+              onClick={() => navigate("/become-a-hustler")}
+            >
+              Sell your skills
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Or search by category below
           </p>
 
           <div className="relative max-w-2xl mx-auto">

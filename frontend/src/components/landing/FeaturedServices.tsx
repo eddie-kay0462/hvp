@@ -31,31 +31,16 @@ export const FeaturedServices = () => {
     try {
       setLoading(true);
 
-      let { data: servicesData, error: servicesError } = await supabase
+      const { data: servicesData, error: servicesError } = await supabase
         .from("services")
         .select("*")
         .eq("is_active", true)
         .eq("is_verified", true)
         .limit(3);
 
-      if (servicesError || !servicesData || servicesData.length === 0) {
-        const { data: allActiveServices, error: allActiveError } =
-          await supabase
-            .from("services")
-            .select("*")
-            .or("is_active.eq.true,is_active.is.null")
-            .limit(3);
-
-        if (allActiveError) {
-          console.error("Error fetching active services:", allActiveError);
-          throw allActiveError;
-        }
-
-        servicesData = allActiveServices;
-      }
-
       if (servicesError) {
         console.error("Error fetching verified services:", servicesError);
+        throw servicesError;
       }
 
       if (!servicesData || servicesData.length === 0) {

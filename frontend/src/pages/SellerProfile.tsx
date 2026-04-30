@@ -78,7 +78,8 @@ const SellerProfile = () => {
         .from('services')
         .select('*')
         .eq('user_id', id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_verified', true);
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);

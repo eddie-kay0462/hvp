@@ -124,6 +124,7 @@ export const getServiceById = async (serviceId) => {
       .select('*')
       .eq('id', serviceId)
       .eq('is_active', true)
+      .eq('is_verified', true)
       .single();
 
     if (error) {

@@ -2,6 +2,16 @@ import { supabase } from "../config/supabase.js";
 
 import { supabaseAdmin } from "../config/supabase.js";
 
+/** Base URL for Supabase emailRedirectTo (signup confirm, resend). Prefer AUTH_SITE_URL when FRONTEND_URL is a different domain. */
+function getAuthEmailRedirectOrigin() {
+  const raw =
+    process.env.AUTH_SITE_URL ||
+    process.env.FRONTEND_URL ||
+    "https://hustlevillage.app";
+  const withProtocol = raw.startsWith("http") ? raw : `https://${raw}`;
+  return withProtocol.replace(/\/+$/, "");
+}
+
 export const signup = async ({ email, password, firstName, lastName, phoneNumber, profilePic, role }) => {
   try {
     // Include the password_updated_after_requirements_change flag since password already meets requirements
@@ -14,9 +24,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
       password_updated_after_requirements_change: true  // Set to true since password already validated during signup
     };
 
-    // Get frontend URL from environment or use default
-    const frontendUrl = process.env.FRONTEND_URL || 'https://hustlevillage.app';
-    const redirectUrl = `${frontendUrl}/verify-email`;
+    const redirectUrl = `${getAuthEmailRedirectOrigin()}/verify-email`;
 
     // Step 1: Create auth user
     const { data, error } = await supabaseAdmin.auth.signUp({
@@ -73,7 +81,46 @@ export const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      return { status: 400, msg: error.message, data: null };
+      // Determine whether the failure is a missing account or a wrong password.
+      // GoTrue's admin list-users endpoint supports ?filter= for email search.
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      try {
+        const lookupRes = await fetch(
+          `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(email)}&per_page=10`,
+          {
+            headers: {
+              Authorization: `Bearer ${serviceKey}`,
+              apikey: serviceKey,
+            },
+          }
+        );
+        const lookupJson = await lookupRes.json();
+        // filter= does a substring search, so verify exact email match
+        const emailExists =
+          Array.isArray(lookupJson?.users) &&
+          lookupJson.users.some(
+            (u) => u.email?.toLowerCase() === email.toLowerCase()
+          );
+
+        if (!emailExists) {
+          return {
+            status: 404,
+            msg: "No account found with that email address. Please sign up first.",
+            data: null,
+          };
+        }
+      } catch (lookupErr) {
+        console.error("Email lookup failed:", lookupErr);
+        // Fall through to the generic wrong-password message below
+      }
+
+      return {
+        status: 401,
+        msg: "Incorrect password. Please try again or reset your password.",
+        data: null,
+      };
     }
 
     return {
@@ -94,9 +141,7 @@ export const login = async (email, password) => {
 
 export const resendVerification = async (email) => {
   try {
-    // Get frontend URL from environment or use default
-    const frontendUrl = process.env.FRONTEND_URL || 'https://hustlevillage.app';
-    const redirectUrl = `${frontendUrl}/verify-email`;
+    const redirectUrl = `${getAuthEmailRedirectOrigin()}/verify-email`;
 
     const { error } = await supabase.auth.resend({ 
       email, 

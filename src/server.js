@@ -23,6 +23,8 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   'https://hustlevillage.app',
   'https://www.hustlevillage.app',
+  'https://hustlesvillage.com',
+  'https://www.hustlesvillage.com',
   'http://localhost:8080',
   'http://localhost:5173',
   'http://localhost:3000',

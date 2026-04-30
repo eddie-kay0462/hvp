@@ -36,17 +36,37 @@ export const approveService = async (req) => {
 
     const result = await adminService.approveService(serviceId, adminId);
 
-    if (result.status === 200 && result.data?.sellerEmail) {
-      try {
-        const { sendServiceApprovalEmail } = await import('../services/emailService.js');
-        await sendServiceApprovalEmail(
-          result.data.sellerEmail,
-          result.data.sellerName,
-          result.data.service
-        );
-      } catch (emailError) {
-        console.error("Failed to send approval email:", emailError);
+    let emailSent = false;
+    let emailError = null;
+
+    if (result.status === 200) {
+      if (result.data?.sellerEmail) {
+        try {
+          const { sendServiceApprovalEmail } = await import('../services/emailService.js');
+          await sendServiceApprovalEmail(
+            result.data.sellerEmail,
+            result.data.sellerName,
+            result.data.service
+          );
+          emailSent = true;
+        } catch (err) {
+          emailError = err.message || String(err);
+          console.error("Failed to send approval email:", err);
+        }
+      } else {
+        emailError =
+          "Seller email could not be loaded. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.";
+        console.error("approveService: missing sellerEmail — notification not sent.");
       }
+
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          emailSent,
+          ...(emailError ? { emailError } : {}),
+        },
+      };
     }
 
     return result;
@@ -72,18 +92,37 @@ export const rejectService = async (req) => {
 
     const result = await adminService.rejectService(serviceId, adminId, rejectionReason, adminNotes);
 
-    if (result.status === 200 && result.data?.sellerEmail) {
-      try {
-        const { sendServiceRejectionEmail } = await import('../services/emailService.js');
-        await sendServiceRejectionEmail(
-          result.data.sellerEmail,
-          result.data.sellerName,
-          result.data.service,
-          rejectionReason
-        );
-      } catch (emailError) {
-        console.error("Failed to send rejection email:", emailError);
+    let emailSent = false;
+    let emailError = null;
+
+    if (result.status === 200) {
+      if (result.data?.sellerEmail) {
+        try {
+          const { sendServiceRejectionEmail } = await import('../services/emailService.js');
+          await sendServiceRejectionEmail(
+            result.data.sellerEmail,
+            result.data.sellerName,
+            result.data.service,
+            rejectionReason
+          );
+          emailSent = true;
+        } catch (err) {
+          emailError = err.message || String(err);
+          console.error("Failed to send rejection email:", err);
+        }
+      } else {
+        emailError =
+          "Seller email could not be loaded. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.";
       }
+
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          emailSent,
+          ...(emailError ? { emailError } : {}),
+        },
+      };
     }
 
     return result;

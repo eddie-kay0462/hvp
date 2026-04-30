@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Shield, 
   Zap,
-  CheckCircle2,
   ArrowRight
 } from "lucide-react";
 
@@ -106,7 +105,8 @@ export const BecomeAHustler = () => {
         supabase
           .from('services')
           .select('id, user_id, default_price', { count: 'exact', head: false })
-          .eq('is_active', true),
+          .eq('is_active', true)
+          .eq('is_verified', true),
         
         // Fetch completed bookings this month
         (async () => {
@@ -342,46 +342,33 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        <section className="py-12 md:py-16 bg-white">
+        <section className="border-t border-border bg-primary/[0.06] py-14 md:py-20">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-3xl mx-auto rounded-xl border border-border bg-background p-6 md:p-10 text-center space-y-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                Ready to get your first booking?
+            <div className="max-w-2xl mx-auto text-center space-y-6">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
+                Ready for your first booking?
               </h2>
-              <p className="text-base text-muted-foreground">
-                Create your account and list your first service today.
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                Create your account and list your first service in minutes—or sign in
+                to pick up where you left off. Free to join, no setup fee.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
                 <Button
                   size="lg"
-                  className="rounded-lg px-6"
+                  className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold shadow-sm"
                   onClick={() => navigate("/signup")}
                 >
                   Create account
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="rounded-lg px-6"
+                  className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-white"
                   onClick={() => navigate("/login")}
                 >
                   Sign in
                 </Button>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>Free to join</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>No setup fee</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>Start listing in minutes</span>
-                </div>
               </div>
             </div>
           </div>

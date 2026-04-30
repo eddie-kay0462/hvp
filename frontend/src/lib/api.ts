@@ -15,16 +15,19 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
 
   const lowerMessage = errorMessage.toLowerCase();
 
-  // Authentication errors
-  if (lowerMessage.includes('invalid login credentials') || 
-      lowerMessage.includes('invalid email or password') ||
-      lowerMessage.includes('email not found') ||
-      (lowerMessage.includes('user') && lowerMessage.includes('not found'))) {
-    return 'The email or password you entered is incorrect. Please check and try again.';
+  // Specific login errors from backend — pass through as-is
+  if (lowerMessage.includes('no account found with that email')) {
+    return errorMessage;
   }
 
-  if (lowerMessage.includes('wrong password')) {
-    return 'The password you entered is incorrect. Please try again.';
+  if (lowerMessage.includes('incorrect password')) {
+    return errorMessage;
+  }
+
+  // Generic Supabase auth fallback
+  if (lowerMessage.includes('invalid login credentials') ||
+      lowerMessage.includes('invalid email or password')) {
+    return 'The email or password you entered is incorrect. Please check and try again.';
   }
 
   if (lowerMessage.includes('email not confirmed') || 
