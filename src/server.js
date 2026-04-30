@@ -42,18 +42,14 @@ if (process.env.FRONTEND_URL) {
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // In production, require an Origin header
-    if (!origin) {
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('Origin required'));
-      }
-      return callback(null, true);
-    }
+    // No origin = server-to-server request (health checks, Paystack webhooks, etc.)
+    // CORS doesn't apply to these — let them through.
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.error(`❌ CORS blocked origin: ${origin}`);
+      console.error(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
