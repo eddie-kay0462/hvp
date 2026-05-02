@@ -79,10 +79,10 @@ The platform is built with:
 
 - ✅ **Payments** (`/seller/payments`):
   - Available to withdraw (completed bookings)
-  - Funds in escrow (pending/in-progress bookings)
+  - Funds held securely (pending/in-progress bookings)
   - Monthly earnings
   - Earnings history
-  - Escrow items list
+  - Secure hold items list
 
 - ✅ **Profile** (`/seller/profile`):
   - View and edit profile information
@@ -332,7 +332,7 @@ frontend/
 
 2. **Payment System**
    - ⚠️ Withdrawal functionality is disabled (UI exists)
-   - ⚠️ Escrow system is calculated but not fully implemented
+   - ⚠️ Secure hold (funds held securely) is calculated but not fully implemented
    - ⚠️ Payment processing not integrated
 
 3. **Profile Features**
@@ -365,7 +365,7 @@ frontend/
 
 #### 2. **Payment Integration**
 - [ ] Integrate payment gateway (e.g., Stripe, Paystack)
-- [ ] Implement escrow system
+- [ ] Implement secure hold / release of funds held securely
 - [ ] Add withdrawal functionality
 - [ ] Create payment history with real transactions
 - [ ] Add payment status tracking

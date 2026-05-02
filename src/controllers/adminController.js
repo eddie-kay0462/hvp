@@ -1,4 +1,8 @@
 import * as adminService from '../services/adminService.js';
+import {
+  listPendingMomoPaymentsAdmin,
+  adminVerifyMomoPayment,
+} from '../services/momoPaymentService.js';
 
 export const getPendingServices = async (_req) => {
   try {
@@ -139,5 +143,32 @@ export const getServiceStats = async (_req) => {
   } catch (error) {
     console.error("Get service stats error:", error);
     return { status: 500, msg: "Failed to retrieve service statistics", data: null };
+  }
+};
+
+export const getPendingMomoPayments = async (_req) => {
+  try {
+    return await listPendingMomoPaymentsAdmin();
+  } catch (error) {
+    console.error("Get pending MoMo payments error:", error);
+    return { status: 500, msg: "Failed to retrieve pending MoMo payments", data: null };
+  }
+};
+
+export const verifyMomoPayment = async (req) => {
+  try {
+    const adminId = req.user?.id;
+    const { bookingId } = req.params;
+    const { approve, rejectionReason } = req.body || {};
+    if (!bookingId) {
+      return { status: 400, msg: "Booking ID is required", data: null };
+    }
+    if (typeof approve !== "boolean") {
+      return { status: 400, msg: "approve (boolean) is required", data: null };
+    }
+    return await adminVerifyMomoPayment(bookingId, adminId, approve, rejectionReason);
+  } catch (error) {
+    console.error("Verify MoMo payment error:", error);
+    return { status: 500, msg: "Failed to verify payment", data: null };
   }
 };

@@ -99,8 +99,12 @@ export default function InvoicePage() {
                       <p className="font-semibold">{buyerName}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Paystack Reference</p>
-                      <p className="font-semibold">{invoice?.paystack_reference || "—"}</p>
+                      <p className="text-sm text-muted-foreground">Payment reference</p>
+                      <p className="font-semibold">
+                        {invoice?.paystack_reference ||
+                          invoice?.payment_reference ||
+                          "—"}
+                      </p>
                     </div>
                   </div>
 

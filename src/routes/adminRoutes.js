@@ -14,5 +14,11 @@ router.post('/services/:serviceId/approve', responseHandler(adminController.appr
 router.post('/services/:serviceId/reject', responseHandler(adminController.rejectService));
 router.get('/services/stats', responseHandler(adminController.getServiceStats));
 
+router.get('/payments/momo/pending', responseHandler(adminController.getPendingMomoPayments));
+router.post(
+  '/payments/momo/:bookingId/verify',
+  responseHandler(adminController.verifyMomoPayment)
+);
+
 export default router;
 

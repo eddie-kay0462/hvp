@@ -7,6 +7,9 @@
 
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { initializeTransaction, verifyTransaction } from '../config/paystack.js';
+import { isMomoManualMode } from '../config/paymentMode.js';
+import { initiateMomoManualCheckout } from './momoPaymentService.js';
+import { generateInvoiceNumber } from './invoiceNumberUtils.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hustlevillage.app';
 const CURRENCY = process.env.PAYSTACK_CURRENCY || 'GHS';
@@ -26,39 +29,14 @@ async function getUserEmailById(userId) {
   }
 }
 
-async function generateInvoiceNumber() {
-  const year = new Date().getFullYear();
-  // Get latest invoice for the current year to increment
-  const db = supabaseAdmin || supabase;
-  const { data: invoices, error } = await db
-    .from('invoices')
-    .select('invoice_number, created_at')
-    .ilike('invoice_number', `HV-${year}-%`)
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error('Error fetching latest invoice number:', error);
-  }
-
-  let nextSeq = 1;
-  if (invoices && invoices.length > 0) {
-    const last = invoices[0].invoice_number;
-    const parts = last.split('-');
-    const seqStr = parts[2] || '0000';
-    const seq = parseInt(seqStr, 10);
-    if (!isNaN(seq)) {
-      nextSeq = seq + 1;
-    }
-  }
-  const padded = String(nextSeq).padStart(4, '0');
-  return `HV-${year}-${padded}`;
-}
-
 export const initiatePaymentForBooking = async (userId, bookingId) => {
   try {
     if (!userId || !bookingId) {
       return { status: 400, msg: 'User ID and booking ID are required', data: null };
+    }
+
+    if (isMomoManualMode()) {
+      return initiateMomoManualCheckout(userId, bookingId);
     }
 
     // DB client (use admin if available to avoid RLS issues)
@@ -267,7 +245,8 @@ export const verifyPaymentReference = async (reference, requestingUserId = null)
         amount: booking.payment_amount,
         currency: CURRENCY,
         invoice_number: invoiceNumber,
-        paystack_reference: reference
+        paystack_reference: reference,
+        payment_reference: reference,
       })
       .select()
       .single();
@@ -306,14 +285,16 @@ export const capturePayment = async (bookingId, amount, currency = 'GHS') => {
 };
 
 /**
- * Release payment from escrow to seller
+ * Release payment to seller after funds were held securely
  * @param {string} bookingId - Booking ID
  * @returns {Promise<Object>} Release result
  */
 export const releasePayment = async (bookingId) => {
-  // TODO: Implement real Paystack Transfer API to pay the seller.
-  // Until implemented, block completion so sellers are not promised money that never moves.
-  // Reference: https://paystack.com/docs/transfers/single-transfers
+  if (isMomoManualMode()) {
+    // MoMo is manual — funds already received; no transfer needed
+    return { status: 200, msg: "Payment released", data: null };
+  }
+  // TODO: Implement Paystack Transfer API for card payments
   return {
     status: 501,
     msg: "Payment release to seller is not yet implemented. Please contact support to process your payment.",

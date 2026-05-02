@@ -34,11 +34,11 @@ export default function SellerPayments() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     availableToWithdraw: 0,
-    inEscrow: 0,
+    heldSecurely: 0,
     totalEarnedThisMonth: 0,
   });
   const [earningsHistory, setEarningsHistory] = useState<any[]>([]);
-  const [escrowItems, setEscrowItems] = useState<any[]>([]);
+  const [secureHoldItems, setSecureHoldItems] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -61,9 +61,9 @@ export default function SellerPayments() {
       const serviceIds = services?.map(s => s.id) || [];
 
       if (serviceIds.length === 0) {
-        setStats({ availableToWithdraw: 0, inEscrow: 0, totalEarnedThisMonth: 0 });
+        setStats({ availableToWithdraw: 0, heldSecurely: 0, totalEarnedThisMonth: 0 });
         setEarningsHistory([]);
-        setEscrowItems([]);
+        setSecureHoldItems([]);
         return;
       }
 
@@ -115,11 +115,11 @@ export default function SellerPayments() {
         return sum + amount;
       }, 0);
 
-      // In escrow = paid but not yet released (payment_status === 'paid' but not 'released')
-      const inEscrowBookings = (bookingsData || []).filter(b => 
+      // Paid but not yet released — your money is held securely until release
+      const bookingsHeldSecurely = (bookingsData || []).filter(b => 
         b.payment_status === 'paid' && b.payment_status !== 'released'
       );
-      const inEscrow = inEscrowBookings.reduce((sum, booking) => {
+      const heldSecurely = bookingsHeldSecurely.reduce((sum, booking) => {
         const service = servicesMap[booking.service_id];
         const amount = booking.payment_amount || service?.default_price || 0;
         return sum + amount;
@@ -127,12 +127,12 @@ export default function SellerPayments() {
 
       setStats({
         availableToWithdraw,
-        inEscrow,
+        heldSecurely,
         totalEarnedThisMonth,
       });
 
-      // Fetch buyer profiles for escrow items
-      const buyerIds = [...new Set(inEscrowBookings.map(b => b.buyer_id))];
+      // Fetch buyer profiles for bookings with funds held securely
+      const buyerIds = [...new Set(bookingsHeldSecurely.map(b => b.buyer_id))];
       const { data: buyers } = buyerIds.length > 0
         ? await supabase
             .from('profiles')
@@ -164,8 +164,8 @@ export default function SellerPayments() {
 
       setEarningsHistory(history);
 
-      // Create escrow items - only show paid but not released bookings
-      const escrow = inEscrowBookings.slice(0, 10).map(booking => {
+      // Rows for paid but not released bookings (funds held securely)
+      const secureHoldRows = bookingsHeldSecurely.slice(0, 10).map(booking => {
         const service = servicesMap[booking.service_id];
         const buyer = buyersMap[booking.buyer_id];
         const buyerName = buyer?.first_name && buyer?.last_name
@@ -174,16 +174,15 @@ export default function SellerPayments() {
 
         const amount = booking.payment_amount || service?.default_price || 0;
         
-        // Determine escrow status based on booking status
-        let escrowStatus = 'Funded';
+        let holdStatus = 'Funded';
         if (booking.status === 'delivered') {
-          escrowStatus = 'Awaiting Buyer Confirmation';
+          holdStatus = 'Awaiting Buyer Confirmation';
         } else if (booking.status === 'in_progress') {
-          escrowStatus = 'Work In Progress';
+          holdStatus = 'Work In Progress';
         } else if (booking.status === 'accepted') {
-          escrowStatus = 'Funded';
+          holdStatus = 'Funded';
         } else {
-          escrowStatus = 'Funded';
+          holdStatus = 'Funded';
         }
 
         // Estimate release date (7 days after booking creation, or when buyer confirms)
@@ -194,12 +193,12 @@ export default function SellerPayments() {
           bookingId: booking.id.slice(0, 8) + '...',
           buyer: buyerName,
           amount: amount,
-          status: escrowStatus,
+          status: holdStatus,
           expectedRelease: booking.status === 'delivered' ? 'Pending buyer confirmation' : releaseDate.toLocaleDateString(),
         };
       });
 
-      setEscrowItems(escrow);
+      setSecureHoldItems(secureHoldRows);
 
     } catch (error: any) {
       console.error('Error fetching payments data:', error);
@@ -227,7 +226,7 @@ export default function SellerPayments() {
     <>
       <DashboardHeader 
         title="Payments & Earnings" 
-        subtitle="Track your income, escrow, and payment history"
+        subtitle="Track your income, funds held securely, and payment history"
       />
 
       <div className="p-6 space-y-6">
@@ -240,8 +239,8 @@ export default function SellerPayments() {
             iconBgColor="bg-primary/10"
           />
           <StatCard
-            title="In Escrow"
-            value={`GH₵ ${stats.inEscrow.toFixed(2)}`}
+            title="Held securely"
+            value={`GH₵ ${stats.heldSecurely.toFixed(2)}`}
             icon={Clock}
             iconBgColor="bg-secondary-accent/20"
           />
@@ -304,15 +303,15 @@ export default function SellerPayments() {
           </CardContent>
         </Card>
 
-        {/* Escrow Section */}
+        {/* Funds held securely until release */}
         <Card>
           <CardHeader>
-            <CardTitle>Funds in Escrow</CardTitle>
+            <CardTitle>Funds held securely</CardTitle>
           </CardHeader>
           <CardContent>
-            {escrowItems.length === 0 ? (
+            {secureHoldItems.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No funds in escrow
+                No funds held securely right now
               </p>
             ) : (
               <Table>
@@ -321,12 +320,12 @@ export default function SellerPayments() {
                     <TableHead>Booking ID</TableHead>
                     <TableHead>Buyer</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Escrow Status</TableHead>
+                    <TableHead>Hold status</TableHead>
                     <TableHead>Expected Release</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {escrowItems.map((item) => (
+                  {secureHoldItems.map((item) => (
                     <TableRow key={item.bookingId}>
                       <TableCell className="font-medium">{item.bookingId}</TableCell>
                       <TableCell>{item.buyer}</TableCell>

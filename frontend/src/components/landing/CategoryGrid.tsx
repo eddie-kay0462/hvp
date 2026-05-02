@@ -35,6 +35,8 @@ const iconMap: Record<string, LucideIcon> = {
 const categoryToTabMap: Record<string, string> = {
   tutoring: "tutoring",
   design_creative: "design",
+  printing_merch: "design",
+  shipping_logistics: "tech",
   events_music: "music",
   tech_dev: "tech",
   food_baking: "food",
@@ -44,9 +46,9 @@ const categoryToTabMap: Record<string, string> = {
 const tabToCategoryMap: Record<string, string[]> = {
   all: [],
   tutoring: ["tutoring"],
-  design: ["design_creative"],
+  design: ["design_creative", "printing_merch"],
   music: ["events_music"],
-  tech: ["tech_dev"],
+  tech: ["tech_dev", "shipping_logistics"],
   events: ["events_music"],
   food: ["food_baking"],
   beauty: ["beauty_hair"],
@@ -107,6 +109,8 @@ export const CategoryGrid = () => {
     const slugIconMap: Record<string, LucideIcon> = {
       tutoring: BookOpen,
       design_creative: Pencil,
+      printing_merch: ShoppingBag,
+      shipping_logistics: ShoppingBag,
       events_music: Headphones,
       tech_dev: Code,
       food_baking: Utensils,

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 
 // ---------------------------------------------------------------------------
 // Zoho Mail SMTP transport
@@ -281,5 +282,291 @@ Review: ${adminDashboardUrl}
   } catch (error) {
     console.error('Failed to send admin notification:', error.message);
     throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// MoMo manual payments — admin alert + buyer confirmation
+// ---------------------------------------------------------------------------
+
+function escapeHtml(s) {
+  if (s == null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function resolveBuyerContact(profileId) {
+  if (!profileId) {
+    return { email: null, name: 'there' };
+  }
+  const db = supabaseAdmin || supabase;
+  const { data: profile } = await db
+    .from('profiles')
+    .select('first_name, last_name, email, user_id')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  const name =
+    `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'there';
+
+  let email = profile?.email || null;
+
+  if (!email && supabaseAdmin) {
+    const authUserId = profile?.user_id || profileId;
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.getUserById(authUserId);
+    if (!authErr && authData?.user?.email) {
+      email = authData.user.email;
+    }
+  }
+
+  return { email, name };
+}
+
+/**
+ * Alert admin that a buyer submitted MoMo proof (queued for verification).
+ */
+export const sendMomoProofSubmittedToAdmin = async ({
+  bookingId,
+  serviceTitle,
+  amountGhs,
+  momoTransactionId,
+  buyerName,
+}) => {
+  try {
+    const frontendUrl = getFrontendUrl();
+    const adminQueueUrl = `${frontendUrl.replace(/\/+$/, '')}/admin/payments/momo`;
+    const bookingUrl = `${frontendUrl.replace(/\/+$/, '')}/booking/${bookingId}`;
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #059669; color: white; padding: 24px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 16px 0; }
+          .box { background: white; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb; }
+          .footer { text-align: center; padding: 16px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1 style="margin:0;font-size:22px;">MoMo payment proof submitted</h1></div>
+          <div class="content">
+            <p>A buyer submitted a Mobile Money receipt for verification.</p>
+            <div class="box">
+              <p><strong>Service:</strong> ${escapeHtml(serviceTitle || 'Service')}</p>
+              <p><strong>Amount:</strong> GH&#8373; ${escapeHtml(amt)}</p>
+              <p><strong>MoMo transaction ID:</strong> ${escapeHtml(momoTransactionId || '—')}</p>
+              <p><strong>Buyer:</strong> ${escapeHtml(buyerName || 'Buyer')}</p>
+              <p><strong>Booking ID:</strong> <code>${escapeHtml(bookingId)}</code></p>
+            </div>
+            <p style="text-align:center;">
+              <a href="${adminQueueUrl}" class="button">Open verification queue</a>
+            </p>
+            <p style="font-size:13px;color:#666;"><a href="${bookingUrl}">View booking</a></p>
+          </div>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+MoMo payment proof submitted
+
+Service: ${serviceTitle || 'Service'}
+Amount: GH₵ ${amt}
+MoMo transaction ID: ${momoTransactionId || '—'}
+Buyer: ${buyerName || 'Buyer'}
+Booking: ${bookingId}
+
+Verification queue: ${adminQueueUrl}
+Booking: ${bookingUrl}
+    `.trim();
+
+    const info = await sendMail({
+      to: getAdminEmail(),
+      subject: `[Hustle Village] MoMo proof pending — ${serviceTitle || bookingId.slice(0, 8)}`,
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendMomoProofSubmittedToAdmin failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+/**
+ * Notify buyer that MoMo payment was approved.
+ */
+export const sendMomoPaymentApprovedToBuyer = async (
+  buyerProfileId,
+  { bookingId, serviceTitle, amountGhs, invoiceId }
+) => {
+  try {
+    const { email, name } = await resolveBuyerContact(buyerProfileId);
+    if (!email) {
+      console.warn('[email] MoMo approved: no buyer email for profile', buyerProfileId);
+      return { sent: false, reason: 'no_email' };
+    }
+
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const invoiceUrl = invoiceId ? `${frontendUrl}/invoice/${invoiceId}` : null;
+    const invoiceHint = invoiceUrl
+      ? `<p>You can view your invoice here: <a href="${invoiceUrl}">${invoiceUrl}</a></p>`
+      : '';
+
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #059669; color: white; padding: 24px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 16px 0; }
+          .footer { text-align: center; padding: 16px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1 style="margin:0;font-size:22px;">Payment confirmed</h1></div>
+          <div class="content">
+            <p>Hi ${escapeHtml(name)},</p>
+            <p>Good news — we verified your Mobile Money payment for <strong>${escapeHtml(serviceTitle || 'your booking')}</strong> (GH&#8373; ${escapeHtml(amt)}).</p>
+            ${invoiceHint}
+            <p style="text-align:center;">
+              <a href="${bookingUrl}" class="button">View booking</a>
+            </p>
+            <p>Thank you for using Hustle Village.</p>
+            <p>Best,<br>The Hustle Village Team</p>
+          </div>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const invoiceLine = invoiceUrl ? `\nInvoice: ${invoiceUrl}\n` : '';
+
+    const text = `
+Hi ${name},
+
+Your Mobile Money payment for "${serviceTitle || 'your booking'}" (GH₵ ${amt}) has been confirmed.
+${invoiceLine}
+View your booking: ${bookingUrl}
+
+Best,
+The Hustle Village Team
+    `.trim();
+
+    const info = await sendMail({
+      to: email,
+      subject: 'Your payment was confirmed — Hustle Village',
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendMomoPaymentApprovedToBuyer failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+/**
+ * Notify buyer that MoMo proof was rejected; they can resubmit.
+ */
+export const sendMomoPaymentRejectedToBuyer = async (
+  buyerProfileId,
+  { bookingId, serviceTitle, rejectionReason }
+) => {
+  try {
+    const { email, name } = await resolveBuyerContact(buyerProfileId);
+    if (!email) {
+      console.warn('[email] MoMo rejected: no buyer email for profile', buyerProfileId);
+      return { sent: false, reason: 'no_email' };
+    }
+
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const reasonHtml = escapeHtml(rejectionReason || 'Please submit a new transaction ID and receipt screenshot.');
+    const reasonText = (rejectionReason || 'Please submit a new transaction ID and receipt screenshot.').trim();
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #b45309; color: white; padding: 24px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 16px 0; }
+          .reason-box { background: #fffbeb; border-left: 4px solid #b45309; padding: 14px; margin: 16px 0; }
+          .footer { text-align: center; padding: 16px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1 style="margin:0;font-size:22px;">Payment verification update</h1></div>
+          <div class="content">
+            <p>Hi ${escapeHtml(name)},</p>
+            <p>We could not verify your Mobile Money payment for <strong>${escapeHtml(serviceTitle || 'your booking')}</strong> with the details you submitted.</p>
+            <div class="reason-box">
+              <p style="margin:0;"><strong>Note from our team:</strong></p>
+              <p style="margin:8px 0 0 0;">${reasonHtml}</p>
+            </div>
+            <p>Open your booking, tap <strong>Pay Now</strong> again, and submit a new transaction ID and receipt screenshot.</p>
+            <p style="text-align:center;">
+              <a href="${bookingUrl}" class="button">Go to booking</a>
+            </p>
+            <p>Best,<br>The Hustle Village Team</p>
+          </div>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${name},
+
+We could not verify your Mobile Money payment for "${serviceTitle || 'your booking'}".
+
+Note from our team:
+${reasonText}
+
+Please open your booking and submit a new transaction ID and screenshot:
+${bookingUrl}
+
+Best,
+The Hustle Village Team
+    `.trim();
+
+    const info = await sendMail({
+      to: email,
+      subject: 'Action needed: payment verification — Hustle Village',
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendMomoPaymentRejectedToBuyer failed:', error.message);
+    return { sent: false, error: error.message };
   }
 };

@@ -30,6 +30,7 @@ import Messages from "./pages/Messages";
 import PaymentCallback from "./pages/PaymentCallback";
 import InvoicePage from "./pages/invoicePage";
 import AdminPendingServices from "./pages/admin/AdminPendingServices";
+import AdminMomoPayments from "./pages/admin/AdminMomoPayments";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminPendingServices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/payments/momo"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminMomoPayments />
                 </ProtectedRoute>
               }
             />

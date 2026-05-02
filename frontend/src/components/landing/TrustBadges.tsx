@@ -10,7 +10,7 @@ const items = [
   {
     icon: Wallet,
     title: "Mobile money payments",
-    description: "Pay with MTN, Vodafone, or AirtelTigo — held in escrow until delivery.",
+    description: "Pay with MTN, Vodafone, or AirtelTigo — your money is held securely until delivery.",
   },
   {
     icon: ShieldCheck,

@@ -1,4 +1,7 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
+
+/** Bypasses services RLS for trusted API logic (JWT verified in routes). */
+const db = supabaseAdmin ?? supabase;
 
 /**
  * Book a service now
@@ -40,7 +43,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     }
 
     // Get the profile ID from user ID (bookings.buyer_id references profiles.id)
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await db
       .from('profiles')
       .select('id')
       .eq('id', userId)
@@ -51,7 +54,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     }
 
     // First, verify the service exists and is verified
-    const { data: service, error: serviceError } = await supabase
+    const { data: service, error: serviceError } = await db
       .from('services')
       .select('id, is_verified, is_active, user_id')
       .eq('id', serviceId)
@@ -81,7 +84,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
 
     // Prevent sellers from being double-booked
     const activeStatuses = ['pending', 'accepted', 'in_progress', 'delivered'];
-    const { data: activeSellerBookings, error: sellerAvailabilityError } = await supabase
+    const { data: activeSellerBookings, error: sellerAvailabilityError } = await db
       .from('bookings')
       .select('id')
       .eq('service_id', serviceId)
@@ -104,7 +107,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // Check for existing active bookings for the same buyer and service
     // Only one active booking per buyer per service is allowed at any time
     // Active bookings are those that are not 'completed' or 'cancelled'
-    const { data: existingBookings, error: checkError } = await supabase
+    const { data: existingBookings, error: checkError } = await db
       .from('bookings')
       .select('id, status, date, time')
       .eq('buyer_id', profile.id)
@@ -133,14 +136,14 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       time: time || null, // Can be null for instant bookings
       status: status,
       // Payment fields - will be populated when payment API is ready
-      payment_status: null, // 'pending', 'captured', 'in_escrow', 'released', 'refunded'
+      payment_status: null, // 'pending', 'captured', 'in_escrow' (held securely), 'released', 'refunded'
       payment_captured_at: null,
       payment_released_at: null,
       payment_amount: null,
       payment_transaction_id: null,
     };
 
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .insert(bookingDataToInsert)
       .select()
@@ -175,7 +178,7 @@ export const getBookingById = async (userId, bookingId) => {
     }
 
     // Get booking with service details (without seller join for now)
-    const { data: booking, error } = await supabase
+    const { data: booking, error } = await db
       .from('bookings')
       .select(`
         *,
@@ -204,7 +207,7 @@ export const getBookingById = async (userId, bookingId) => {
     // Check if user is the seller by checking if they own the service
     let isSeller = false;
     if (booking.service_id) {
-      const { data: service, error: serviceError } = await supabase
+      const { data: service, error: serviceError } = await db
         .from('services')
         .select('user_id')
         .eq('id', booking.service_id)
@@ -248,7 +251,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
     `;
 
     if (role === 'buyer') {
-      const { data: bookings, error } = await supabase
+      const { data: bookings, error } = await db
         .from('bookings')
         .select(`*, service:services (${serviceSelect})`)
         .eq('buyer_id', userId)
@@ -265,7 +268,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
     }
 
     if (role === 'seller') {
-      const { data: services, error: servicesError } = await supabase
+      const { data: services, error: servicesError } = await db
         .from('services')
         .select('id')
         .eq('user_id', userId);
@@ -277,7 +280,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
         return { status: 200, msg: "No bookings found", data: { bookings: [], limit, offset } };
       }
 
-      const { data: bookings, error } = await supabase
+      const { data: bookings, error } = await db
         .from('bookings')
         .select(`*, service:services (${serviceSelect})`)
         .in('service_id', serviceIds)
@@ -303,7 +306,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
 export const acceptBooking = async (userId, bookingId) => {
   try {
     // Get the booking with service info
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select('*, service:services(user_id)')
       .eq('id', bookingId)
@@ -324,7 +327,7 @@ export const acceptBooking = async (userId, bookingId) => {
     }
 
     // Update booking status to accepted
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('bookings')
       .update({ status: 'accepted' })
       .eq('id', bookingId)
@@ -362,7 +365,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
     }
 
     // Get booking with service info
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select('*, service:services(user_id)')
       .eq('id', bookingId)
@@ -430,7 +433,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
     }
 
     // Update status
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('bookings')
       .update({ status: newStatus })
       .eq('id', bookingId)
@@ -447,7 +450,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
       if (booking.payment_status !== 'paid') {
         return { 
           status: 400, 
-          msg: `Cannot release payment. Payment must be completed via Paystack first. Current payment status: ${booking.payment_status || 'not paid'}`, 
+          msg: `Cannot release payment. Payment must be completed first. Current payment status: ${booking.payment_status || 'not paid'}`, 
           data: null 
         };
       }
@@ -458,7 +461,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
       
       if (releaseResult.status === 200) {
         // Update payment status in booking
-        await supabase
+        await db
           .from('bookings')
           .update({ 
             payment_status: 'released',
@@ -496,7 +499,7 @@ export const confirmBookingCompletion = async (userId, bookingId) => {
     }
 
     // Get booking with service info
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select('*, service:services(user_id)')
       .eq('id', bookingId)
@@ -524,7 +527,7 @@ export const confirmBookingCompletion = async (userId, bookingId) => {
     if (booking.payment_status !== 'paid') {
       return { 
         status: 400, 
-        msg: `Cannot confirm completion. Payment must be completed via Paystack first. Current payment status: ${booking.payment_status || 'not paid'}. Please complete the payment before confirming.`, 
+        msg: `Cannot confirm completion. Payment must be completed first. Current payment status: ${booking.payment_status || 'not paid'}. Please complete the payment before confirming.`, 
         data: null 
       };
     }

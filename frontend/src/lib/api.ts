@@ -184,6 +184,49 @@ async function apiFetch<T>(
 }
 
 /**
+ * Multipart upload (no JSON Content-Type — browser sets boundary).
+ */
+async function apiFetchFormData(endpoint: string, formData: FormData): Promise<any> {
+  const baseUrl = API_BASE_URL.replace(/\/+$/, '');
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${path}`;
+
+  const headers: Record<string, string> = {};
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+    }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  let json: any;
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  if (!response.ok) {
+    const errorMessage = json.msg || json.message || json.error;
+    throw new Error(getFriendlyErrorMessage(errorMessage, response.status));
+  }
+
+  return json;
+}
+
+/**
  * API Methods
  */
 export const api = {
@@ -333,6 +376,8 @@ export const api = {
       apiFetch(`/payments/verify?reference=${encodeURIComponent(reference)}`, {
         method: 'GET',
       }),
+    submitMomoProof: (formData: FormData) =>
+      apiFetchFormData('/payments/momo/submit', formData),
   },
 
   // Invoices
@@ -374,6 +419,15 @@ export const api = {
     getServiceStats: () =>
       apiFetch('/admin/services/stats', {
         method: 'GET',
+      }),
+    getPendingMomoPayments: () =>
+      apiFetch('/admin/payments/momo/pending', {
+        method: 'GET',
+      }),
+    verifyMomoPayment: (bookingId: string, approve: boolean, rejectionReason?: string) =>
+      apiFetch(`/admin/payments/momo/${bookingId}/verify`, {
+        method: 'POST',
+        body: JSON.stringify({ approve, rejectionReason }),
       }),
   },
 

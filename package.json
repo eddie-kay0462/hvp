@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "npx nodemon src/server.js"
+    "dev": "npx nodemon src/server.js",
+    "seed:services": "node scripts/seed-services.mjs"
   },
   "keywords": [],
   "author": "",
@@ -18,9 +19,11 @@
     "dotenv": "^16.3.1",
     "express": "^4.22.1",
     "express-rate-limit": "^8.4.1",
+    "multer": "^2.1.1",
     "nodemailer": "^8.0.7"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
     "nodemon": "^3.0.2",
     "supabase": "^2.58.5"
   }

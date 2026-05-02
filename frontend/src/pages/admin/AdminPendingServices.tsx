@@ -174,14 +174,19 @@ export default function AdminPendingServices() {
               <h1 className="text-3xl font-bold mb-2">Service Approval Dashboard</h1>
               <p className="text-muted-foreground">Review and approve pending services</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/services')}
-              className="flex items-center gap-2"
-            >
-              <Store className="h-4 w-4" />
-              Back to Market
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin/payments/momo')} className="gap-2">
+                MoMo payments
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/services')}
+                className="flex items-center gap-2"
+              >
+                <Store className="h-4 w-4" />
+                Back to Market
+              </Button>
+            </div>
           </div>
         </div>
 

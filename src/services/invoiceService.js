@@ -18,6 +18,7 @@ export const getInvoiceById = async (userId, invoiceId) => {
         amount,
         currency,
         paystack_reference,
+        payment_reference,
         created_at,
         buyer_id,
         booking:bookings (

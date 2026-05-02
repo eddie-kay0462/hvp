@@ -20,6 +20,9 @@ import {
   XCircle,
   Loader2,
   Star,
+  Copy,
+  ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
 import {
@@ -33,6 +36,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Booking {
   id: string;
@@ -47,6 +60,11 @@ interface Booking {
   payment_released_at?: string | null;
   payment_amount?: number | null;
   payment_transaction_id?: string | null;
+  payment_method?: string | null;
+  momo_transaction_id?: string | null;
+  payment_proof_url?: string | null;
+  momo_submitted_at?: string | null;
+  payment_review_note?: string | null;
   service?: {
     id: string;
     title: string;
@@ -67,6 +85,19 @@ interface Booking {
     last_name: string | null;
     profile_pic: string | null;
   };
+}
+
+interface MomoCheckoutPayload {
+  provider: string;
+  bookingId: string;
+  amount: number;
+  currency: string;
+  merchantName: string;
+  momoNumber: string;
+  narration: string;
+  networks: string[];
+  slaHours: number;
+  instructions?: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -104,6 +135,11 @@ export default function BookingDetail() {
   const [checkingReview, setCheckingReview] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [momoDialogOpen, setMomoDialogOpen] = useState(false);
+  const [momoCheckout, setMomoCheckout] = useState<MomoCheckoutPayload | null>(null);
+  const [momoTxnId, setMomoTxnId] = useState("");
+  const [momoFile, setMomoFile] = useState<File | null>(null);
+  const [submittingMomo, setSubmittingMomo] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -554,40 +590,253 @@ export default function BookingDetail() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Pay Now (Buyer) - Only show if payment is not paid or released */}
-                  {isBuyer && booking.payment_status !== "paid" && booking.payment_status !== "released" && (
-                    <Button
-                      onClick={async () => {
-                        try {
-                          setPaying(true);
-                          const result = await (api as any).payments?.initiate?.(booking.id);
-                          if (result?.data?.authorization_url) {
-                            window.location.href = result.data.authorization_url;
-                          } else {
-                            toast.error(result?.msg || "Failed to start payment");
-                          }
-                        } catch (err: any) {
-                          toast.error(err?.message || "Failed to start payment");
-                        } finally {
-                          setPaying(false);
-                        }
-                      }}
-                      disabled={paying}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      {paying ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Redirecting to Paystack...
-                        </>
-                      ) : (
-                        <>
-                          <DollarSign className="mr-2 h-4 w-4" />
-                          Pay Now
-                        </>
-                      )}
-                    </Button>
+                  {isBuyer && booking.payment_status === "pending_review" && (
+                    <div className="p-4 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 shrink-0" />
+                        Payment verification in progress
+                      </p>
+                      <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1">
+                        We received your Mobile Money receipt. Our team will verify it as soon as possible
+                        (often within 24 hours). You do not need to pay again.
+                      </p>
+                    </div>
                   )}
+
+                  {isBuyer && booking.payment_status === "momo_rejected" && booking.payment_review_note && (
+                    <div className="p-4 rounded-md border border-destructive/30 bg-destructive/5">
+                      <p className="text-sm font-medium text-destructive">Payment could not be verified</p>
+                      <p className="text-xs text-muted-foreground mt-1">{booking.payment_review_note}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Use Pay Now to submit a new transaction ID and receipt.
+                      </p>
+                    </div>
+                  )}
+
+                  {isSeller && booking.payment_status === "pending_review" && (
+                    <div className="p-3 rounded-md bg-muted/80 text-sm text-muted-foreground">
+                      Buyer submitted a Mobile Money payment — waiting for Hustle Village to verify before
+                      this counts as paid.
+                    </div>
+                  )}
+
+                  {/* Pay Now (Buyer) — hide while MoMo proof is pending */}
+                  {isBuyer &&
+                    booking.payment_status !== "paid" &&
+                    booking.payment_status !== "released" &&
+                    booking.payment_status !== "pending_review" && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            setPaying(true);
+                            const result = (await api.payments.initiate(booking.id)) as {
+                              status?: number;
+                              msg?: string;
+                              data?: {
+                                authorization_url?: string;
+                                provider?: string;
+                              } & MomoCheckoutPayload;
+                            };
+                            setPaying(false);
+                            if (result?.status !== 200) {
+                              toast.error(result?.msg || "Failed to start payment");
+                              return;
+                            }
+                            const d = result.data;
+                            if (d?.authorization_url) {
+                              window.location.href = d.authorization_url;
+                              return;
+                            }
+                            if (d?.provider === "momo_manual") {
+                              setMomoCheckout(d as MomoCheckoutPayload);
+                              setMomoTxnId("");
+                              setMomoFile(null);
+                              setMomoDialogOpen(true);
+                              return;
+                            }
+                            toast.error("Unexpected payment response");
+                          } catch (err: any) {
+                            setPaying(false);
+                            toast.error(err?.message || "Failed to start payment");
+                          }
+                        }}
+                        disabled={paying}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                      >
+                        {paying ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Starting payment...
+                          </>
+                        ) : (
+                          <>
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Pay Now
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                  <Dialog open={momoDialogOpen} onOpenChange={setMomoDialogOpen}>
+                    <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Smartphone className="h-5 w-5" />
+                          Pay with Mobile Money
+                        </DialogTitle>
+                        <DialogDescription>
+                          Send the exact amount below to Hustle Village. Include the reference in your
+                          payment narration if your network allows it.
+                        </DialogDescription>
+                      </DialogHeader>
+                      {momoCheckout && (
+                        <div className="space-y-4 py-2">
+                          <div className="rounded-lg border bg-muted/40 p-4 space-y-3 text-sm">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground">Pay to</span>
+                              <span className="font-semibold text-right">{momoCheckout.merchantName}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 items-start">
+                              <span className="text-muted-foreground">MoMo number</span>
+                              <span className="font-mono font-semibold break-all text-right">
+                                {momoCheckout.momoNumber}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground">Amount</span>
+                              <span className="font-bold text-primary">
+                                {momoCheckout.currency} {Number(momoCheckout.amount).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2 items-start">
+                              <span className="text-muted-foreground">Reference / narration</span>
+                              <span className="font-mono text-xs break-all text-right max-w-[60%]">
+                                {momoCheckout.narration}
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(momoCheckout.momoNumber);
+                                toast.success("MoMo number copied");
+                              }}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy MoMo number
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(momoCheckout.narration);
+                                toast.success("Reference copied");
+                              }}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy reference
+                            </Button>
+                          </div>
+                          {momoCheckout.networks?.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Networks: {momoCheckout.networks.join(" · ")}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            After you send the money, enter the transaction ID from your SMS or MoMo app
+                            and attach a screenshot of the confirmation.
+                          </p>
+                          {momoCheckout.instructions ? (
+                            <p className="text-xs whitespace-pre-line border-l-2 pl-3 border-primary/30">
+                              {momoCheckout.instructions}
+                            </p>
+                          ) : null}
+                          <div className="space-y-2">
+                            <Label htmlFor="momo-txn">Mobile Money transaction ID</Label>
+                            <Input
+                              id="momo-txn"
+                              value={momoTxnId}
+                              onChange={(e) => setMomoTxnId(e.target.value)}
+                              placeholder="From your confirmation SMS or receipt"
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="momo-proof">Receipt screenshot</Label>
+                            <Input
+                              id="momo-proof"
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              onChange={(e) => setMomoFile(e.target.files?.[0] || null)}
+                            />
+                            <p className="text-[11px] text-muted-foreground">JPG, PNG, or WebP · max 5MB</p>
+                          </div>
+                        </div>
+                      )}
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setMomoDialogOpen(false)}
+                          disabled={submittingMomo}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={submittingMomo || !booking}
+                          onClick={async () => {
+                            if (!booking || !momoCheckout) return;
+                            const tid = momoTxnId.trim();
+                            if (tid.length < 4) {
+                              toast.error("Enter the transaction ID from your MoMo receipt");
+                              return;
+                            }
+                            if (!momoFile) {
+                              toast.error("Attach a screenshot of your payment confirmation");
+                              return;
+                            }
+                            try {
+                              setSubmittingMomo(true);
+                              const fd = new FormData();
+                              fd.append("bookingId", booking.id);
+                              fd.append("momoTransactionId", tid);
+                              fd.append("proof", momoFile);
+                              const res = (await api.payments.submitMomoProof(fd)) as {
+                                status?: number;
+                                msg?: string;
+                              };
+                              if (res.status === 200) {
+                                toast.success(res.msg || "Submitted successfully");
+                                setMomoDialogOpen(false);
+                                setMomoCheckout(null);
+                                await fetchBookingDetails();
+                              } else {
+                                toast.error(res.msg || "Submission failed");
+                              }
+                            } catch (e: any) {
+                              toast.error(e?.message || "Submission failed");
+                            } finally {
+                              setSubmittingMomo(false);
+                            }
+                          }}
+                        >
+                          {submittingMomo ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            "Submit payment proof"
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
 
                   {/* Seller Actions */}
                   {isSeller && booking.status === "pending" && (

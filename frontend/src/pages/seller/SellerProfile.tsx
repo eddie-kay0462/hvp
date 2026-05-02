@@ -228,7 +228,7 @@ export default function SellerProfile() {
                 <ul className="space-y-3 text-sm">
                   <li>
                     <a href="#" className="text-foreground hover:text-primary transition-colors">
-                      How does the escrow payment system work?
+                      How do secure payments and payouts work?
                     </a>
                   </li>
                   <li>

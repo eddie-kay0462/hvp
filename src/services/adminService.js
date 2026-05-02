@@ -1,5 +1,19 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 
+/** Services RLS requires service role for admin listing/approval (anon has no cross-tenant access). */
+function serviceDbOrError() {
+  if (!supabaseAdmin) {
+    return {
+      error: {
+        status: 500,
+        msg: 'SUPABASE_SERVICE_ROLE_KEY is required for admin service operations',
+        data: null,
+      },
+    };
+  }
+  return { db: supabaseAdmin };
+}
+
 /**
  * Resolve seller display name and auth email (requires service role for email).
  */
@@ -51,7 +65,10 @@ async function getSellerContact(userId) {
  */
 export const getPendingServices = async () => {
   try {
-    const { data, error } = await supabase
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    const { data, error } = await r.db
       .from('services')
       .select('*')
       .eq('is_verified', false)
@@ -108,7 +125,10 @@ export const getPendingServices = async () => {
  */
 export const getAllServices = async (filters = {}) => {
   try {
-    let query = supabase.from('services').select('*');
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    let query = r.db.from('services').select('*');
 
     if (filters.is_verified !== undefined) query = query.eq('is_verified', filters.is_verified);
     if (filters.is_active !== undefined)   query = query.eq('is_active', filters.is_active);
@@ -158,7 +178,10 @@ export const approveService = async (serviceId, adminId) => {
       return { status: 400, msg: "Service ID and Admin ID are required", data: null };
     }
 
-    const { data: service, error: fetchError } = await supabase
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    const { data: service, error: fetchError } = await r.db
       .from('services')
       .select('*')
       .eq('id', serviceId)
@@ -170,7 +193,7 @@ export const approveService = async (serviceId, adminId) => {
 
     const { sellerEmail, sellerName } = await getSellerContact(service.user_id);
 
-    const { data, error } = await supabase
+    const { data, error } = await r.db
       .from('services')
       .update({
         is_verified: true,
@@ -210,7 +233,10 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       return { status: 400, msg: "Service ID, Admin ID, and rejection reason are required", data: null };
     }
 
-    const { data: service, error: fetchError } = await supabase
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    const { data: service, error: fetchError } = await r.db
       .from('services')
       .select('*')
       .eq('id', serviceId)
@@ -222,7 +248,7 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
 
     const { sellerEmail, sellerName } = await getSellerContact(service.user_id);
 
-    const { data, error } = await supabase
+    const { data, error } = await r.db
       .from('services')
       .update({
         is_verified: false,
@@ -259,11 +285,15 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
  */
 export const getServiceStats = async () => {
   try {
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    const db = r.db;
     const [total, pending, approved, active] = await Promise.all([
-      supabase.from('services').select('*', { count: 'exact', head: true }),
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', false).is('rejection_reason', null),
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', true),
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', true).eq('is_active', true),
+      db.from('services').select('*', { count: 'exact', head: true }),
+      db.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', false).is('rejection_reason', null),
+      db.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', true),
+      db.from('services').select('*', { count: 'exact', head: true }).eq('is_verified', true).eq('is_active', true),
     ]);
 
     return {

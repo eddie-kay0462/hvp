@@ -1,4 +1,6 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
+
+const db = supabaseAdmin ?? supabase;
 
 export const setupSeller = async (userId, sellerData) => {
   try {
@@ -7,7 +9,7 @@ export const setupSeller = async (userId, sellerData) => {
     }
 
     // Insert or update seller data
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('sellers')
       .upsert(
         {
@@ -34,7 +36,7 @@ export const setupSeller = async (userId, sellerData) => {
 export const createService = async (userId, serviceData) => {
   try {
     // First, ensure seller entry exists - check if seller exists
-    const { data: existingSeller, error: sellerCheckError } = await supabase
+    const { data: existingSeller, error: sellerCheckError } = await db
       .from('sellers')
       .select('id')
       .eq('user_id', userId)
@@ -54,7 +56,7 @@ export const createService = async (userId, serviceData) => {
         portfolio: serviceData.portfolio || null,
       };
 
-      const { error: sellerCreateError } = await supabase
+      const { error: sellerCreateError } = await db
         .from('sellers')
         .upsert(sellerData, { onConflict: 'user_id' });
 
@@ -68,7 +70,7 @@ export const createService = async (userId, serviceData) => {
     const { title, category } = serviceData;
 
     // Check 1: Exact title match (same seller, same title, same category)
-    const { data: exactMatches, error: exactCheckError } = await supabase
+    const { data: exactMatches, error: exactCheckError } = await db
       .from('services')
       .select('id, title')
       .eq('user_id', userId)
@@ -89,7 +91,7 @@ export const createService = async (userId, serviceData) => {
     }
 
     // Check 2: Any service in the same category (prevents "Cake Making" vs "Cake Baking" duplicates)
-    const { data: categoryServices, error: categoryCheckError } = await supabase
+    const { data: categoryServices, error: categoryCheckError } = await db
       .from('services')
       .select('id, title')
       .eq('user_id', userId)
@@ -116,7 +118,7 @@ export const createService = async (userId, serviceData) => {
       is_verified: false // All new services require approval
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('services')
       .insert([serviceToCreate])
       .select()
@@ -144,7 +146,7 @@ export const editService = async (userId, serviceId, updates) => {
     }
 
     // Check ownership first - verify service exists and belongs to user
-    const { data: service, error: fetchError } = await supabase
+    const { data: service, error: fetchError } = await db
       .from("services")
       .select("id, user_id")
       .eq("id", serviceId)
@@ -174,7 +176,7 @@ export const editService = async (userId, serviceId, updates) => {
     }
 
     // Update the service - using .update() with proper filters
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("services")
       .update(cleanUpdates)
       .eq("id", serviceId)
@@ -206,7 +208,7 @@ export const toggleService = async (userId, serviceId) => {
     }
 
     // Fetch the service - check ownership using user_id (consistent with other functions)
-    const { data: service, error: fetchError } = await supabase
+    const { data: service, error: fetchError } = await db
       .from("services")
       .select("*")
       .eq("id", serviceId)
@@ -224,7 +226,7 @@ export const toggleService = async (userId, serviceId) => {
     const newStatus = !service.is_active;
 
     // Update the service status
-    const { data: updatedService, error: updateError } = await supabase
+    const { data: updatedService, error: updateError } = await db
       .from("services")
       .update({ is_active: newStatus })
       .eq("id", serviceId)

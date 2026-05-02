@@ -28,6 +28,11 @@ export type Database = {
           payment_released_at: string | null
           payment_amount: number | null
           payment_transaction_id: string | null
+          payment_method: string | null
+          momo_transaction_id: string | null
+          payment_proof_url: string | null
+          momo_submitted_at: string | null
+          payment_review_note: string | null
         }
         Insert: {
           id?: string
@@ -42,6 +47,11 @@ export type Database = {
           payment_released_at?: string | null
           payment_amount?: number | null
           payment_transaction_id?: string | null
+          payment_method?: string | null
+          momo_transaction_id?: string | null
+          payment_proof_url?: string | null
+          momo_submitted_at?: string | null
+          payment_review_note?: string | null
         }
         Update: {
           id?: string
@@ -56,6 +66,11 @@ export type Database = {
           payment_released_at?: string | null
           payment_amount?: number | null
           payment_transaction_id?: string | null
+          payment_method?: string | null
+          momo_transaction_id?: string | null
+          payment_proof_url?: string | null
+          momo_submitted_at?: string | null
+          payment_review_note?: string | null
         }
         Relationships: [
           {
