@@ -71,6 +71,7 @@ interface Booking {
   payout_confirmed_at?: string | null;
   service?: {
     id: string;
+    user_id: string;
     title: string;
     description: string;
     category: string;
@@ -149,6 +150,22 @@ export default function BookingDetail() {
   const [payoutFile, setPayoutFile] = useState<File | null>(null);
   const [submittingPayout, setSubmittingPayout] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      import("@/integrations/supabase/client").then(({ supabase }) => {
+        supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data?.role) setUserRole(data.role);
+          });
+      });
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (id && user) {
@@ -412,7 +429,7 @@ export default function BookingDetail() {
   // Check if current user is buyer, seller, or admin
   const isBuyer = booking?.buyer_id === user?.id;
   const isSeller = booking?.service?.user_id === user?.id || booking?.seller?.id === user?.id;
-  const isAdmin = (user as any)?.role === 'admin';
+  const isAdmin = userRole === 'admin';
 
   if (loading) {
     return (
