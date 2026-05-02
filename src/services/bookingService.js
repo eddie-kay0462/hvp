@@ -515,9 +515,9 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
           })
           .eq('id', bookingId);
 
-        // Notify seller payment is released
+        // Notify seller + alert admin to process payout
         try {
-          const { sendPaymentReleasedToSeller } = await import('./emailService.js');
+          const { sendPaymentReleasedToSeller, sendPayoutRequiredToAdmin } = await import('./emailService.js');
           sendPaymentReleasedToSeller(sellerAuthUserId, {
             bookingId,
             serviceTitle,
@@ -525,6 +525,13 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
           })
             .then((r) => console.log('[email] payment released→seller result:', JSON.stringify(r)))
             .catch((e) => console.error('[email] payment released notify failed:', e.message));
+          sendPayoutRequiredToAdmin(sellerAuthUserId, {
+            bookingId,
+            serviceTitle,
+            amountGhs: booking.payment_amount,
+          })
+            .then((r) => console.log('[email] payout required→admin result:', JSON.stringify(r)))
+            .catch((e) => console.error('[email] payout admin notify failed:', e.message));
         } catch (e) { console.error('[email] import failed for payment release:', e.message); }
       } else {
         // If release failed, return error

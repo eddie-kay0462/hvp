@@ -471,7 +471,113 @@ export const sendMomoApprovedToSeller = async (sellerAuthUserId, { bookingId, se
 };
 
 // ---------------------------------------------------------------------------
-// 9. Booking cancelled → notify the other party
+// 9. Payout required → alert admin to send money to provider
+// ---------------------------------------------------------------------------
+
+export const sendPayoutRequiredToAdmin = async (sellerAuthUserId, { bookingId, serviceTitle, amountGhs }) => {
+  try {
+    const db = supabaseAdmin || supabase;
+
+    // Resolve seller profile — need name, email AND phone for MoMo transfer
+    const { data: profile } = await db
+      .from('profiles')
+      .select('first_name, last_name, email, phone, user_id')
+      .eq('user_id', sellerAuthUserId)
+      .maybeSingle();
+
+    const sellerName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Provider';
+    const sellerPhone = profile?.phone || 'Not on file';
+    let sellerEmail = profile?.email || null;
+    if (!sellerEmail && supabaseAdmin) {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
+      sellerEmail = authData?.user?.email || 'Not on file';
+    }
+
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #7c3aed; color: white; padding: 24px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 24px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 16px 0; }
+          .box { background: white; padding: 20px; border-radius: 8px; margin: 16px 0; border: 2px solid #7c3aed; }
+          .label { color: #666; font-size: 13px; margin: 0; }
+          .value { font-size: 16px; font-weight: bold; margin: 2px 0 12px 0; }
+          .amount { font-size: 28px; font-weight: bold; color: #059669; }
+          .footer { text-align: center; padding: 16px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin:0;font-size:22px;">⚡ Action Required — Process Provider Payout</h1>
+          </div>
+          <div class="content">
+            <p>Hi Admin,</p>
+            <p>A buyer has confirmed completion of a booking. You need to send the provider their payment via Mobile Money.</p>
+            <div class="box">
+              <p class="label">AMOUNT TO SEND</p>
+              <p class="amount">GH₵ ${escapeHtml(amt)}</p>
+              <p class="label">PROVIDER NAME</p>
+              <p class="value">${escapeHtml(sellerName)}</p>
+              <p class="label">PROVIDER PHONE (MoMo number)</p>
+              <p class="value">${escapeHtml(sellerPhone)}</p>
+              <p class="label">PROVIDER EMAIL</p>
+              <p class="value">${escapeHtml(sellerEmail || 'Not on file')}</p>
+              <p class="label">SERVICE</p>
+              <p class="value">${escapeHtml(serviceTitle || '—')}</p>
+              <p class="label">BOOKING ID</p>
+              <p class="value" style="font-size:13px;font-family:monospace;">${escapeHtml(bookingId)}</p>
+            </div>
+            <p style="text-align:center;">
+              <a href="${bookingUrl}" class="button">View Booking</a>
+            </p>
+            <p style="font-size:13px;color:#888;">Once you have sent the money, no further action is needed in the system — the booking is already marked as completed.</p>
+          </div>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+ACTION REQUIRED — Process Provider Payout
+
+Amount to send: GH₵ ${amt}
+Provider: ${sellerName}
+Phone (MoMo): ${sellerPhone}
+Email: ${sellerEmail || 'Not on file'}
+Service: ${serviceTitle || '—'}
+Booking ID: ${bookingId}
+
+View booking: ${bookingUrl}
+
+Send the payment via MoMo to the provider's number above.
+    `.trim();
+
+    const info = await sendMail({
+      to: getAdminEmail(),
+      subject: `[Action Required] Pay ${sellerName} — GH₵ ${amt} for "${serviceTitle || 'booking'}"`,
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendPayoutRequiredToAdmin failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 10. Booking cancelled → notify the other party
 // ---------------------------------------------------------------------------
 
 export const sendBookingCancelledToSeller = async (sellerAuthUserId, { serviceTitle, buyerName }) => {
