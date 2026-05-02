@@ -248,16 +248,24 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       };
     }
 
-    const {
-      data: { publicUrl },
-    } = supabaseAdmin.storage.from(bucket).getPublicUrl(objectPath);
+    // Private bucket — generate a long-lived signed URL (1 year)
+    const { data: signedData, error: signErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(objectPath, 60 * 60 * 24 * 365);
+
+    if (signErr || !signedData?.signedUrl) {
+      console.error('Signed URL error:', signErr);
+      return { status: 502, msg: 'File uploaded but could not generate view URL.', data: null };
+    }
+
+    const proofUrl = signedData.signedUrl;
 
     const { error: updErr } = await db
       .from('bookings')
       .update({
         payment_method: 'momo_manual',
         momo_transaction_id: normalizedTxn,
-        payment_proof_url: publicUrl,
+        payment_proof_url: proofUrl,
         momo_submitted_at: new Date().toISOString(),
         payment_status: 'pending_review',
         payment_review_note: null,
