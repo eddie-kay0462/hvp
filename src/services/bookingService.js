@@ -45,7 +45,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // Get the profile ID from user ID (bookings.buyer_id references profiles.id)
     const { data: profile, error: profileError } = await db
       .from('profiles')
-      .select('id')
+      .select('id, first_name, last_name')
       .eq('id', userId)
       .single();
 
@@ -56,7 +56,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // First, verify the service exists and is verified
     const { data: service, error: serviceError } = await db
       .from('services')
-      .select('id, is_verified, is_active, user_id')
+      .select('id, title, is_verified, is_active, user_id')
       .eq('id', serviceId)
       .single();
 
@@ -152,6 +152,19 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     if (bookingError) {
       console.error("Booking creation error:", bookingError);
       return { status: 400, msg: bookingError.message || "Failed to create booking", data: null };
+    }
+
+    // Notify seller — fire and forget so email failure never blocks booking
+    try {
+      const buyerName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'A customer';
+      const { sendNewBookingToSeller } = await import('./emailService.js');
+      sendNewBookingToSeller(service.user_id, {
+        bookingId: booking.id,
+        serviceTitle: service.title,
+        buyerName,
+      }).catch((err) => console.error('[email] new booking notification failed:', err.message));
+    } catch (emailErr) {
+      console.error('[email] failed to import emailService for new booking:', emailErr.message);
     }
 
     return {

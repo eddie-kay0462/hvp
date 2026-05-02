@@ -286,6 +286,103 @@ Review: ${adminDashboardUrl}
 };
 
 // ---------------------------------------------------------------------------
+// 4. New booking → notify seller
+// ---------------------------------------------------------------------------
+
+export const sendNewBookingToSeller = async (sellerAuthUserId, { bookingId, serviceTitle, buyerName }) => {
+  try {
+    const db = supabaseAdmin || supabase;
+
+    // Resolve seller profile by auth user ID
+    const { data: profile } = await db
+      .from('profiles')
+      .select('first_name, last_name, email, user_id')
+      .eq('user_id', sellerAuthUserId)
+      .maybeSingle();
+
+    const sellerName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'there';
+
+    let email = profile?.email || null;
+    if (!email && supabaseAdmin) {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
+      email = authData?.user?.email || null;
+    }
+
+    if (!email) {
+      console.warn('[email] sendNewBookingToSeller: no email for seller', sellerAuthUserId);
+      return { sent: false, reason: 'no_email' };
+    }
+
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const dashboardUrl = `${frontendUrl}/seller/bookings`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 16px 0; }
+          .box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1 style="margin:0;">New Booking!</h1></div>
+          <div class="content">
+            <p>Hi ${escapeHtml(sellerName)},</p>
+            <p>You have a new booking on Hustle Village.</p>
+            <div class="box">
+              <p><strong>Service:</strong> ${escapeHtml(serviceTitle || 'Your service')}</p>
+              <p><strong>Booked by:</strong> ${escapeHtml(buyerName || 'A customer')}</p>
+            </div>
+            <p>Log in to accept or review the booking details.</p>
+            <p style="text-align:center;">
+              <a href="${bookingUrl}" class="button">View Booking</a>
+            </p>
+            <p style="font-size:13px;color:#666;">Or go to your <a href="${dashboardUrl}">bookings dashboard</a>.</p>
+            <p>Best regards,<br>The Hustle Village Team</p>
+          </div>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village. All rights reserved.</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${sellerName},
+
+You have a new booking on Hustle Village.
+
+Service: ${serviceTitle || 'Your service'}
+Booked by: ${buyerName || 'A customer'}
+
+View the booking: ${bookingUrl}
+
+Best regards,
+The Hustle Village Team
+    `.trim();
+
+    const info = await sendMail({
+      to: email,
+      subject: `New booking — ${serviceTitle || 'Hustle Village'}`,
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendNewBookingToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
 // MoMo manual payments — admin alert + buyer confirmation
 // ---------------------------------------------------------------------------
 
