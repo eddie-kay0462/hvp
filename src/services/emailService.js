@@ -292,10 +292,11 @@ Review: ${adminDashboardUrl}
 async function resolveSellerContact(sellerAuthUserId) {
   if (!sellerAuthUserId) return { email: null, name: 'there' };
   const db = supabaseAdmin || supabase;
+  // profiles.id IS the auth user ID (1:1 FK relationship)
   const { data: profile } = await db
     .from('profiles')
-    .select('first_name, last_name, email, user_id')
-    .eq('user_id', sellerAuthUserId)
+    .select('first_name, last_name, email, phone')
+    .eq('id', sellerAuthUserId)
     .maybeSingle();
   const name = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'there';
   let email = profile?.email || null;
@@ -303,7 +304,7 @@ async function resolveSellerContact(sellerAuthUserId) {
     const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
     email = authData?.user?.email || null;
   }
-  return { email, name };
+  return { email, name, phone: profile?.phone || null };
 }
 
 // ---------------------------------------------------------------------------
@@ -476,22 +477,8 @@ export const sendMomoApprovedToSeller = async (sellerAuthUserId, { bookingId, se
 
 export const sendPayoutRequiredToAdmin = async (sellerAuthUserId, { bookingId, serviceTitle, amountGhs }) => {
   try {
-    const db = supabaseAdmin || supabase;
-
-    // Resolve seller profile — need name, email AND phone for MoMo transfer
-    const { data: profile } = await db
-      .from('profiles')
-      .select('first_name, last_name, email, phone, user_id')
-      .eq('user_id', sellerAuthUserId)
-      .maybeSingle();
-
-    const sellerName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Provider';
-    const sellerPhone = profile?.phone || 'Not on file';
-    let sellerEmail = profile?.email || null;
-    if (!sellerEmail && supabaseAdmin) {
-      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
-      sellerEmail = authData?.user?.email || 'Not on file';
-    }
+    // resolveSellerContact now queries by profiles.id and returns phone too
+    const { email: sellerEmail, name: sellerName, phone: sellerPhone } = await resolveSellerContact(sellerAuthUserId);
 
     const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
     const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
@@ -528,7 +515,7 @@ export const sendPayoutRequiredToAdmin = async (sellerAuthUserId, { bookingId, s
               <p class="label">PROVIDER NAME</p>
               <p class="value">${escapeHtml(sellerName)}</p>
               <p class="label">PROVIDER PHONE (MoMo number)</p>
-              <p class="value">${escapeHtml(sellerPhone)}</p>
+              <p class="value">${escapeHtml(sellerPhone || 'Not on file')}</p>
               <p class="label">PROVIDER EMAIL</p>
               <p class="value">${escapeHtml(sellerEmail || 'Not on file')}</p>
               <p class="label">SERVICE</p>
@@ -552,7 +539,7 @@ ACTION REQUIRED — Process Provider Payout
 
 Amount to send: GH₵ ${amt}
 Provider: ${sellerName}
-Phone (MoMo): ${sellerPhone}
+Phone (MoMo): ${sellerPhone || 'Not on file'}
 Email: ${sellerEmail || 'Not on file'}
 Service: ${serviceTitle || '—'}
 Booking ID: ${bookingId}

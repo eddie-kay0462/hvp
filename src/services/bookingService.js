@@ -184,7 +184,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
  * @param {string} bookingId - Booking ID
  * @returns {Promise<Object>} Booking details
  */
-export const getBookingById = async (userId, bookingId) => {
+export const getBookingById = async (userId, bookingId, userRole = 'buyer') => {
   try {
     if (!bookingId) {
       return { status: 400, msg: "Booking ID is required", data: null };
@@ -231,7 +231,7 @@ export const getBookingById = async (userId, bookingId) => {
       }
     }
 
-    if (!isBuyer && !isSeller) {
+    if (!isBuyer && !isSeller && userRole !== 'admin') {
       return { status: 403, msg: "You do not have permission to view this booking", data: null };
     }
 

@@ -75,7 +75,7 @@ const getBookingById = async (req) => {
       return { status: 400, msg: "Booking ID is required", data: null };
     }
 
-    const result = await bookingService.getBookingById(userId, bookingId);
+    const result = await bookingService.getBookingById(userId, bookingId, req.user?.role);
 
     return {
       status: result.status,
