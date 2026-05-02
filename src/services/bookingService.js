@@ -197,6 +197,7 @@ export const getBookingById = async (userId, bookingId, userRole = 'buyer') => {
         *,
         service:services (
           id,
+          user_id,
           title,
           description,
           category,
@@ -256,6 +257,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
   try {
     const serviceSelect = `
       id,
+      user_id,
       title,
       description,
       category,
