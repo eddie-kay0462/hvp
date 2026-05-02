@@ -16,6 +16,7 @@ import { ServiceCard } from "@/components/services/ServiceCard";
 import { useCategories } from "@/hooks/useCategories";
 import { BookingForm } from "@/components/bookings/BookingForm";
 import { useConversation } from "@/hooks/useConversation";
+import { logServiceView } from "@/lib/serviceViews";
 
 interface Service {
   id: string;
@@ -81,6 +82,15 @@ const ServiceDetail = () => {
     if (!id || authLoading) return;
     fetchServiceDetails();
   }, [id, authLoading, user?.id]);
+
+  useEffect(() => {
+    if (!id || !service || listingUnavailable) return;
+    logServiceView({
+      serviceId: id,
+      viewerId: user?.id ?? null,
+      ownerId: service.user_id,
+    });
+  }, [id, service, listingUnavailable, user?.id]);
 
   const fetchServiceDetails = async () => {
     try {

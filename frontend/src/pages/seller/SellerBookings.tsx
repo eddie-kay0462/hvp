@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface Booking {
   id: string;
@@ -48,18 +48,44 @@ const getStatusBadge = (status: string) => {
   return variants[status] || "default";
 };
 
+const VALID_TABS = new Set(["all", "new", "in_progress", "completed"]);
+
 export default function SellerBookings() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (() => {
+    const raw = searchParams.get("status");
+    if (raw && VALID_TABS.has(raw)) return raw;
+    if (raw === "pending" || raw === "accepted") return "new";
+    return "all";
+  })();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [selectedTab, setSelectedTab] = useState("all");
+  const [selectedTab, setSelectedTab] = useState(initialTab);
 
   useEffect(() => {
     if (user) {
       fetchBookings();
     }
   }, [user]);
+
+  useEffect(() => {
+    const raw = searchParams.get("status");
+    if (!raw) return;
+    if (VALID_TABS.has(raw)) setSelectedTab(raw);
+    else if (raw === "pending" || raw === "accepted") setSelectedTab("new");
+  }, [searchParams]);
+
+  const handleTabChange = (next: string) => {
+    setSelectedTab(next);
+    if (next === "all") {
+      searchParams.delete("status");
+    } else {
+      searchParams.set("status", next);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
 
   const fetchBookings = async () => {
     if (!user) return;
@@ -174,7 +200,7 @@ export default function SellerBookings() {
       />
 
       <div className="p-4 md:p-6">
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4 md:space-y-6">
+        <Tabs value={selectedTab} onValueChange={handleTabChange} className="space-y-4 md:space-y-6">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="all" className="text-xs sm:text-sm">All ({bookings.length})</TabsTrigger>
             <TabsTrigger value="new" className="text-xs sm:text-sm">New ({bookings.filter(b => b.status === "pending" || b.status === "accepted").length})</TabsTrigger>

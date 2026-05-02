@@ -6,15 +6,15 @@ export const CtaBanner = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="border-t border-border bg-primary/[0.06] py-14 md:py-20">
+    <section className="border-t border-border bg-background py-14 md:py-20">
       <div className="container mx-auto px-4 md:px-6">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
-            Ready when you are.
+            Find a service or list one
           </h2>
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Hire a student on campus or offer your skills—secure booking and mobile
-            money payments are built in.
+            Book through the site or sign up to sell. Checkout and MoMo options follow
+            the booking flow.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
             <Button
@@ -28,7 +28,7 @@ export const CtaBanner = () => {
             <Button
               size="lg"
               variant="outline"
-              className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-white"
+              className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-background"
               onClick={() => navigate("/become-a-hustler")}
             >
               Sell your skills

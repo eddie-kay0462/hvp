@@ -147,9 +147,9 @@ export const CategoryGrid = () => {
     return (
       <button
         onClick={() => navigate(`/services?category=${category.slug}`)}
-        className="flex items-start gap-4 text-left rounded-xl border border-border bg-white p-5 hover:border-foreground/20 transition-colors duration-200"
+        className="flex items-start gap-4 text-left rounded-xl border border-border bg-background p-5 hover:border-foreground/20 transition-colors duration-200"
       >
-        <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+        <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-muted text-foreground flex-shrink-0">
           <Icon className="h-5 w-5" />
         </div>
         <div>
@@ -166,7 +166,7 @@ export const CategoryGrid = () => {
 
   if (categoriesLoading) {
     return (
-      <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
+      <section className="py-12 md:py-20 bg-background border-b border-border">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
             Browse by category
@@ -180,7 +180,7 @@ export const CategoryGrid = () => {
   const availableTabs = getAvailableTabs();
 
   return (
-    <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
+    <section className="py-12 md:py-20 bg-background border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
           Browse by category
@@ -188,12 +188,12 @@ export const CategoryGrid = () => {
 
         <Tabs defaultValue="all" className="w-full">
           <div className="mb-6 md:mb-8 -mx-4 px-4 overflow-x-auto">
-            <TabsList className="inline-flex h-auto bg-muted/60 p-1 rounded-lg">
+            <TabsList className="inline-flex h-auto bg-muted p-1 rounded-lg border border-border">
               {availableTabs.map((tab) => (
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="text-xs sm:text-sm px-3 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                  className="text-xs sm:text-sm px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border"
                 >
                   {tabLabelMap[tab] ||
                     tab.charAt(0).toUpperCase() + tab.slice(1)}

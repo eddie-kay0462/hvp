@@ -163,14 +163,14 @@ export const FeaturedServices = () => {
 
   if (loading) {
     return (
-      <section className="py-12 md:py-20 bg-background">
+      <section className="py-12 md:py-20 bg-background border-b border-border">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeader />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="rounded-xl border border-border bg-white overflow-hidden"
+                className="rounded-xl border border-border bg-background overflow-hidden"
               >
                 <Skeleton className="h-48 w-full rounded-none" />
                 <div className="p-5 space-y-3">
@@ -187,10 +187,10 @@ export const FeaturedServices = () => {
 
   if (services.length === 0) {
     return (
-      <section className="py-12 md:py-20 bg-background">
+      <section className="py-12 md:py-20 bg-background border-b border-border">
         <div className="container mx-auto px-4 md:px-6">
           <SectionHeader />
-          <div className="rounded-xl border border-dashed border-border bg-white p-10 text-center">
+          <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
             <p className="text-sm text-muted-foreground">
               No services listed yet.
             </p>
@@ -201,7 +201,7 @@ export const FeaturedServices = () => {
   }
 
   return (
-    <section className="py-12 md:py-20 bg-background">
+    <section className="py-12 md:py-20 bg-background border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         <SectionHeader />
 
@@ -210,7 +210,7 @@ export const FeaturedServices = () => {
             <article
               key={service.id}
               onClick={() => navigate(`/service/${service.id}`)}
-              className="group flex flex-col rounded-xl border border-border bg-white overflow-hidden hover:border-foreground/20 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+              className="group flex flex-col rounded-xl border border-border bg-background overflow-hidden hover:border-foreground/20 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
             >
               <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                 {service.imageUrls && service.imageUrls.length > 0 ? (
@@ -223,12 +223,12 @@ export const FeaturedServices = () => {
                   <div className="w-full h-full bg-muted" />
                 )}
 
-                <span className="absolute top-3 left-3 inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-medium px-2 py-1 rounded-full">
+                <span className="absolute top-3 left-3 inline-flex items-center gap-1 border border-border bg-background/90 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded-full">
                   <BadgeCheck className="h-3 w-3" />
                   Verified
                 </span>
 
-                <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded-full border border-border">
+                <span className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded-full border border-border">
                   {service.category}
                 </span>
               </div>

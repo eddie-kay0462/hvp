@@ -27,57 +27,59 @@ export const BecomeAHustler = () => {
   const benefits = [
     {
       icon: DollarSign,
-      title: "Earn on Your Terms",
-      description: "Set your own prices and work schedule. Keep 100% of what you earn."
+      title: "You set the price",
+      description:
+        "Pick rates that work for you. Any platform fee is shown before checkout.",
     },
     {
       icon: Clock,
-      title: "Flexible Schedule",
-      description: "Work when you want, where you want. Balance studies and income."
+      title: "Fit it around class",
+      description: "Take bookings when you actually have time.",
     },
     {
       icon: Users,
-      title: "Build Your Network",
-      description: "Connect with students on campus and grow your reputation."
+      title: "Campus buyers",
+      description: "Other students book you through the marketplace.",
     },
     {
       icon: TrendingUp,
-      title: "Grow Your Skills",
-      description: "Turn your talents into income while building your portfolio."
+      title: "Show your work",
+        description: "Use listings to point people at what you've already done.",
     },
     {
       icon: Shield,
-      title: "Secure Payments",
-      description: "Get paid safely through our platform with buyer protection."
+      title: "Checkout on Hustle Village",
+      description:
+        "Customers pay through the flows we run on the site—not random DMs.",
     },
     {
       icon: Zap,
-      title: "Quick Setup",
-      description: "Start earning in minutes. List your first service today."
-    }
+      title: "List after signup",
+        description: "Account first, then add a service when you're ready.",
+    },
   ];
 
   const steps = [
     {
       number: "1",
-      title: "Create Your Profile",
-      description: "Sign up and tell us about your skills and services."
+      title: "Sign up",
+      description: "Student email and the basics.",
     },
     {
       number: "2",
-      title: "List Your Services",
-      description: "Add services with pricing, delivery time, and portfolio."
+      title: "Add a service",
+      description: "Title, price, how long it takes.",
     },
     {
       number: "3",
-      title: "Get Booked",
-      description: "Students find and book your services on campus."
+      title: "Someone books",
+      description: "You'll see it on your bookings page.",
     },
     {
       number: "4",
-      title: "Get Paid",
-      description: "Complete work, get paid securely through the platform."
-    }
+      title: "Do the work, mark done",
+      description: "Payment follows the booking flow on the site.",
+    },
   ];
 
   useEffect(() => {
@@ -216,17 +218,17 @@ export const BecomeAHustler = () => {
       <Navbar />
 
       <main className="flex-1">
-        <section className="py-14 md:py-20 border-b border-border">
-          <div className="container mx-auto px-4 md:px-6">
+        <section className="bg-background border-b border-border overflow-hidden">
+          <div className="container mx-auto px-4 md:px-6 py-14 md:py-20">
             <div className="max-w-3xl mx-auto text-center space-y-5">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]">
-                Turn your skills into
+                Sell what you're good at
                 <br />
-                <span className="text-primary">steady campus income</span>
+                <span className="text-primary">to people on campus</span>
               </h1>
-              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-                List your services, set your rates, and get booked by students on
-                campus. Payments are secure and setup takes just a few minutes.
+              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Post a service, name your price, and handle bookings here instead of
+                scattered chats.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <Button
@@ -250,30 +252,27 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        <section className="py-12 md:py-14 bg-white border-b border-border">
+        <section className="bg-background border-b border-border py-12 md:py-14">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-6 md:gap-8 max-w-5xl mx-auto text-center">
               {stats.map((stat, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-border bg-background p-4 md:p-5 text-center"
-                >
-                  <div className="text-2xl md:text-3xl font-bold text-foreground">
-                    {loading ? "..." : stat.value}
+                <div key={idx}>
+                  <div className="text-2xl md:text-3xl font-bold text-foreground tabular-nums">
+                    {loading ? "…" : stat.value}
                   </div>
-                  <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
+                  <div className="mt-1.5 text-sm text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="py-12 md:py-20 bg-muted/30 border-b border-border">
+        <section className="bg-background border-b border-border py-12 md:py-20">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
               <div className="mb-8 md:mb-10">
                 <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                  Why students sell on Hustle Village
+                  Why list here
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -282,11 +281,11 @@ export const BecomeAHustler = () => {
                   return (
                     <div
                       key={idx}
-                      className="rounded-xl border border-border bg-white p-5 md:p-6"
+                      className="rounded-xl border border-border p-5 md:p-6"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="rounded-lg bg-primary/10 p-2.5 flex-shrink-0">
-                          <Icon className="h-5 w-5 text-primary" />
+                        <div className="rounded-lg bg-muted p-2.5 flex-shrink-0">
+                          <Icon className="h-5 w-5 text-foreground" />
                         </div>
                         <div>
                           <h3 className="font-semibold text-base text-foreground mb-1.5">
@@ -309,18 +308,18 @@ export const BecomeAHustler = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-                  How to start
+                <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
+                  How it works
                 </h2>
-                <p className="text-lg text-muted-foreground">
-                  Start earning in 4 simple steps
+                <p className="text-base text-muted-foreground">
+                  Nothing fancy—same flow whether you tutor, design, or fix laptops.
                 </p>
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {steps.map((step, idx) => (
                   <div key={idx} className="relative">
                     <div className="text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-4">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-border bg-muted text-foreground text-2xl font-bold mb-4">
                         {step.number}
                       </div>
                       <h3 className="font-semibold text-lg mb-2 text-foreground">
@@ -342,15 +341,15 @@ export const BecomeAHustler = () => {
           </div>
         </section>
 
-        <section className="border-t border-border bg-primary/[0.06] py-14 md:py-20">
+        <section className="border-t border-border bg-background py-14 md:py-20">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-2xl mx-auto text-center space-y-6">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
-                Ready for your first booking?
+                New here?
               </h2>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Create your account and list your first service in minutes—or sign in
-                to pick up where you left off. Free to join, no setup fee.
+                Sign up and add a listing. Already have an account? Log in and head to
+                list a service.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
                 <Button
@@ -364,7 +363,7 @@ export const BecomeAHustler = () => {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-white"
+                  className="w-full sm:w-auto min-h-12 px-8 rounded-xl text-base font-semibold bg-background"
                   onClick={() => navigate("/login")}
                 >
                   Sign in

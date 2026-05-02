@@ -22,12 +22,12 @@ const items = [
 
 export const TrustBadges = () => {
   return (
-    <section className="py-12 md:py-16 bg-white border-y border-border">
+    <section className="py-12 md:py-16 bg-background border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {items.map(({ icon: Icon, title, description }) => (
             <div key={title} className="flex items-start gap-4">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 flex-shrink-0">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-foreground flex-shrink-0">
                 <Icon className="h-5 w-5" />
               </span>
               <div>

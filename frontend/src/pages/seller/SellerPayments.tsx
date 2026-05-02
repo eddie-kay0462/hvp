@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Clock, Loader2 } from "lucide-react";
+import { useMemo } from "react";
+import { Clock, DollarSign, Download, Loader2, TrendingUp } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
@@ -12,207 +12,166 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSellerInsights } from "@/hooks/useSellerInsights";
+import { bookingAmount, formatCurrency } from "@/lib/sellerMetrics";
+import { downloadCsv, rowsToCsv } from "@/lib/csv";
 
-interface Booking {
+interface EarningsRow {
   id: string;
-  service_id: string;
+  date: string;
+  bookingId: string;
+  serviceTitle: string;
+  buyerName: string;
+  amount: number;
+  paymentMethod: string;
+  payoutStatus: string;
+  rawDate: Date;
+}
+
+interface SecureHoldRow {
+  id: string;
+  bookingId: string;
+  buyerName: string;
+  amount: number;
   status: string;
-  payment_status: string | null;
-  payment_amount: number | null;
-  created_at: string;
-  service?: {
-    title: string;
-    default_price: number | null;
-  };
+  expectedRelease: string;
+}
+
+interface PerServiceRow {
+  serviceId: string;
+  serviceTitle: string;
+  completedCount: number;
+  released: number;
 }
 
 export default function SellerPayments() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    availableToWithdraw: 0,
-    heldSecurely: 0,
-    totalEarnedThisMonth: 0,
-  });
-  const [earningsHistory, setEarningsHistory] = useState<any[]>([]);
-  const [secureHoldItems, setSecureHoldItems] = useState<any[]>([]);
+  const { loading, data, metrics } = useSellerInsights();
 
-  useEffect(() => {
-    if (user) {
-      fetchPaymentsData();
-    }
-  }, [user]);
+  const { earningsHistory, secureHold, perService, totals } = useMemo(() => {
+    const { bookings, servicesById, buyersById } = data;
 
-  const fetchPaymentsData = async () => {
-    if (!user) return;
+    let availableToWithdraw = 0;
+    let heldSecurely = 0;
+    let earnedThisMonth = metrics.earningsThisMonth;
 
-    try {
-      setLoading(true);
+    const earnings: EarningsRow[] = [];
+    const hold: SecureHoldRow[] = [];
+    const perServiceMap = new Map<string, PerServiceRow>();
 
-      // Get seller's services
-      const { data: services } = await supabase
-        .from('services')
-        .select('id, title, default_price')
-        .eq('user_id', user.id);
+    for (const b of bookings) {
+      const svc = servicesById[b.service_id];
+      const amt = bookingAmount(b, svc);
+      const buyer = buyersById[b.buyer_id];
+      const buyerName =
+        [buyer?.first_name, buyer?.last_name].filter(Boolean).join(" ") ||
+        "Unknown";
 
-      const serviceIds = services?.map(s => s.id) || [];
-
-      if (serviceIds.length === 0) {
-        setStats({ availableToWithdraw: 0, heldSecurely: 0, totalEarnedThisMonth: 0 });
-        setEarningsHistory([]);
-        setSecureHoldItems([]);
-        return;
-      }
-
-      // Fetch all bookings for seller's services
-      const { data: bookingsData, error } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          service_id,
-          buyer_id,
-          status,
-          payment_status,
-          payment_amount,
-          created_at
-        `)
-        .in('service_id', serviceIds)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const servicesMap: Record<string, any> = {};
-      services?.forEach(service => {
-        servicesMap[service.id] = service;
-      });
-
-      // Calculate current month earnings - only released payments
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      const releasedThisMonth = (bookingsData || []).filter(b => {
-        if (b.payment_status !== 'released') return false;
-        const bookingDate = new Date(b.created_at);
-        return bookingDate >= startOfMonth;
-      });
-
-      const totalEarnedThisMonth = releasedThisMonth.reduce((sum, booking) => {
-        const service = servicesMap[booking.service_id];
-        const amount = booking.payment_amount || service?.default_price || 0;
-        return sum + amount;
-      }, 0);
-
-      // Available to withdraw = only bookings with payment_status === 'released'
-      const releasedBookings = (bookingsData || []).filter(b => 
-        b.payment_status === 'released'
-      );
-      const availableToWithdraw = releasedBookings.reduce((sum, booking) => {
-        const service = servicesMap[booking.service_id];
-        const amount = booking.payment_amount || service?.default_price || 0;
-        return sum + amount;
-      }, 0);
-
-      // Paid but not yet released — your money is held securely until release
-      const bookingsHeldSecurely = (bookingsData || []).filter(b => 
-        b.payment_status === 'paid' && b.payment_status !== 'released'
-      );
-      const heldSecurely = bookingsHeldSecurely.reduce((sum, booking) => {
-        const service = servicesMap[booking.service_id];
-        const amount = booking.payment_amount || service?.default_price || 0;
-        return sum + amount;
-      }, 0);
-
-      setStats({
-        availableToWithdraw,
-        heldSecurely,
-        totalEarnedThisMonth,
-      });
-
-      // Fetch buyer profiles for bookings with funds held securely
-      const buyerIds = [...new Set(bookingsHeldSecurely.map(b => b.buyer_id))];
-      const { data: buyers } = buyerIds.length > 0
-        ? await supabase
-            .from('profiles')
-            .select('id, first_name, last_name')
-            .in('id', buyerIds)
-        : { data: [] };
-
-      const buyersMap: Record<string, any> = {};
-      buyers?.forEach(buyer => {
-        buyersMap[buyer.id] = buyer;
-      });
-
-      // Create earnings history from released payments only
-      const history = (bookingsData || [])
-        .filter(b => b.payment_status === 'released')
-        .slice(0, 10)
-        .map(booking => {
-          const service = servicesMap[booking.service_id];
-          const amount = booking.payment_amount || service?.default_price || 0;
-          return {
-            id: booking.id,
-            date: new Date(booking.created_at).toLocaleDateString(),
-            bookingId: booking.id.slice(0, 8) + '...',
-            service: service?.title || 'Unknown Service',
-            amount: amount,
-            type: 'Released',
-          };
+      if (b.payment_status === "released") {
+        availableToWithdraw += amt;
+        const releasedAt = b.payment_released_at ?? b.updated_at ?? b.created_at;
+        earnings.push({
+          id: b.id,
+          date: new Date(releasedAt).toLocaleDateString(),
+          bookingId: `${b.id.slice(0, 8)}…`,
+          serviceTitle: svc?.title || "Unknown service",
+          buyerName,
+          amount: amt,
+          paymentMethod:
+            b.payment_method === "momo_manual"
+              ? "MoMo"
+              : b.payment_method === "paystack"
+                ? "Paystack"
+                : "—",
+          payoutStatus: b.payout_status === "sent" ? "Paid out" : "Pending payout",
+          rawDate: new Date(releasedAt),
         });
 
-      setEarningsHistory(history);
-
-      // Rows for paid but not released bookings (funds held securely)
-      const secureHoldRows = bookingsHeldSecurely.slice(0, 10).map(booking => {
-        const service = servicesMap[booking.service_id];
-        const buyer = buyersMap[booking.buyer_id];
-        const buyerName = buyer?.first_name && buyer?.last_name
-          ? `${buyer.first_name} ${buyer.last_name}`
-          : buyer?.first_name || buyer?.last_name || 'Unknown';
-
-        const amount = booking.payment_amount || service?.default_price || 0;
-        
-        let holdStatus = 'Funded';
-        if (booking.status === 'delivered') {
-          holdStatus = 'Awaiting Buyer Confirmation';
-        } else if (booking.status === 'in_progress') {
-          holdStatus = 'Work In Progress';
-        } else if (booking.status === 'accepted') {
-          holdStatus = 'Funded';
+        const existing = perServiceMap.get(b.service_id);
+        if (existing) {
+          existing.completedCount += 1;
+          existing.released += amt;
         } else {
-          holdStatus = 'Funded';
+          perServiceMap.set(b.service_id, {
+            serviceId: b.service_id,
+            serviceTitle: svc?.title || "Unknown service",
+            completedCount: 1,
+            released: amt,
+          });
         }
+      } else if (b.payment_status === "paid") {
+        heldSecurely += amt;
+        let status = "Funded";
+        if (b.status === "delivered") status = "Awaiting buyer confirmation";
+        else if (b.status === "in_progress") status = "Work in progress";
 
-        // Estimate release date (7 days after booking creation, or when buyer confirms)
-        const releaseDate = new Date(booking.created_at);
-        releaseDate.setDate(releaseDate.getDate() + 7);
+        const releaseEstimate = new Date(b.created_at);
+        releaseEstimate.setDate(releaseEstimate.getDate() + 7);
 
-        return {
-          bookingId: booking.id.slice(0, 8) + '...',
-          buyer: buyerName,
-          amount: amount,
-          status: holdStatus,
-          expectedRelease: booking.status === 'delivered' ? 'Pending buyer confirmation' : releaseDate.toLocaleDateString(),
-        };
-      });
-
-      setSecureHoldItems(secureHoldRows);
-
-    } catch (error: any) {
-      console.error('Error fetching payments data:', error);
-      toast.error('Failed to load payments data');
-    } finally {
-      setLoading(false);
+        hold.push({
+          id: b.id,
+          bookingId: `${b.id.slice(0, 8)}…`,
+          buyerName,
+          amount: amt,
+          status,
+          expectedRelease:
+            b.status === "delivered"
+              ? "Pending buyer confirmation"
+              : releaseEstimate.toLocaleDateString(),
+        });
+      }
     }
+
+    earnings.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+
+    return {
+      earningsHistory: earnings,
+      secureHold: hold.slice(0, 10),
+      perService: Array.from(perServiceMap.values()).sort(
+        (a, b) => b.released - a.released,
+      ),
+      totals: {
+        availableToWithdraw,
+        heldSecurely,
+        earnedThisMonth,
+      },
+    };
+  }, [data, metrics.earningsThisMonth]);
+
+  const handleExport = () => {
+    if (earningsHistory.length === 0) {
+      toast.info("No earnings to export yet.");
+      return;
+    }
+    const csv = rowsToCsv(
+      [
+        "Date",
+        "Booking ID",
+        "Service",
+        "Buyer",
+        "Amount (GHS)",
+        "Payment Method",
+        "Payout Status",
+      ],
+      earningsHistory.map((row) => [
+        row.date,
+        row.bookingId,
+        row.serviceTitle,
+        row.buyerName,
+        row.amount.toFixed(2),
+        row.paymentMethod,
+        row.payoutStatus,
+      ]),
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(`hustle-village-earnings-${today}.csv`, csv);
   };
 
   if (loading) {
     return (
       <>
-        <DashboardHeader 
-          title="Payments & Earnings" 
+        <DashboardHeader
+          title="Payments & Earnings"
           subtitle="Loading your payment data..."
         />
         <div className="p-6 flex items-center justify-center">
@@ -224,44 +183,49 @@ export default function SellerPayments() {
 
   return (
     <>
-      <DashboardHeader 
-        title="Payments & Earnings" 
+      <DashboardHeader
+        title="Payments & Earnings"
         subtitle="Track your income, funds held securely, and payment history"
       />
 
-      <div className="p-6 space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <StatCard
             title="Available to Withdraw"
-            value={`GH₵ ${stats.availableToWithdraw.toFixed(2)}`}
+            value={formatCurrency(totals.availableToWithdraw)}
             icon={DollarSign}
             iconBgColor="bg-primary/10"
           />
           <StatCard
             title="Held securely"
-            value={`GH₵ ${stats.heldSecurely.toFixed(2)}`}
+            value={formatCurrency(totals.heldSecurely)}
             icon={Clock}
             iconBgColor="bg-secondary-accent/20"
           />
           <StatCard
             title="Total Earned This Month"
-            value={`GH₵ ${stats.totalEarnedThisMonth.toFixed(2)}`}
+            value={formatCurrency(totals.earnedThisMonth)}
             icon={TrendingUp}
-            trend={{ 
-              value: stats.totalEarnedThisMonth > 0 ? "This month" : "No earnings yet", 
-              isPositive: stats.totalEarnedThisMonth > 0 
+            trend={{
+              value:
+                totals.earnedThisMonth > 0 ? "This month" : "No earnings yet",
+              isPositive: totals.earnedThisMonth > 0,
             }}
           />
         </div>
 
-        {/* Earnings History */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Earnings History</CardTitle>
-              <Button variant="outline" size="sm" disabled>
-                Export
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={earningsHistory.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
               </Button>
             </div>
           </CardHeader>
@@ -278,21 +242,29 @@ export default function SellerPayments() {
                     <TableHead>Booking ID</TableHead>
                     <TableHead>Service</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Payout</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {earningsHistory.map((earning) => (
+                  {earningsHistory.slice(0, 25).map((earning) => (
                     <TableRow key={earning.id}>
                       <TableCell>{earning.date}</TableCell>
-                      <TableCell className="font-medium">{earning.bookingId}</TableCell>
-                      <TableCell>{earning.service}</TableCell>
-                      <TableCell className="font-medium text-primary">
-                        GH₵ {earning.amount.toFixed(2)}
+                      <TableCell className="font-medium">
+                        {earning.bookingId}
                       </TableCell>
+                      <TableCell className="max-w-[18rem] truncate">
+                        {earning.serviceTitle}
+                      </TableCell>
+                      <TableCell className="font-medium text-primary tabular-nums">
+                        {formatCurrency(earning.amount)}
+                      </TableCell>
+                      <TableCell>{earning.paymentMethod}</TableCell>
                       <TableCell>
-                        <span className={`text-sm ${earning.type === "Released" ? "text-green-600" : "text-yellow-600"}`}>
-                          {earning.type}
+                        <span
+                          className={`text-sm ${earning.payoutStatus === "Paid out" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}
+                        >
+                          {earning.payoutStatus}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -303,13 +275,12 @@ export default function SellerPayments() {
           </CardContent>
         </Card>
 
-        {/* Funds held securely until release */}
         <Card>
           <CardHeader>
             <CardTitle>Funds held securely</CardTitle>
           </CardHeader>
           <CardContent>
-            {secureHoldItems.length === 0 ? (
+            {secureHold.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 No funds held securely right now
               </p>
@@ -325,17 +296,61 @@ export default function SellerPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {secureHoldItems.map((item) => (
-                    <TableRow key={item.bookingId}>
-                      <TableCell className="font-medium">{item.bookingId}</TableCell>
-                      <TableCell>{item.buyer}</TableCell>
+                  {secureHold.map((item) => (
+                    <TableRow key={item.id}>
                       <TableCell className="font-medium">
-                        GH₵ {item.amount.toFixed(2)}
+                        {item.bookingId}
+                      </TableCell>
+                      <TableCell>{item.buyerName}</TableCell>
+                      <TableCell className="font-medium tabular-nums">
+                        {formatCurrency(item.amount)}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-green-600">{item.status}</span>
+                        <span className="text-sm text-emerald-700 dark:text-emerald-400">
+                          {item.status}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{item.expectedRelease}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.expectedRelease}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue by service</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {perService.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No released revenue to break down yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Service</TableHead>
+                    <TableHead className="text-right">Completed</TableHead>
+                    <TableHead className="text-right">Total released</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {perService.map((row) => (
+                    <TableRow key={row.serviceId}>
+                      <TableCell className="font-medium max-w-[20rem] truncate">
+                        {row.serviceTitle}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.completedCount}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCurrency(row.released)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

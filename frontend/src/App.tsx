@@ -18,6 +18,7 @@ import SetUpService from "./pages/SetUpService";
 import ListService from "./pages/ListService";
 import NotFound from "./pages/NotFound";
 import SellerDashboard from "./pages/seller/SellerDashboard";
+import SellerInsights from "./pages/seller/SellerInsights";
 import SellerServices from "./pages/seller/SellerServices";
 import SellerBookings from "./pages/seller/SellerBookings";
 import SellerPayments from "./pages/seller/SellerPayments";
@@ -76,6 +77,7 @@ const App = () => (
             {/* Protected: seller dashboard */}
             <Route path="/seller" element={<ProtectedRoute><SellerDashboardLayout /></ProtectedRoute>}>
               <Route path="dashboard" element={<SellerDashboard />} />
+              <Route path="insights" element={<SellerInsights />} />
               <Route path="services" element={<SellerServices />} />
               <Route path="bookings" element={<SellerBookings />} />
               <Route path="payments" element={<SellerPayments />} />

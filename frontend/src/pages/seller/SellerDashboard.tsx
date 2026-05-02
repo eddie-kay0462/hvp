@@ -1,219 +1,187 @@
-import { useEffect, useState } from "react";
-import { Package, Calendar, TrendingUp, DollarSign, Loader2 } from "lucide-react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Eye,
+  ImageOff,
+  Loader2,
+  MessageSquareWarning,
+  PauseCircle,
+  Receipt,
+  Star,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useSellerInsights } from "@/hooks/useSellerInsights";
+import {
+  formatCurrency,
+  formatHours,
+  formatPercent,
+} from "@/lib/sellerMetrics";
 
-interface Booking {
-  id: string;
-  buyer_id: string;
-  service_id: string;
-  date: string;
-  time: string;
-  status: string;
-  created_at: string;
-  buyer?: {
-    first_name: string | null;
-    last_name: string | null;
-  };
-  service?: {
-    title: string;
-  };
+interface InboxItem {
+  key: string;
+  label: string;
+  count: number;
+  href: string;
+  icon: typeof Calendar;
+  tone: "default" | "primary" | "warning" | "success";
 }
 
-const statusColors: Record<string, string> = {
+const toneClasses: Record<InboxItem["tone"], string> = {
+  default: "bg-muted text-foreground",
+  primary: "bg-primary/10 text-primary",
+  warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  success: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+};
+
+interface KpiCardProps {
+  label: string;
+  value: string;
+  caption?: string;
+  icon: typeof Calendar;
+}
+
+function KpiCard({ label, value, caption, icon: Icon }: KpiCardProps) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {label}
+            </p>
+            <p className="mt-2 text-2xl font-bold text-foreground tabular-nums truncate">
+              {value}
+            </p>
+            {caption && (
+              <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+            )}
+          </div>
+          <div className="rounded-lg bg-muted p-2.5 shrink-0">
+            <Icon className="h-5 w-5 text-foreground" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const statusBadgeVariants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   pending: "default",
   accepted: "secondary",
   in_progress: "secondary",
+  delivered: "default",
   completed: "outline",
+  cancelled: "destructive",
 };
 
 export default function SellerDashboard() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [sellerName, setSellerName] = useState("Seller");
-  const [stats, setStats] = useState({
-    activeServices: 0,
-    newBookings: 0,
-    inProgressBookings: 0,
-    earningsThisMonth: 0,
-  });
-  const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
-  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
+  const { loading, data, metrics } = useSellerInsights();
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
+  const inboxItems = useMemo<InboxItem[]>(() => {
+    const a = metrics.actionInbox;
+    return [
+      {
+        key: "pending",
+        label: "Pending acceptance",
+        count: a.pendingAcceptance,
+        href: "/seller/bookings?status=new",
+        icon: AlertCircle,
+        tone: "primary",
+      },
+      {
+        key: "paid",
+        label: "Paid — start work",
+        count: a.paidNotStarted,
+        href: "/seller/bookings?status=in_progress",
+        icon: TrendingUp,
+        tone: "warning",
+      },
+      {
+        key: "delivered",
+        label: "Delivered — awaiting buyer",
+        count: a.deliveredAwaitingBuyer,
+        href: "/seller/bookings?status=in_progress",
+        icon: CheckCircle2,
+        tone: "success",
+      },
+      {
+        key: "momo",
+        label: "MoMo proof submitted",
+        count: a.momoProofSubmitted,
+        href: "/seller/bookings",
+        icon: Receipt,
+        tone: "default",
+      },
+      {
+        key: "payout",
+        label: "Awaiting payout",
+        count: a.awaitingPayout,
+        href: "/seller/payments",
+        icon: Wallet,
+        tone: "default",
+      },
+    ];
+  }, [metrics.actionInbox]);
+
+  const reviewCandidates = useMemo(() => {
+    return metrics.reviewCandidates.slice(0, 4).map((b) => {
+      const buyer = data.buyersById[b.buyer_id];
+      const buyerName =
+        [buyer?.first_name, buyer?.last_name].filter(Boolean).join(" ") ||
+        "Buyer";
+      const service = data.servicesById[b.service_id];
+      return {
+        id: b.id,
+        buyerName,
+        serviceTitle: service?.title || "Service",
+        bookingUrl: `${window.location.origin}/booking/${b.id}`,
+      };
+    });
+  }, [metrics.reviewCandidates, data.buyersById, data.servicesById]);
+
+  const agendaByDay = useMemo(() => {
+    const groups = new Map<string, typeof metrics.agendaNext7>();
+    for (const item of metrics.agendaNext7) {
+      const key = item.startsAt.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
     }
-  }, [user]);
+    return Array.from(groups.entries());
+  }, [metrics.agendaNext7]);
 
-  const fetchDashboardData = async () => {
-    if (!user) return;
+  const greetingName = data.sellerName || "there";
 
+  const handleCopyLink = async (url: string) => {
     try {
-      setLoading(true);
-
-      // Fetch seller profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        const name = profile.first_name && profile.last_name
-          ? `${profile.first_name} ${profile.last_name}`
-          : profile.first_name || profile.last_name || "Seller";
-        setSellerName(name);
-      }
-
-      // Fetch seller's services
-      const { data: services } = await supabase
-        .from('services')
-        .select('id, is_active')
-        .eq('user_id', user.id);
-
-      const activeServices = services?.filter(s => s.is_active) || [];
-      const serviceIds = services?.map(s => s.id) || [];
-
-      // Fetch bookings for seller's services
-      const { data: bookingsData } = serviceIds.length > 0
-        ? await supabase
-            .from('bookings')
-            .select(`
-              id,
-              buyer_id,
-              service_id,
-              date,
-              time,
-              status,
-              payment_status,
-              payment_amount,
-              created_at
-            `)
-            .in('service_id', serviceIds)
-            .order('created_at', { ascending: false })
-        : { data: [] };
-
-      // Fetch buyer profiles
-      const buyerIds = [...new Set((bookingsData || []).map(b => b.buyer_id))];
-      const { data: buyers } = buyerIds.length > 0
-        ? await supabase
-            .from('profiles')
-            .select('id, first_name, last_name')
-            .in('id', buyerIds)
-        : { data: [] };
-
-      const buyersMap: Record<string, any> = {};
-      buyers?.forEach(buyer => {
-        buyersMap[buyer.id] = buyer;
-      });
-
-      // Fetch service titles
-      const { data: servicesData } = serviceIds.length > 0
-        ? await supabase
-            .from('services')
-            .select('id, title')
-            .in('id', serviceIds)
-        : { data: [] };
-
-      const servicesMap: Record<string, any> = {};
-      servicesData?.forEach(service => {
-        servicesMap[service.id] = service;
-      });
-
-      // Map bookings with buyer and service info
-      const mappedBookings: Booking[] = (bookingsData || []).map((booking: any) => ({
-        ...booking,
-        buyer: buyersMap[booking.buyer_id],
-        service: servicesMap[booking.service_id],
-      }));
-
-      // Calculate stats
-      const newBookings = mappedBookings.filter(b => b.status === 'pending' || b.status === 'accepted').length;
-      const inProgressBookings = mappedBookings.filter(b => b.status === 'in_progress').length;
-
-      // Calculate earnings from released payments this month
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const releasedThisMonth = mappedBookings.filter(b => {
-        // Only count bookings where payment has been released
-        if ((b as any).payment_status !== 'released') return false;
-        const bookingDate = new Date(b.created_at);
-        return bookingDate >= startOfMonth;
-      });
-
-      // Get service prices for released bookings
-      const releasedServiceIds = releasedThisMonth.map(b => b.service_id);
-      const { data: releasedServices } = releasedServiceIds.length > 0
-        ? await supabase
-            .from('services')
-            .select('id, default_price')
-            .in('id', releasedServiceIds)
-        : { data: [] };
-
-      const releasedServicesMap: Record<string, any> = {};
-      releasedServices?.forEach(service => {
-        releasedServicesMap[service.id] = service;
-      });
-
-      const earningsThisMonth = releasedThisMonth.reduce((sum, booking) => {
-        const service = releasedServicesMap[booking.service_id];
-        // Use payment_amount if available, otherwise fall back to service default_price
-        const amount = (booking as any).payment_amount || service?.default_price || 0;
-        return sum + amount;
-      }, 0);
-
-      setStats({
-        activeServices: activeServices.length,
-        newBookings,
-        inProgressBookings,
-        earningsThisMonth,
-      });
-
-      // Set recent bookings (last 3)
-      setRecentBookings(mappedBookings.slice(0, 3));
-
-      // Set upcoming bookings (pending/accepted with future dates)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const upcoming = mappedBookings
-        .filter(b => {
-          const bookingDate = new Date(b.date);
-          bookingDate.setHours(0, 0, 0, 0);
-          return (b.status === 'pending' || b.status === 'accepted' || b.status === 'in_progress') &&
-                 bookingDate >= today;
-        })
-        .slice(0, 2);
-      setUpcomingBookings(upcoming);
-
-    } catch (error: any) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+      await navigator.clipboard.writeText(url);
+      toast.success("Booking link copied");
+    } catch {
+      toast.error("Could not copy link");
     }
-  };
-
-  const getBuyerName = (booking: Booking) => {
-    if (booking.buyer?.first_name && booking.buyer?.last_name) {
-      return `${booking.buyer.first_name} ${booking.buyer.last_name}`;
-    }
-    return booking.buyer?.first_name || booking.buyer?.last_name || 'Unknown';
   };
 
   if (loading) {
     return (
       <>
-        <DashboardHeader 
-          title="Loading..." 
+        <DashboardHeader
+          title="Loading..."
           subtitle="Fetching your dashboard data"
         />
         <div className="p-6 flex items-center justify-center">
@@ -225,126 +193,278 @@ export default function SellerDashboard() {
 
   return (
     <>
-      <DashboardHeader 
-        title={`Hi, ${sellerName}`}
-        subtitle="Here's your seller overview and recent activity"
+      <DashboardHeader
+        title={`Hi, ${greetingName}`}
+        subtitle="What needs your attention and how things are going."
       />
 
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <StatCard
-            title="Active Services"
-            value={stats.activeServices}
-            icon={Package}
-            trend={{ value: `${stats.activeServices} listed`, isPositive: true }}
+      <div className="p-4 md:p-6 space-y-6">
+        <section
+          aria-label="Key metrics"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4"
+        >
+          <KpiCard
+            label="Earnings (this month)"
+            value={formatCurrency(metrics.earningsThisMonth)}
+            caption="Released payments only"
+            icon={Wallet}
           />
-          <StatCard
-            title="New Booking Requests"
-            value={stats.newBookings}
+          <KpiCard
+            label="Bookings (this month)"
+            value={metrics.bookingsThisMonth.toString()}
+            caption="New bookings created"
             icon={Calendar}
-            trend={{ value: `${stats.newBookings} pending`, isPositive: stats.newBookings > 0 }}
           />
-          <StatCard
-            title="In-Progress Bookings"
-            value={stats.inProgressBookings}
-            icon={TrendingUp}
-            iconBgColor="bg-secondary-accent/20"
+          <KpiCard
+            label="Avg rating"
+            value={
+              metrics.avgRating.count > 0
+                ? metrics.avgRating.average.toFixed(1)
+                : "—"
+            }
+            caption={
+              metrics.avgRating.count > 0
+                ? `${metrics.avgRating.count} review${metrics.avgRating.count === 1 ? "" : "s"}`
+                : "No reviews yet"
+            }
+            icon={Star}
           />
-          <StatCard
-            title="Earnings This Month"
-            value={`GH₵ ${stats.earningsThisMonth.toFixed(2)}`}
-            icon={DollarSign}
-            trend={{ value: "This month", isPositive: stats.earningsThisMonth > 0 }}
-            iconBgColor="bg-primary/10"
+          <KpiCard
+            label="Conversion (30d)"
+            value={
+              metrics.conversion30d.views > 0
+                ? formatPercent(metrics.conversion30d.rate, 1)
+                : "—"
+            }
+            caption={`${metrics.conversion30d.views} views → ${metrics.conversion30d.bookings} bookings`}
+            icon={Eye}
           />
-        </div>
+          <KpiCard
+            label="Median response"
+            value={formatHours(metrics.medianResponseHours)}
+            caption="Time to first action"
+            icon={Clock}
+          />
+        </section>
 
-        {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Recent Bookings */}
           <Card>
-            <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Action inbox</CardTitle>
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm"
+                onClick={() => navigate("/seller/insights")}
+              >
+                View insights
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
             </CardHeader>
-            <CardContent>
-              {recentBookings.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No recent bookings
+            <CardContent className="space-y-2">
+              {inboxItems.every((i) => i.count === 0) ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Nothing waiting on you right now.
                 </p>
               ) : (
-                <>
-                  <div className="space-y-4">
-                    {recentBookings.map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between pb-4 border-b last:border-0">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{getBuyerName(booking)}</p>
-                          <p className="text-sm text-muted-foreground">{booking.service?.title || 'Unknown Service'}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(booking.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Badge variant={statusColors[booking.status] as any}>
-                          {booking.status.replace("_", " ")}
-                        </Badge>
+                inboxItems.map((item) => {
+                  const Icon = item.icon;
+                  const muted = item.count === 0;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => navigate(item.href)}
+                      className="group w-full flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/40 disabled:opacity-60"
+                      disabled={muted}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${toneClasses[item.tone]}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {item.label}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-4"
-                    onClick={() => navigate('/seller/bookings')}
-                  >
-                    View All Bookings
-                  </Button>
-                </>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={muted ? "secondary" : "default"}>
+                          {item.count}
+                        </Badge>
+                        {!muted && (
+                          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </CardContent>
           </Card>
 
-          {/* Upcoming Bookings & Tips */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {upcomingBookings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No upcoming bookings
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {upcomingBookings.map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between pb-4 border-b last:border-0">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{getBuyerName(booking)}</p>
-                          <p className="text-sm text-muted-foreground">{booking.service?.title || 'Unknown Service'}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(booking.date).toLocaleDateString()} at {booking.time}
-                          </p>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Next 7 days</CardTitle>
+              <Button
+                variant="link"
+                className="p-0 h-auto text-sm"
+                onClick={() => navigate("/seller/bookings")}
+              >
+                All bookings
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {agendaByDay.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No bookings scheduled this week.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {agendaByDay.map(([day, items]) => (
+                    <div key={day}>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        {day}
+                      </p>
+                      <div className="space-y-2">
+                        {items.map((item) => {
+                          const buyer = data.buyersById[item.booking.buyer_id];
+                          const buyerName =
+                            [buyer?.first_name, buyer?.last_name]
+                              .filter(Boolean)
+                              .join(" ") || "Buyer";
+                          const time = item.booking.time
+                            ? item.startsAt.toLocaleTimeString("en-US", {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })
+                            : "Anytime";
+                          return (
+                            <button
+                              key={item.booking.id}
+                              onClick={() =>
+                                navigate(`/booking/${item.booking.id}`)
+                              }
+                              className="w-full flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-left hover:border-foreground/20 hover:bg-muted/40 transition-colors"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {item.service?.title || "Service"}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {buyerName} · {time}
+                                </p>
+                              </div>
+                              <Badge
+                                variant={
+                                  statusBadgeVariants[item.booking.status] ||
+                                  "default"
+                                }
+                              >
+                                {item.booking.status.replace("_", " ")}
+                              </Badge>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ask buyers for a review</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {reviewCandidates.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No completed bookings waiting on a review.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {reviewCandidates.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {c.buyerName}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.serviceTitle}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => handleCopyLink(c.bookingUrl)}
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        Copy link
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Service health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {metrics.serviceHealth.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Listings look healthy. Nothing flagged right now.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {metrics.serviceHealth.slice(0, 5).map((issue) => (
+                    <button
+                      key={issue.service.id}
+                      onClick={() => navigate("/seller/services")}
+                      className="w-full flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2.5 text-left hover:border-foreground/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {issue.service.title}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {issue.reasons.map((reason) => {
+                            const Icon = reason.startsWith("No photos")
+                              ? ImageOff
+                              : reason.startsWith("Paused")
+                                ? PauseCircle
+                                : reason.startsWith("Pending review") ||
+                                    reason.startsWith("Rejected")
+                                  ? MessageSquareWarning
+                                  : AlertCircle;
+                            return (
+                              <span
+                                key={reason}
+                                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
+                              >
+                                <Icon className="h-3 w-3" />
+                                {reason}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="bg-accent-light/10 border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-base">Tips to Get More Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Add clear photos to your services</li>
-                  <li>• Respond to requests within 24 hours</li>
-                  <li>• Keep your availability updated</li>
-                  <li>• Ask satisfied clients for reviews</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>

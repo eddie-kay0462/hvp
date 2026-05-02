@@ -117,7 +117,7 @@ export const Testimonials = () => {
 
   if (loading) {
     return (
-      <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
+      <section className="py-12 md:py-20 bg-background border-b border-border">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
             What students say
@@ -135,7 +135,7 @@ export const Testimonials = () => {
   }
 
   return (
-    <section className="py-12 md:py-20 bg-muted/30 border-y border-border">
+    <section className="py-12 md:py-20 bg-background border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-8 md:mb-10">
           What students say
@@ -145,7 +145,7 @@ export const Testimonials = () => {
           {testimonials.map((testimonial) => (
             <article
               key={testimonial.id}
-              className="rounded-xl border border-border bg-white p-6"
+              className="rounded-xl border border-border bg-background p-6"
             >
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (

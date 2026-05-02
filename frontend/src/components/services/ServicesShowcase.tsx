@@ -112,7 +112,7 @@ export function ServicesShowcase({
 
   if (loading) {
     return (
-      <section className="py-12 md:py-16 bg-muted/30 border-y border-border">
+      <section className="py-12 md:py-16 bg-background border-b border-border">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-xl md:text-2xl font-bold mb-6">{title}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -134,12 +134,12 @@ export function ServicesShowcase({
   if (items.length === 0) return null;
 
   return (
-    <section className="py-12 md:py-16 bg-muted/30 border-y border-border">
+    <section className="py-12 md:py-16 bg-background border-b border-border">
       <div className="container mx-auto px-4 md:px-6">
         <h2 className="text-xl md:text-2xl font-bold mb-2">{title}</h2>
         <p className="text-sm text-muted-foreground mb-6 max-w-2xl">
-          Verified hustlers offering custom merch, creative work, and local shipping—priced in
-          Ghana cedis.
+          Printing, design, and delivery listings from verified sellers. Prices in Ghana
+          cedis.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {items.map((s) => (

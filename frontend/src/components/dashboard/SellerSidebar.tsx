@@ -2,6 +2,7 @@ import {
   GaugeCircle,
   Layers,
   CalendarDays,
+  LineChart,
   Wallet,
   UserRound,
   ShieldCheck,
@@ -76,6 +77,7 @@ export const SellerSidebar = () => {
   const navigation = [
     { name: "Marketplace", href: "/", icon: House },
     { name: "Dashboard", href: "/seller/dashboard", icon: GaugeCircle },
+    { name: "Insights", href: "/seller/insights", icon: LineChart },
     { name: "My Services", href: "/seller/services", icon: Layers },
     { name: "Bookings", href: "/seller/bookings", icon: CalendarDays },
     { name: "Payments", href: "/seller/payments", icon: Wallet },
