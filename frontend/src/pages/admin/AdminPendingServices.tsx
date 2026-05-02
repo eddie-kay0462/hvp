@@ -165,23 +165,23 @@ export default function AdminPendingServices() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background px-4 pt-4 md:px-6 md:pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Service Approval Dashboard</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">Service Approval Dashboard</h1>
               <p className="text-muted-foreground">Review and approve pending services</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => navigate('/admin/payments/momo')} className="gap-2">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
+              <Button variant="outline" onClick={() => navigate('/admin/payments/momo')} className="gap-2 w-full sm:w-auto justify-center">
                 MoMo payments
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate('/services')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 w-full sm:w-auto justify-center"
               >
                 <Store className="h-4 w-4" />
                 Back to Market
@@ -250,16 +250,16 @@ export default function AdminPendingServices() {
             {services.map((service) => (
               <Card key={service.id}>
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-1">{service.title}</CardTitle>
-                      <CardDescription className="flex items-center gap-4 text-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg sm:text-xl mb-1">{service.title}</CardTitle>
+                      <CardDescription className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 text-sm">
                         <span>By: {service.profiles?.first_name} {service.profiles?.last_name}</span>
-                        {service.seller_email && <span>({service.seller_email})</span>}
+                        {service.seller_email && <span className="break-all">({service.seller_email})</span>}
                         {service.profiles?.phone && <span>📞 {service.profiles.phone}</span>}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 shrink-0 w-fit">
                       <Clock className="h-3 w-3 mr-1" />
                       Pending
                     </Badge>
@@ -273,7 +273,7 @@ export default function AdminPendingServices() {
                       <p className="text-sm">{service.description}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground">Category</p>
                         <p className="text-sm font-medium">{service.category}</p>
@@ -318,11 +318,11 @@ export default function AdminPendingServices() {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 border-t">
                       <Button
                         onClick={() => handleApprove(service.id)}
                         disabled={actionLoading === service.id}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-green-600 hover:bg-green-700 min-h-10 w-full sm:w-auto justify-center"
                       >
                         {actionLoading === service.id ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -335,6 +335,7 @@ export default function AdminPendingServices() {
                         onClick={() => openRejectDialog(service)}
                         disabled={actionLoading === service.id}
                         variant="destructive"
+                        className="min-h-10 w-full sm:w-auto justify-center"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
                         Reject
@@ -342,6 +343,7 @@ export default function AdminPendingServices() {
                       <Button
                         onClick={() => navigate(`/service/${service.id}`)}
                         variant="outline"
+                        className="min-h-10 w-full sm:w-auto justify-center"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details

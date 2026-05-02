@@ -257,7 +257,7 @@ export default function SellerInsights() {
               <CardTitle className="text-base">Reliability</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <MetricTile
                   label="Acceptance rate"
                   value={formatPercent(scoped.acceptance, 0)}
@@ -309,40 +309,85 @@ export default function SellerInsights() {
                 No services to rank yet.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead className="text-right">Views</TableHead>
-                    <TableHead className="text-right">Bookings</TableHead>
-                    <TableHead className="text-right">Conversion</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service</TableHead>
+                        <TableHead className="text-right">Views</TableHead>
+                        <TableHead className="text-right">Bookings</TableHead>
+                        <TableHead className="text-right">Conversion</TableHead>
+                        <TableHead className="text-right">Revenue</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scoped.top.slice(0, 8).map((row) => (
+                        <TableRow key={row.service.id}>
+                          <TableCell className="font-medium max-w-[16rem] truncate">
+                            {row.service.title}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.views}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.bookings}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.views > 0
+                              ? formatPercent(row.conversion, 1)
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(row.revenue)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-3">
                   {scoped.top.slice(0, 8).map((row) => (
-                    <TableRow key={row.service.id}>
-                      <TableCell className="font-medium max-w-[16rem] truncate">
-                        {row.service.title}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.views}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.bookings}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.views > 0
-                          ? formatPercent(row.conversion, 1)
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatCurrency(row.revenue)}
-                      </TableCell>
-                    </TableRow>
+                    <Card key={row.service.id}>
+                      <CardContent className="p-4 space-y-3 text-sm">
+                        <p className="font-medium text-foreground leading-snug">
+                          {row.service.title}
+                        </p>
+                        <dl className="space-y-2 text-xs">
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Views</dt>
+                            <dd className="tabular-nums font-medium">
+                              {row.views}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">Bookings</dt>
+                            <dd className="tabular-nums font-medium">
+                              {row.bookings}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <dt className="text-muted-foreground">
+                              Conversion
+                            </dt>
+                            <dd className="tabular-nums font-medium">
+                              {row.views > 0
+                                ? formatPercent(row.conversion, 1)
+                                : "—"}
+                            </dd>
+                          </div>
+                          <div className="flex justify-between gap-3 border-t border-border pt-2 mt-1">
+                            <dt className="text-muted-foreground">Revenue</dt>
+                            <dd className="tabular-nums font-semibold text-primary">
+                              {formatCurrency(row.revenue)}
+                            </dd>
+                          </div>
+                        </dl>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

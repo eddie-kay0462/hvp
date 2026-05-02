@@ -342,7 +342,7 @@ export default function SellerServices() {
         subtitle="Manage your service listings and availability"
       />
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {/* Info Alert for Pending Services */}
         {services.some(s => s.is_verified === false) && (
           <Alert className="mb-6 border-orange-200 bg-orange-50">
@@ -354,7 +354,7 @@ export default function SellerServices() {
           </Alert>
         )}
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
           <div>
             <h2 className="text-lg font-semibold text-foreground">All Services</h2>
             <p className="text-sm text-muted-foreground">
@@ -369,12 +369,12 @@ export default function SellerServices() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Add New Service
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[min(90dvh,90vh)] w-[calc(100vw-2rem)] max-w-2xl sm:w-full">
               <DialogHeader>
                 <DialogTitle>Create New Service</DialogTitle>
                 <DialogDescription>
@@ -422,7 +422,7 @@ export default function SellerServices() {
                     </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="default-price">Default Price (GHS) *</Label>
                     <Input
@@ -448,7 +448,7 @@ export default function SellerServices() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="express-price">Express Price (GHS) - Optional</Label>
                   <Input
@@ -491,7 +491,7 @@ export default function SellerServices() {
                   <div className="space-y-4">
                     {/* Image Preview Grid */}
                     {imageUrls.length > 0 && (
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {imageUrls.map((url, index) => (
                           <div key={index} className="relative group">
                             <img
@@ -594,35 +594,110 @@ export default function SellerServices() {
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service Title</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Default Price</TableHead>
-                    <TableHead>Express Price</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service Title</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Default Price</TableHead>
+                        <TableHead>Express Price</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayServices.map((service) => (
+                        <TableRow key={service.id}>
+                          <TableCell className="font-medium">{service.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {formatCategoryLabel(service.category)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {service.default_price ? `GH₵ ${service.default_price.toFixed(2)}` : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {service.express_price ? `GH₵ ${service.express_price.toFixed(2)}` : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {service.is_verified === false ? (
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-300">
+                                  ⏳ Pending Review
+                                </Badge>
+                              ) : service.is_verified === true ? (
+                                <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
+                                  ✓ Verified
+                                </Badge>
+                              ) : null}
+                              {service.is_verified && (
+                                <Badge variant={service.is_active ? "default" : "secondary"}>
+                                  {service.is_active ? "Active" : "Paused"}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 shrink-0"
+                                title="Edit service"
+                                onClick={() => handleEditClick(service)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 shrink-0"
+                                onClick={() => handleToggleStatus(service.id)}
+                                title={service.is_active ? "Pause service" : "Activate service"}
+                              >
+                                {service.is_active ? (
+                                  <Pause className="h-4 w-4" />
+                                ) : (
+                                  <Play className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-3 p-3">
                   {displayServices.map((service) => (
-                    <TableRow key={service.id}>
-                      <TableCell className="font-medium">{service.title}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
+                    <Card key={service.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between gap-2 items-start">
+                          <p className="font-medium text-foreground leading-snug">
+                            {service.title}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
                           {formatCategoryLabel(service.category)}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {service.default_price ? `GH₵ ${service.default_price.toFixed(2)}` : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {service.express_price ? `GH₵ ${service.express_price.toFixed(2)}` : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {/* Verification Status */}
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground text-xs block">Default</span>
+                            <span className="tabular-nums font-medium">
+                              {service.default_price ? `GH₵ ${service.default_price.toFixed(2)}` : 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground text-xs block">Express</span>
+                            <span className="tabular-nums font-medium">
+                              {service.express_price ? `GH₵ ${service.express_price.toFixed(2)}` : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
                           {service.is_verified === false ? (
                             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-300">
                               ⏳ Pending Review
@@ -632,50 +707,53 @@ export default function SellerServices() {
                               ✓ Verified
                             </Badge>
                           ) : null}
-                          
-                          {/* Active/Paused Status - only show if verified */}
                           {service.is_verified && (
                             <Badge variant={service.is_active ? "default" : "secondary"}>
                               {service.is_active ? "Active" : "Paused"}
                             </Badge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Edit service"
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 min-h-10"
                             onClick={() => handleEditClick(service)}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
                           </Button>
                           <Button
-                            variant="ghost"
-                            size="icon"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 min-h-10"
                             onClick={() => handleToggleStatus(service.id)}
-                            title={service.is_active ? "Pause service" : "Activate service"}
                           >
                             {service.is_active ? (
-                              <Pause className="h-4 w-4" />
+                              <>
+                                <Pause className="h-4 w-4 mr-2" />
+                                Pause
+                              </>
                             ) : (
-                              <Play className="h-4 w-4" />
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
                             )}
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
         {/* Edit Service Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={handleCloseEditDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[min(90dvh,90vh)] w-[calc(100vw-2rem)] max-w-2xl sm:w-full">
             <DialogHeader>
               <DialogTitle>Edit Service</DialogTitle>
               <DialogDescription>
@@ -723,7 +801,7 @@ export default function SellerServices() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-default-price">Default Price (GHS) *</Label>
                   <Input
@@ -749,7 +827,7 @@ export default function SellerServices() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-express-price">Express Price (GHS) - Optional</Label>
                   <Input
@@ -792,7 +870,7 @@ export default function SellerServices() {
                 <div className="space-y-4">
                   {/* Image Preview Grid */}
                   {imageUrls.length > 0 && (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {imageUrls.map((url, index) => (
                         <div key={index} className="relative group">
                           <img

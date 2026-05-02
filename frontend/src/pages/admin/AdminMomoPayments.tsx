@@ -115,24 +115,24 @@ export default function AdminMomoPayments() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background px-4 pt-4 md:px-6 md:pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
             <Button variant="ghost" className="mb-2 -ml-2 gap-2" onClick={() => navigate("/admin/services/pending")}>
               <ArrowLeft className="h-4 w-4" />
               Service approvals
             </Button>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Smartphone className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex flex-wrap items-center gap-2">
+              <Smartphone className="h-7 w-7 sm:h-8 sm:w-8 shrink-0" />
               Mobile Money verification
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Match MoMo transaction IDs and screenshots against incoming payments, then approve or ask the buyer to
               resubmit.
             </p>
           </div>
-          <Button variant="outline" onClick={() => load()}>
+          <Button variant="outline" onClick={() => load()} className="w-full sm:w-auto shrink-0 min-h-10">
             Refresh
           </Button>
         </div>
@@ -149,7 +149,7 @@ export default function AdminMomoPayments() {
               items.map((row) => (
                 <div
                   key={row.id}
-                  className="border rounded-lg p-4 flex flex-col md:flex-row md:items-start gap-4 md:justify-between"
+                  className="border rounded-lg p-4 flex flex-col md:flex-row md:items-start gap-4 md:justify-between overflow-hidden"
                 >
                   <div className="space-y-1 text-sm min-w-0 flex-1">
                     <p className="font-semibold">{row.service?.title || "Service"}</p>
@@ -185,10 +185,10 @@ export default function AdminMomoPayments() {
                       <p className="text-xs text-destructive">No screenshot URL</p>
                     )}
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
                     <Button
                       size="sm"
-                      className="gap-1"
+                      className="gap-1 min-h-10 w-full sm:w-auto justify-center"
                       disabled={actionLoading === row.id}
                       onClick={() => approve(row.id)}
                     >
@@ -202,7 +202,7 @@ export default function AdminMomoPayments() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gap-1"
+                      className="gap-1 min-h-10 w-full sm:w-auto justify-center"
                       disabled={actionLoading === row.id}
                       onClick={() => openReject(row.id)}
                     >

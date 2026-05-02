@@ -266,7 +266,7 @@ const ListService = () => {
                 <div className="space-y-4">
                   {/* Image Preview Grid */}
                   {imageUrls.length > 0 && (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {imageUrls.map((url, index) => (
                         <div key={index} className="relative group">
                           <img

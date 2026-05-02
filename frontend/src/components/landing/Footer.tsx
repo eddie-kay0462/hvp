@@ -37,7 +37,7 @@ const legal = [
 export const Footer = () => {
   return (
     <footer className="bg-background border-t border-border">
-      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div className="container mx-auto px-4 md:px-6 pt-12 md:pt-16 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-10">
           <div className="col-span-2 space-y-3">
             <h3 className="text-xl font-bold text-primary">Hustle Village</h3>

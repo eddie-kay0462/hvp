@@ -235,42 +235,77 @@ export default function SellerPayments() {
                 No earnings history yet
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Booking ID</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Payout</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Booking ID</TableHead>
+                        <TableHead>Service</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Payout</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {earningsHistory.slice(0, 25).map((earning) => (
+                        <TableRow key={earning.id}>
+                          <TableCell>{earning.date}</TableCell>
+                          <TableCell className="font-medium">
+                            {earning.bookingId}
+                          </TableCell>
+                          <TableCell className="max-w-[18rem] truncate">
+                            {earning.serviceTitle}
+                          </TableCell>
+                          <TableCell className="font-medium text-primary tabular-nums">
+                            {formatCurrency(earning.amount)}
+                          </TableCell>
+                          <TableCell>{earning.paymentMethod}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`text-sm ${earning.payoutStatus === "Paid out" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}
+                            >
+                              {earning.payoutStatus}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-3">
                   {earningsHistory.slice(0, 25).map((earning) => (
-                    <TableRow key={earning.id}>
-                      <TableCell>{earning.date}</TableCell>
-                      <TableCell className="font-medium">
-                        {earning.bookingId}
-                      </TableCell>
-                      <TableCell className="max-w-[18rem] truncate">
-                        {earning.serviceTitle}
-                      </TableCell>
-                      <TableCell className="font-medium text-primary tabular-nums">
-                        {formatCurrency(earning.amount)}
-                      </TableCell>
-                      <TableCell>{earning.paymentMethod}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`text-sm ${earning.payoutStatus === "Paid out" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}
-                        >
-                          {earning.payoutStatus}
-                        </span>
-                      </TableCell>
-                    </TableRow>
+                    <Card key={earning.id}>
+                      <CardContent className="p-4 space-y-2 text-sm">
+                        <div className="flex justify-between gap-2 items-start">
+                          <span className="font-medium text-foreground">
+                            {earning.serviceTitle}
+                          </span>
+                          <span className="font-semibold text-primary tabular-nums shrink-0">
+                            {formatCurrency(earning.amount)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {earning.date} · {earning.bookingId}
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                          <span>{earning.paymentMethod}</span>
+                          <span
+                            className={
+                              earning.payoutStatus === "Paid out"
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {earning.payoutStatus}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -285,38 +320,67 @@ export default function SellerPayments() {
                 No funds held securely right now
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Booking ID</TableHead>
-                    <TableHead>Buyer</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Hold status</TableHead>
-                    <TableHead>Expected Release</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Booking ID</TableHead>
+                        <TableHead>Buyer</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Hold status</TableHead>
+                        <TableHead>Expected Release</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {secureHold.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.bookingId}
+                          </TableCell>
+                          <TableCell>{item.buyerName}</TableCell>
+                          <TableCell className="font-medium tabular-nums">
+                            {formatCurrency(item.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-emerald-700 dark:text-emerald-400">
+                              {item.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.expectedRelease}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-3">
                   {secureHold.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.bookingId}
-                      </TableCell>
-                      <TableCell>{item.buyerName}</TableCell>
-                      <TableCell className="font-medium tabular-nums">
-                        {formatCurrency(item.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-emerald-700 dark:text-emerald-400">
-                          {item.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.expectedRelease}
-                      </TableCell>
-                    </TableRow>
+                    <Card key={item.id}>
+                      <CardContent className="p-4 space-y-2 text-sm">
+                        <div className="flex justify-between gap-2 items-start">
+                          <span className="font-medium">{item.bookingId}</span>
+                          <span className="font-semibold tabular-nums shrink-0">
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {item.buyerName}
+                        </div>
+                        <div className="flex flex-col gap-1 text-xs">
+                          <span className="text-emerald-700 dark:text-emerald-400">
+                            {item.status}
+                          </span>
+                          <span className="text-muted-foreground">
+                            Release: {item.expectedRelease}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -331,30 +395,59 @@ export default function SellerPayments() {
                 No released revenue to break down yet.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead className="text-right">Completed</TableHead>
-                    <TableHead className="text-right">Total released</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service</TableHead>
+                        <TableHead className="text-right">Completed</TableHead>
+                        <TableHead className="text-right">Total released</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {perService.map((row) => (
+                        <TableRow key={row.serviceId}>
+                          <TableCell className="font-medium max-w-[20rem] truncate">
+                            {row.serviceTitle}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.completedCount}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(row.released)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-3">
                   {perService.map((row) => (
-                    <TableRow key={row.serviceId}>
-                      <TableCell className="font-medium max-w-[20rem] truncate">
-                        {row.serviceTitle}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {row.completedCount}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatCurrency(row.released)}
-                      </TableCell>
-                    </TableRow>
+                    <Card key={row.serviceId}>
+                      <CardContent className="p-4 space-y-2 text-sm">
+                        <p className="font-medium text-foreground">
+                          {row.serviceTitle}
+                        </p>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">Completed</span>
+                          <span className="tabular-nums font-medium">
+                            {row.completedCount}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">
+                            Total released
+                          </span>
+                          <span className="tabular-nums font-semibold text-primary">
+                            {formatCurrency(row.released)}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

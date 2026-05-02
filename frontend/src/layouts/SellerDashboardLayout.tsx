@@ -20,7 +20,7 @@ export const SellerDashboardLayout = () => {
   return (
     <div className="h-screen flex w-full bg-background overflow-hidden">
       <SellerSidebar />
-      <main className="min-w-0 flex-1 h-full overflow-y-auto overflow-x-hidden pt-14 lg:pt-0">
+      <main className="min-w-0 flex-1 h-full overflow-y-auto overflow-x-hidden pt-14 pb-safe lg:pt-0">
         <Outlet />
       </main>
     </div>

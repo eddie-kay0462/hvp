@@ -1,5 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Menu, User, LogOut, Package, Calendar, MessageSquare, Shield } from "lucide-react";
+import {
+  Menu,
+  User,
+  LogOut,
+  Package,
+  Calendar,
+  MessageSquare,
+  Shield,
+  LayoutDashboard,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -112,9 +121,18 @@ export const Navbar = () => {
                   )}
                 </Button>
                 {canListServices && (
-                  <Button variant="outline" onClick={() => navigate('/list-service')}>
-                    List a Service
-                  </Button>
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => navigate("/seller/dashboard")}
+                    >
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      My dashboard
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate("/list-service")}>
+                      List a Service
+                    </Button>
+                  </>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -157,10 +175,16 @@ export const Navbar = () => {
                       My Bookings
                     </DropdownMenuItem>
                     {canListServices && (
-                      <DropdownMenuItem onClick={() => navigate('/my-services')}>
-                        <Package className="mr-2 h-4 w-4" />
-                        My Services
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => navigate("/seller/dashboard")}>
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          My dashboard
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate("/seller/services")}>
+                          <Package className="mr-2 h-4 w-4" />
+                          Manage services
+                        </DropdownMenuItem>
+                      </>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
@@ -209,9 +233,29 @@ export const Navbar = () => {
               {user ? (
                 <>
                   {canListServices && (
-                    <Button variant="outline" className="w-full" onClick={() => navigate('/list-service')}>
-                      List a Service
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={() => {
+                          navigate("/seller/dashboard");
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        My dashboard
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          navigate("/list-service");
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        List a Service
+                      </Button>
+                    </div>
                   )}
                   <div className="flex flex-col gap-2 pt-4 border-t border-border">
                     <Button variant="ghost" className="w-full" onClick={() => navigate('/profile')}>
@@ -238,9 +282,13 @@ export const Navbar = () => {
                       My Bookings
                     </Button>
                     {canListServices && (
-                      <Button variant="ghost" className="w-full" onClick={() => navigate('/my-services')}>
+                      <Button
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => navigate("/seller/services")}
+                      >
                         <Package className="mr-2 h-4 w-4" />
-                        My Services
+                        Manage services
                       </Button>
                     )}
                     <Button variant="destructive" className="w-full" onClick={signOut}>
