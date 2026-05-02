@@ -534,11 +534,13 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
           .eq('id', booking.service_id)
           .maybeSingle();
         const { sendMomoPaymentRejectedToBuyer } = await import('./emailService.js');
+        console.log('[email] sending rejection email | buyer_id:', booking.buyer_id);
         const emailResult = await sendMomoPaymentRejectedToBuyer(booking.buyer_id, {
           bookingId,
-          serviceTitle: svc?.title || 'Service',
+          serviceTitle: svc?.title || booking.service?.title || 'Service',
           rejectionReason: note,
         });
+        console.log('[email] rejection result:', JSON.stringify(emailResult));
         return {
           status: 200,
           msg: 'Payment marked as not verified; buyer can submit again',
@@ -606,7 +608,8 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
     const notifyApproval = async (invoiceId) => {
       try {
         const { sendMomoPaymentApprovedToBuyer, sendMomoApprovedToSeller } = await import('./emailService.js');
-        const [buyerResult] = await Promise.allSettled([
+        console.log('[email] sending approval emails | buyer_id:', booking.buyer_id, '| sellerAuthUserId:', sellerAuthUserId);
+        const [buyerResult, sellerResult] = await Promise.allSettled([
           sendMomoPaymentApprovedToBuyer(booking.buyer_id, {
             bookingId,
             serviceTitle,
@@ -621,6 +624,8 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
               })
             : Promise.resolve({ sent: false }),
         ]);
+        console.log('[email] approval buyer result:', JSON.stringify(buyerResult));
+        console.log('[email] approval seller result:', JSON.stringify(sellerResult));
         return buyerResult.status === 'fulfilled' && buyerResult.value?.sent === true;
       } catch (e) {
         console.error('[momo] approval emails failed:', e?.message);

@@ -638,9 +638,10 @@ async function resolveBuyerContact(profileId) {
     return { email: null, name: 'there' };
   }
   const db = supabaseAdmin || supabase;
+  // profiles.id IS the auth user ID — never use a separate user_id column for lookups
   const { data: profile } = await db
     .from('profiles')
-    .select('first_name, last_name, email, user_id')
+    .select('first_name, last_name, email')
     .eq('id', profileId)
     .maybeSingle();
 
@@ -650,11 +651,16 @@ async function resolveBuyerContact(profileId) {
   let email = profile?.email || null;
 
   if (!email && supabaseAdmin) {
-    const authUserId = profile?.user_id || profileId;
-    const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.getUserById(authUserId);
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.getUserById(profileId);
     if (!authErr && authData?.user?.email) {
       email = authData.user.email;
+    } else if (authErr) {
+      console.error('[email] resolveBuyerContact getUserById failed:', authErr.message, '| profileId:', profileId);
     }
+  }
+
+  if (!email) {
+    console.warn('[email] resolveBuyerContact: no email found for profileId', profileId);
   }
 
   return { email, name };
