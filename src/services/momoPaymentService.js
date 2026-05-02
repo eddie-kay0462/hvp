@@ -372,6 +372,115 @@ export async function listPendingMomoPaymentsAdmin() {
   }
 }
 
+export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
+  try {
+    if (!bookingId) {
+      return { status: 400, msg: 'Booking ID is required', data: null };
+    }
+
+    const normalizedTxn = (payoutTransactionId || '').trim();
+    if (!normalizedTxn || normalizedTxn.length < 4) {
+      return { status: 400, msg: 'Please enter a valid payout transaction ID', data: null };
+    }
+
+    if (!file?.buffer || !file.mimetype) {
+      return { status: 400, msg: 'A payout receipt screenshot is required', data: null };
+    }
+
+    if (!ALLOWED_MIME.has(file.mimetype)) {
+      return { status: 400, msg: 'Screenshot must be JPG, PNG, or WebP', data: null };
+    }
+
+    if (file.size > MAX_PROOF_BYTES) {
+      return { status: 400, msg: 'Screenshot must be 5MB or smaller', data: null };
+    }
+
+    if (!supabaseAdmin) {
+      return { status: 503, msg: 'Payout upload requires server configuration (SUPABASE_SERVICE_ROLE_KEY).', data: null };
+    }
+
+    const db = supabaseAdmin;
+    const { data: booking, error: bookingError } = await db
+      .from('bookings')
+      .select('id, buyer_id, service_id, payment_amount, payment_status, payout_status, service:services(user_id, title)')
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError || !booking) {
+      return { status: 404, msg: 'Booking not found', data: null };
+    }
+
+    if (booking.payment_status !== 'released') {
+      return { status: 400, msg: 'Payout can only be confirmed for bookings with released payment', data: null };
+    }
+
+    if (booking.payout_status === 'sent') {
+      return { status: 400, msg: 'Payout has already been confirmed for this booking', data: null };
+    }
+
+    const bucket = process.env.MOMO_PROOF_BUCKET || 'payment-proofs';
+    const ext = extFromMime(file.mimetype);
+    const objectPath = `payouts/${bookingId}/${Date.now()}-${randomBytes(6).toString('hex')}${ext}`;
+
+    const { error: upErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(objectPath, file.buffer, { contentType: file.mimetype, upsert: false });
+
+    if (upErr) {
+      console.error('Payout proof upload error:', upErr);
+      return { status: 502, msg: `Could not upload payout screenshot: ${upErr.message}`, data: null };
+    }
+
+    const { data: signedData, error: signErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(objectPath, 60 * 60 * 24 * 365);
+
+    if (signErr || !signedData?.signedUrl) {
+      console.error('Payout signed URL error:', signErr);
+      return { status: 502, msg: 'File uploaded but could not generate view URL.', data: null };
+    }
+
+    const { error: updErr } = await db
+      .from('bookings')
+      .update({
+        payout_status: 'sent',
+        payout_transaction_id: normalizedTxn,
+        payout_proof_url: signedData.signedUrl,
+        payout_confirmed_at: new Date().toISOString(),
+      })
+      .eq('id', bookingId);
+
+    if (updErr) {
+      console.error('Booking payout update error:', updErr);
+      return { status: 500, msg: 'Failed to record payout', data: null };
+    }
+
+    const sellerAuthUserId = booking.service?.user_id;
+    const serviceTitle = booking.service?.title || 'Service';
+
+    try {
+      const { sendPayoutSentToProvider } = await import('./emailService.js');
+      sendPayoutSentToProvider(sellerAuthUserId, {
+        bookingId,
+        serviceTitle,
+        amountGhs: booking.payment_amount,
+        payoutTxnId: normalizedTxn,
+      }).catch((e) => console.error('[email] payout sent notify failed:', e.message));
+    } catch (emailErr) {
+      console.error('[momo] payout email import failed:', emailErr?.message);
+    }
+
+    return {
+      status: 200,
+      msg: 'Payout confirmed. Provider has been notified.',
+      data: { booking_id: bookingId, payout_status: 'sent' },
+    };
+  } catch (e) {
+    console.error('adminConfirmPayout error:', e);
+    return { status: 500, msg: 'Failed to confirm payout', data: null };
+  }
+}
+
 export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, rejectionReason) {
   try {
     if (!bookingId) {

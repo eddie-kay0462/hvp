@@ -65,6 +65,10 @@ interface Booking {
   payment_proof_url?: string | null;
   momo_submitted_at?: string | null;
   payment_review_note?: string | null;
+  payout_status?: string | null;
+  payout_transaction_id?: string | null;
+  payout_proof_url?: string | null;
+  payout_confirmed_at?: string | null;
   service?: {
     id: string;
     title: string;
@@ -140,6 +144,11 @@ export default function BookingDetail() {
   const [momoTxnId, setMomoTxnId] = useState("");
   const [momoFile, setMomoFile] = useState<File | null>(null);
   const [submittingMomo, setSubmittingMomo] = useState(false);
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [payoutTxnId, setPayoutTxnId] = useState("");
+  const [payoutFile, setPayoutFile] = useState<File | null>(null);
+  const [submittingPayout, setSubmittingPayout] = useState(false);
+  const [sellerPhone, setSellerPhone] = useState<string | null>(null);
 
   useEffect(() => {
     if (id && user) {
@@ -214,10 +223,13 @@ export default function BookingDetail() {
         if (serviceData?.user_id) {
           const { data: seller } = await supabase
             .from("profiles")
-            .select("id, first_name, last_name, profile_pic")
+            .select("id, first_name, last_name, profile_pic, phone")
             .eq("id", serviceData.user_id)
             .single();
           sellerData = seller;
+          if ((seller as any)?.phone) {
+            setSellerPhone((seller as any).phone);
+          }
         }
       }
 
@@ -397,9 +409,10 @@ export default function BookingDetail() {
     return person.first_name || person.last_name || "Unknown";
   };
 
-  // Check if current user is buyer or seller
+  // Check if current user is buyer, seller, or admin
   const isBuyer = booking?.buyer_id === user?.id;
   const isSeller = booking?.service?.user_id === user?.id || booking?.seller?.id === user?.id;
+  const isAdmin = (user as any)?.role === 'admin';
 
   if (loading) {
     return (
@@ -1060,6 +1073,171 @@ export default function BookingDetail() {
                             </Button>
                           )}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Admin Payout Panel */}
+                  {isAdmin && booking.payment_status === "released" && (
+                    <div className="space-y-3">
+                      {booking.payout_status === "sent" ? (
+                        <div className="p-4 rounded-md border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 text-center">
+                          <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                            Payout Sent
+                          </p>
+                          {booking.payout_transaction_id && (
+                            <p className="text-xs text-green-700 dark:text-green-300 mt-1 font-mono">
+                              Txn: {booking.payout_transaction_id}
+                            </p>
+                          )}
+                          {booking.payout_confirmed_at && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              {new Date(booking.payout_confirmed_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="p-4 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
+                              Admin: Payout Required
+                            </p>
+                            <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
+                              <div className="flex justify-between gap-2">
+                                <span className="text-muted-foreground">Provider</span>
+                                <span className="font-medium">{getUserName(booking.seller)}</span>
+                              </div>
+                              <div className="flex justify-between gap-2 items-center">
+                                <span className="text-muted-foreground">MoMo number</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono font-medium">
+                                    {sellerPhone || "Not on file"}
+                                  </span>
+                                  {sellerPhone && (
+                                    <button
+                                      type="button"
+                                      className="ml-1 p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900"
+                                      onClick={() => {
+                                        void navigator.clipboard.writeText(sellerPhone);
+                                        toast.success("Phone number copied");
+                                      }}
+                                    >
+                                      <Copy className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex justify-between gap-2">
+                                <span className="text-muted-foreground">Amount</span>
+                                <span className="font-bold text-green-700 dark:text-green-400">
+                                  GH₵ {Number(booking.payment_amount ?? 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            className="w-full bg-violet-600 hover:bg-violet-700"
+                            onClick={() => {
+                              setPayoutTxnId("");
+                              setPayoutFile(null);
+                              setPayoutDialogOpen(true);
+                            }}
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            I've sent the payment
+                          </Button>
+
+                          <Dialog open={payoutDialogOpen} onOpenChange={setPayoutDialogOpen}>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Confirm Payout to Provider</DialogTitle>
+                                <DialogDescription>
+                                  Enter the MoMo transaction ID from your payment to{" "}
+                                  {getUserName(booking.seller)} and attach your receipt screenshot.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                  <Label htmlFor="payout-txn">Your MoMo transaction ID</Label>
+                                  <Input
+                                    id="payout-txn"
+                                    value={payoutTxnId}
+                                    onChange={(e) => setPayoutTxnId(e.target.value)}
+                                    placeholder="Transaction ID from your confirmation"
+                                    autoComplete="off"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="payout-proof">Receipt screenshot</Label>
+                                  <Input
+                                    id="payout-proof"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={(e) => setPayoutFile(e.target.files?.[0] || null)}
+                                  />
+                                  <p className="text-[11px] text-muted-foreground">JPG, PNG, or WebP · max 5MB</p>
+                                </div>
+                              </div>
+                              <DialogFooter className="gap-2 sm:gap-0">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setPayoutDialogOpen(false)}
+                                  disabled={submittingPayout}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  disabled={submittingPayout}
+                                  className="bg-violet-600 hover:bg-violet-700"
+                                  onClick={async () => {
+                                    const tid = payoutTxnId.trim();
+                                    if (tid.length < 4) {
+                                      toast.error("Enter the transaction ID from your MoMo receipt");
+                                      return;
+                                    }
+                                    if (!payoutFile) {
+                                      toast.error("Attach a screenshot of your payment receipt");
+                                      return;
+                                    }
+                                    try {
+                                      setSubmittingPayout(true);
+                                      const fd = new FormData();
+                                      fd.append("payoutTransactionId", tid);
+                                      fd.append("proof", payoutFile);
+                                      const res = (await (api.admin as any).confirmPayout(booking.id, fd)) as {
+                                        status?: number;
+                                        msg?: string;
+                                      };
+                                      if (res.status === 200) {
+                                        toast.success(res.msg || "Payout confirmed");
+                                        setPayoutDialogOpen(false);
+                                        await fetchBookingDetails();
+                                      } else {
+                                        toast.error(res.msg || "Failed to confirm payout");
+                                      }
+                                    } catch (e: any) {
+                                      toast.error(e?.message || "Failed to confirm payout");
+                                    } finally {
+                                      setSubmittingPayout(false);
+                                    }
+                                  }}
+                                >
+                                  {submittingPayout ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    "Confirm payout"
+                                  )}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </>
                       )}
                     </div>
                   )}

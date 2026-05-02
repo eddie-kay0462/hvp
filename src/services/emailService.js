@@ -564,7 +564,28 @@ Send the payment via MoMo to the provider's number above.
 };
 
 // ---------------------------------------------------------------------------
-// 10. Booking cancelled → notify the other party
+// 10. Payout sent → notify provider
+// ---------------------------------------------------------------------------
+
+export const sendPayoutSentToProvider = async (sellerAuthUserId, { bookingId, serviceTitle, amountGhs, payoutTxnId }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#059669;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#059669;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.box{background:white;padding:20px;border-radius:8px;margin:20px 0;border:2px solid #059669}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Payment Sent!</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p>Great news — Hustle Village has sent your payment for <strong>${escapeHtml(serviceTitle || 'your booking')}</strong>.</p><div class="box"><p><strong>Amount:</strong> GH&#8373; ${escapeHtml(amt)}</p><p><strong>MoMo Transaction ID:</strong> <code>${escapeHtml(payoutTxnId || '—')}</code></p><p><strong>Service:</strong> ${escapeHtml(serviceTitle || '—')}</p></div><p>Please check your Mobile Money account to confirm you received the funds. If you have any issues, contact us.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">View Booking</a></p><p>Thank you for your great work on Hustle Village!</p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\nHustle Village has sent your payment of GH₵ ${amt} for "${serviceTitle || 'your booking'}".\n\nMoMo Transaction ID: ${payoutTxnId || '—'}\n\nPlease check your Mobile Money account.\n\nView booking: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Your payment has been sent — GH₵ ${amt}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendPayoutSentToProvider failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 11. Booking cancelled → notify the other party
 // ---------------------------------------------------------------------------
 
 export const sendBookingCancelledToSeller = async (sellerAuthUserId, { serviceTitle, buyerName }) => {

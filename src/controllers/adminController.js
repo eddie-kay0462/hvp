@@ -2,6 +2,7 @@ import * as adminService from '../services/adminService.js';
 import {
   listPendingMomoPaymentsAdmin,
   adminVerifyMomoPayment,
+  adminConfirmPayout,
 } from '../services/momoPaymentService.js';
 
 export const getPendingServices = async (_req) => {
@@ -170,5 +171,20 @@ export const verifyMomoPayment = async (req) => {
   } catch (error) {
     console.error("Verify MoMo payment error:", error);
     return { status: 500, msg: "Failed to verify payment", data: null };
+  }
+};
+
+export const confirmPayout = async (req) => {
+  try {
+    const { bookingId } = req.params;
+    const { payoutTransactionId } = req.body || {};
+    const file = req.file;
+    if (!bookingId) {
+      return { status: 400, msg: "Booking ID is required", data: null };
+    }
+    return await adminConfirmPayout(bookingId, payoutTransactionId, file);
+  } catch (error) {
+    console.error("Confirm payout error:", error);
+    return { status: 500, msg: "Failed to confirm payout", data: null };
   }
 };

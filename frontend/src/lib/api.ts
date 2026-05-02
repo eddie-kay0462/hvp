@@ -429,6 +429,8 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ approve, rejectionReason }),
       }),
+    confirmPayout: (bookingId: string, formData: FormData) =>
+      apiFetchFormData(`/admin/payouts/${bookingId}/confirm`, formData),
   },
 
   // Health check
