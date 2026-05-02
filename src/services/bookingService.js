@@ -469,18 +469,22 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
     // Email notifications per status transition (fire-and-forget)
     const serviceTitle = booking.service?.title;
     const sellerAuthUserId = booking.service?.user_id;
+    console.log(`[email] status changed to ${newStatus} | buyer_id=${booking.buyer_id} | sellerAuthUserId=${sellerAuthUserId} | isBuyer=${isBuyer} | isSeller=${isSeller}`);
     try {
       if (newStatus === 'delivered' && isSeller) {
         const { sendBookingDeliveredToBuyer } = await import('./emailService.js');
         sendBookingDeliveredToBuyer(booking.buyer_id, { bookingId, serviceTitle })
+          .then((r) => console.log('[email] delivered→buyer result:', JSON.stringify(r)))
           .catch((e) => console.error('[email] delivered notify failed:', e.message));
       } else if (newStatus === 'cancelled') {
         const { sendBookingCancelledToSeller, sendBookingCancelledToBuyer } = await import('./emailService.js');
         if (isBuyer) {
           sendBookingCancelledToSeller(sellerAuthUserId, { serviceTitle, buyerName: null })
+            .then((r) => console.log('[email] cancelled→seller result:', JSON.stringify(r)))
             .catch((e) => console.error('[email] cancelled→seller failed:', e.message));
         } else if (isSeller) {
           sendBookingCancelledToBuyer(booking.buyer_id, { serviceTitle })
+            .then((r) => console.log('[email] cancelled→buyer result:', JSON.stringify(r)))
             .catch((e) => console.error('[email] cancelled→buyer failed:', e.message));
         }
       }
@@ -518,7 +522,9 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
             bookingId,
             serviceTitle,
             amountGhs: booking.payment_amount,
-          }).catch((e) => console.error('[email] payment released notify failed:', e.message));
+          })
+            .then((r) => console.log('[email] payment released→seller result:', JSON.stringify(r)))
+            .catch((e) => console.error('[email] payment released notify failed:', e.message));
         } catch (e) { console.error('[email] import failed for payment release:', e.message); }
       } else {
         // If release failed, return error
