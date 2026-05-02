@@ -286,28 +286,33 @@ Review: ${adminDashboardUrl}
 };
 
 // ---------------------------------------------------------------------------
+// Shared contact resolvers
+// ---------------------------------------------------------------------------
+
+async function resolveSellerContact(sellerAuthUserId) {
+  if (!sellerAuthUserId) return { email: null, name: 'there' };
+  const db = supabaseAdmin || supabase;
+  const { data: profile } = await db
+    .from('profiles')
+    .select('first_name, last_name, email, user_id')
+    .eq('user_id', sellerAuthUserId)
+    .maybeSingle();
+  const name = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'there';
+  let email = profile?.email || null;
+  if (!email && supabaseAdmin) {
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
+    email = authData?.user?.email || null;
+  }
+  return { email, name };
+}
+
+// ---------------------------------------------------------------------------
 // 4. New booking → notify seller
 // ---------------------------------------------------------------------------
 
 export const sendNewBookingToSeller = async (sellerAuthUserId, { bookingId, serviceTitle, buyerName }) => {
   try {
-    const db = supabaseAdmin || supabase;
-
-    // Resolve seller profile by auth user ID
-    const { data: profile } = await db
-      .from('profiles')
-      .select('first_name, last_name, email, user_id')
-      .eq('user_id', sellerAuthUserId)
-      .maybeSingle();
-
-    const sellerName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'there';
-
-    let email = profile?.email || null;
-    if (!email && supabaseAdmin) {
-      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(sellerAuthUserId);
-      email = authData?.user?.email || null;
-    }
-
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
     if (!email) {
       console.warn('[email] sendNewBookingToSeller: no email for seller', sellerAuthUserId);
       return { sent: false, reason: 'no_email' };
@@ -378,6 +383,125 @@ The Hustle Village Team
     return { sent: true, messageId: info.messageId };
   } catch (error) {
     console.error('[email] sendNewBookingToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 5. Booking accepted → notify buyer
+// ---------------------------------------------------------------------------
+
+export const sendBookingAcceptedToBuyer = async (buyerProfileId, sellerAuthUserId, { bookingId, serviceTitle }) => {
+  try {
+    const { email, name: buyerName } = await resolveBuyerContact(buyerProfileId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const { name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.box{background:white;padding:20px;border-radius:8px;margin:20px 0;border:1px solid #e5e7eb}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Booking Accepted!</h1></div><div class="content"><p>Hi ${escapeHtml(buyerName)},</p><p>Great news — <strong>${escapeHtml(sellerName)}</strong> has accepted your booking for <strong>${escapeHtml(serviceTitle || 'your service')}</strong>.</p><p>They will be in touch with you to coordinate and get started.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">View Booking</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${buyerName},\n\n${sellerName} has accepted your booking for "${serviceTitle || 'your service'}".\n\nView your booking: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Your booking has been accepted — Hustle Village`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendBookingAcceptedToBuyer failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 6. Booking delivered → notify buyer to confirm
+// ---------------------------------------------------------------------------
+
+export const sendBookingDeliveredToBuyer = async (buyerProfileId, { bookingId, serviceTitle }) => {
+  try {
+    const { email, name: buyerName } = await resolveBuyerContact(buyerProfileId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#2563eb;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#2563eb;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Service Delivered</h1></div><div class="content"><p>Hi ${escapeHtml(buyerName)},</p><p>Your service <strong>${escapeHtml(serviceTitle || 'your booking')}</strong> has been marked as delivered.</p><p>Please review the work and confirm completion to release payment to the provider. If you have any issues, reach out before confirming.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">Confirm Completion</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${buyerName},\n\nYour service "${serviceTitle || 'your booking'}" has been marked as delivered.\n\nPlease log in to confirm completion and release payment:\n${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Your service has been delivered — please confirm`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendBookingDeliveredToBuyer failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 7. Payment released → notify seller
+// ---------------------------------------------------------------------------
+
+export const sendPaymentReleasedToSeller = async (sellerAuthUserId, { bookingId, serviceTitle, amountGhs }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#059669;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#059669;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.box{background:white;padding:20px;border-radius:8px;margin:20px 0;border:1px solid #e5e7eb}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Payment Released!</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p>The buyer has confirmed completion of <strong>${escapeHtml(serviceTitle || 'your booking')}</strong>. Your payment of <strong>GH&#8373; ${escapeHtml(amt)}</strong> has been released.</p><div class="box"><p><strong>Service:</strong> ${escapeHtml(serviceTitle || '—')}</p><p><strong>Amount:</strong> GH&#8373; ${escapeHtml(amt)}</p></div><p style="text-align:center"><a href="${bookingUrl}" class="button">View Booking</a></p><p>Thank you for delivering great work on Hustle Village!</p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\nThe buyer confirmed completion of "${serviceTitle || 'your booking'}". Your payment of GH₵ ${amt} has been released.\n\nView booking: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Payment released — GH₵ ${amt}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendPaymentReleasedToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 8. MoMo payment approved → notify seller booking is now paid
+// ---------------------------------------------------------------------------
+
+export const sendMomoApprovedToSeller = async (sellerAuthUserId, { bookingId, serviceTitle, amountGhs }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/booking/${bookingId}`;
+    const amt = Number(amountGhs ?? 0).toFixed(2);
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#059669;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#059669;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.box{background:white;padding:20px;border-radius:8px;margin:20px 0;border:1px solid #e5e7eb}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Booking Paid!</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p>The Mobile Money payment for your booking <strong>${escapeHtml(serviceTitle || '')}</strong> has been verified and confirmed.</p><div class="box"><p><strong>Service:</strong> ${escapeHtml(serviceTitle || '—')}</p><p><strong>Amount:</strong> GH&#8373; ${escapeHtml(amt)}</p><p><strong>Status:</strong> Paid</p></div><p>You can now proceed with delivering the service. Payment will be released to you once the buyer confirms completion.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">View Booking</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\nThe MoMo payment for "${serviceTitle || 'your booking'}" (GH₵ ${amt}) has been verified. You can now proceed.\n\nView booking: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Booking paid — proceed with "${serviceTitle || 'your booking'}"`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendMomoApprovedToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 9. Booking cancelled → notify the other party
+// ---------------------------------------------------------------------------
+
+export const sendBookingCancelledToSeller = async (sellerAuthUserId, { serviceTitle, buyerName }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const dashboardUrl = `${frontendUrl}/seller/bookings`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#dc2626;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Booking Cancelled</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p><strong>${escapeHtml(buyerName || 'The buyer')}</strong> has cancelled their booking for <strong>${escapeHtml(serviceTitle || 'your service')}</strong>.</p><p>No action is needed on your part. You can view your other bookings in your dashboard.</p><p style="text-align:center"><a href="${dashboardUrl}" class="button">Go to Dashboard</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\n${buyerName || 'The buyer'} has cancelled their booking for "${serviceTitle || 'your service'}".\n\nDashboard: ${dashboardUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Booking cancelled — ${serviceTitle || 'Hustle Village'}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendBookingCancelledToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendBookingCancelledToBuyer = async (buyerProfileId, { serviceTitle }) => {
+  try {
+    const { email, name: buyerName } = await resolveBuyerContact(buyerProfileId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const servicesUrl = `${frontendUrl}/services`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#dc2626;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Booking Cancelled</h1></div><div class="content"><p>Hi ${escapeHtml(buyerName)},</p><p>Your booking for <strong>${escapeHtml(serviceTitle || 'a service')}</strong> has been cancelled by the provider.</p><p>We apologise for the inconvenience. You can browse other available services and make a new booking.</p><p style="text-align:center"><a href="${servicesUrl}" class="button">Browse Services</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${buyerName},\n\nYour booking for "${serviceTitle || 'a service'}" has been cancelled by the provider.\n\nBrowse other services: ${servicesUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Your booking was cancelled — Hustle Village`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendBookingCancelledToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };

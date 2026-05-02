@@ -374,7 +374,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
     const { data: booking, error } = await db
       .from('bookings')
       .select(
-        'id, buyer_id, service_id, payment_amount, payment_status, momo_transaction_id, payment_proof_url'
+        'id, buyer_id, service_id, payment_amount, payment_status, momo_transaction_id, payment_proof_url, service:services(user_id, title)'
       )
       .eq('id', bookingId)
       .single();
@@ -482,66 +482,51 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
       .select()
       .single();
 
+    const serviceTitle = booking.service?.title || 'Service';
+    const sellerAuthUserId = booking.service?.user_id;
+
+    // Send buyer + seller emails (shared helper)
+    const notifyApproval = async (invoiceId) => {
+      try {
+        const { sendMomoPaymentApprovedToBuyer, sendMomoApprovedToSeller } = await import('./emailService.js');
+        const [buyerResult] = await Promise.allSettled([
+          sendMomoPaymentApprovedToBuyer(booking.buyer_id, {
+            bookingId,
+            serviceTitle,
+            amountGhs: booking.payment_amount,
+            invoiceId,
+          }),
+          sellerAuthUserId
+            ? sendMomoApprovedToSeller(sellerAuthUserId, {
+                bookingId,
+                serviceTitle,
+                amountGhs: booking.payment_amount,
+              })
+            : Promise.resolve({ sent: false }),
+        ]);
+        return buyerResult.status === 'fulfilled' && buyerResult.value?.sent === true;
+      } catch (e) {
+        console.error('[momo] approval emails failed:', e?.message);
+        return false;
+      }
+    };
+
     if (invErr) {
       console.error('Invoice create after momo approve:', invErr);
-      let buyerEmailSent = false;
-      try {
-        const { data: svc } = await db
-          .from('services')
-          .select('title')
-          .eq('id', booking.service_id)
-          .maybeSingle();
-        const { sendMomoPaymentApprovedToBuyer } = await import('./emailService.js');
-        const emailResult = await sendMomoPaymentApprovedToBuyer(booking.buyer_id, {
-          bookingId,
-          serviceTitle: svc?.title || 'Service',
-          amountGhs: booking.payment_amount,
-          invoiceId: null,
-        });
-        buyerEmailSent = emailResult.sent === true;
-      } catch (emailErr) {
-        console.error('[momo] Buyer approval email failed:', emailErr?.message || emailErr);
-      }
+      const buyerEmailSent = await notifyApproval(null);
       return {
         status: 200,
         msg: 'Payment confirmed. Invoice creation failed — fix invoices.payment_reference if missing.',
-        data: {
-          booking_id: bookingId,
-          invoice_id: null,
-          approved: true,
-          buyerEmailSent,
-        },
+        data: { booking_id: bookingId, invoice_id: null, approved: true, buyerEmailSent },
       };
     }
 
-    let buyerEmailSent = false;
-    try {
-      const { data: svc } = await db
-        .from('services')
-        .select('title')
-        .eq('id', booking.service_id)
-        .maybeSingle();
-      const { sendMomoPaymentApprovedToBuyer } = await import('./emailService.js');
-      const emailResult = await sendMomoPaymentApprovedToBuyer(booking.buyer_id, {
-        bookingId,
-        serviceTitle: svc?.title || 'Service',
-        amountGhs: booking.payment_amount,
-        invoiceId: invoice.id,
-      });
-      buyerEmailSent = emailResult.sent === true;
-    } catch (emailErr) {
-      console.error('[momo] Buyer approval email failed:', emailErr?.message || emailErr);
-    }
+    const buyerEmailSent = await notifyApproval(invoice.id);
 
     return {
       status: 200,
       msg: 'Payment verified successfully',
-      data: {
-        booking_id: bookingId,
-        invoice_id: invoice.id,
-        approved: true,
-        buyerEmailSent,
-      },
+      data: { booking_id: bookingId, invoice_id: invoice.id, approved: true, buyerEmailSent },
     };
   } catch (e) {
     console.error('adminVerifyMomoPayment error:', e);

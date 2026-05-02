@@ -321,7 +321,7 @@ export const acceptBooking = async (userId, bookingId) => {
     // Get the booking with service info
     const { data: booking, error: bookingError } = await db
       .from('bookings')
-      .select('*, service:services(user_id)')
+      .select('*, service:services(user_id, title)')
       .eq('id', bookingId)
       .single();
 
@@ -350,6 +350,15 @@ export const acceptBooking = async (userId, bookingId) => {
     if (error) {
       return { status: 400, msg: error.message, data: null };
     }
+
+    // Notify buyer
+    try {
+      const { sendBookingAcceptedToBuyer } = await import('./emailService.js');
+      sendBookingAcceptedToBuyer(booking.buyer_id, userId, {
+        bookingId,
+        serviceTitle: booking.service.title,
+      }).catch((err) => console.error('[email] booking accepted notify failed:', err.message));
+    } catch (e) { console.error('[email] import failed:', e.message); }
 
     return { status: 200, msg: "Booking accepted successfully", data };
   } catch (e) {
@@ -380,7 +389,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
     // Get booking with service info
     const { data: booking, error: bookingError } = await db
       .from('bookings')
-      .select('*, service:services(user_id)')
+      .select('*, service:services(user_id, title)')
       .eq('id', bookingId)
       .single();
 
@@ -457,6 +466,26 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
       return { status: 400, msg: error.message, data: null };
     }
 
+    // Email notifications per status transition (fire-and-forget)
+    const serviceTitle = booking.service?.title;
+    const sellerAuthUserId = booking.service?.user_id;
+    try {
+      if (newStatus === 'delivered' && isSeller) {
+        const { sendBookingDeliveredToBuyer } = await import('./emailService.js');
+        sendBookingDeliveredToBuyer(booking.buyer_id, { bookingId, serviceTitle })
+          .catch((e) => console.error('[email] delivered notify failed:', e.message));
+      } else if (newStatus === 'cancelled') {
+        const { sendBookingCancelledToSeller, sendBookingCancelledToBuyer } = await import('./emailService.js');
+        if (isBuyer) {
+          sendBookingCancelledToSeller(sellerAuthUserId, { serviceTitle, buyerName: null })
+            .catch((e) => console.error('[email] cancelled→seller failed:', e.message));
+        } else if (isSeller) {
+          sendBookingCancelledToBuyer(booking.buyer_id, { serviceTitle })
+            .catch((e) => console.error('[email] cancelled→buyer failed:', e.message));
+        }
+      }
+    } catch (e) { console.error('[email] import failed in updateBookingStatus:', e.message); }
+
     // If buyer is confirming completion (delivered → completed), release payment
     if (newStatus === 'completed' && currentStatus === 'delivered' && isBuyer) {
       // CRITICAL: Verify payment was actually made via Paystack before releasing
@@ -476,11 +505,21 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
         // Update payment status in booking
         await db
           .from('bookings')
-          .update({ 
+          .update({
             payment_status: 'released',
             payment_released_at: new Date().toISOString()
           })
           .eq('id', bookingId);
+
+        // Notify seller payment is released
+        try {
+          const { sendPaymentReleasedToSeller } = await import('./emailService.js');
+          sendPaymentReleasedToSeller(sellerAuthUserId, {
+            bookingId,
+            serviceTitle,
+            amountGhs: booking.payment_amount,
+          }).catch((e) => console.error('[email] payment released notify failed:', e.message));
+        } catch (e) { console.error('[email] import failed for payment release:', e.message); }
       } else {
         // If release failed, return error
         return { 

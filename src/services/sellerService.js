@@ -128,10 +128,32 @@ export const createService = async (userId, serviceData) => {
       return { status: 400, msg: error.message, data: null };
     }
 
-    return { 
-      status: 201, 
-      msg: "Service submitted for approval. You'll receive an email once it's reviewed.", 
-      data 
+    // Alert admin about new service pending review
+    try {
+      const { data: profile } = await db
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const sellerName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Unknown';
+      let sellerEmail = profile?.email || null;
+      if (!sellerEmail && supabaseAdmin) {
+        const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        sellerEmail = authData?.user?.email || null;
+      }
+      if (sellerEmail) {
+        const { sendServiceSubmittedNotification } = await import('./emailService.js');
+        sendServiceSubmittedNotification(data, sellerEmail, sellerName)
+          .catch((e) => console.error('[email] service submitted notify failed:', e.message));
+      }
+    } catch (e) {
+      console.error('[email] failed to notify admin of new service:', e.message);
+    }
+
+    return {
+      status: 201,
+      msg: "Service submitted for approval. You'll receive an email once it's reviewed.",
+      data
     };
   } catch (e) {
     console.error("Supabase insert error:", e);
