@@ -105,6 +105,16 @@ interface MomoCheckoutPayload {
   instructions?: string;
 }
 
+const BOOKING_STATUSES_ALLOWING_BUYER_PAYMENT: Booking["status"][] = [
+  "accepted",
+  "in_progress",
+  "delivered",
+];
+
+function bookingAllowsBuyerPayment(status: Booking["status"]): boolean {
+  return BOOKING_STATUSES_ALLOWING_BUYER_PAYMENT.includes(status);
+}
+
 const getStatusBadge = (status: string) => {
   const variants: Record<string, any> = {
     pending: "default",
@@ -620,6 +630,15 @@ export default function BookingDetail() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {isBuyer && booking.status === "pending" && (
+                    <div className="p-4 rounded-md border border-muted bg-muted/40">
+                      <p className="text-sm font-medium">Awaiting provider</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The seller needs to accept this booking first. You can pay once it is accepted.
+                      </p>
+                    </div>
+                  )}
+
                   {isBuyer && booking.payment_status === "pending_review" && (
                     <div className="p-4 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
                       <p className="text-sm font-medium text-amber-900 dark:text-amber-100 flex items-center gap-2">
@@ -650,8 +669,9 @@ export default function BookingDetail() {
                     </div>
                   )}
 
-                  {/* Pay Now (Buyer) — hide while MoMo proof is pending */}
+                  {/* Pay Now (Buyer) — only after provider accepts; hide while MoMo proof is pending */}
                   {isBuyer &&
+                    bookingAllowsBuyerPayment(booking.status) &&
                     booking.payment_status !== "paid" &&
                     booking.payment_status !== "released" &&
                     booking.payment_status !== "pending_review" && (

@@ -60,6 +60,23 @@ async function getSellerContact(userId) {
   return { sellerEmail, sellerName };
 }
 
+/** Append-only service moderation log (migration admin_audit_history.sql). */
+async function recordServiceModerationEvent(db, { serviceId, eventType, adminId, rejectionReason, adminNotes, serviceTitle }) {
+  try {
+    const { error } = await db.from('service_moderation_events').insert({
+      service_id: serviceId,
+      event_type: eventType,
+      admin_id: adminId,
+      rejection_reason: rejectionReason ?? null,
+      admin_notes: adminNotes ?? null,
+      service_title: serviceTitle ?? null,
+    });
+    if (error) console.error('[admin] service_moderation_events:', error.message);
+  } catch (e) {
+    console.error('[admin] service_moderation_events:', e?.message || e);
+  }
+}
+
 /**
  * Get all pending services waiting for approval
  */
@@ -209,6 +226,13 @@ export const approveService = async (serviceId, adminId) => {
       return { status: 400, msg: error.message, data: null };
     }
 
+    await recordServiceModerationEvent(r.db, {
+      serviceId,
+      eventType: 'approved',
+      adminId,
+      serviceTitle: service.title,
+    });
+
     return {
       status: 200,
       msg: "Service approved successfully",
@@ -265,6 +289,15 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       return { status: 400, msg: error.message, data: null };
     }
 
+    await recordServiceModerationEvent(r.db, {
+      serviceId,
+      eventType: 'rejected',
+      adminId,
+      rejectionReason,
+      adminNotes,
+      serviceTitle: service.title,
+    });
+
     return {
       status: 200,
       msg: "Service rejected",
@@ -277,6 +310,97 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
   } catch (e) {
     console.error("Reject service error:", e);
     return { status: 500, msg: "Failed to reject service", data: null };
+  }
+};
+
+/**
+ * Admin: paginated approve/reject decision log for listings.
+ */
+export const getServiceModerationHistory = async (query = {}) => {
+  try {
+    const r = serviceDbOrError();
+    if (r.error) return r.error;
+
+    const limit = Math.min(Math.max(parseInt(String(query.limit), 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(String(query.offset), 10) || 0, 0);
+    const eventType =
+      query.event_type && ['approved', 'rejected'].includes(query.event_type)
+        ? query.event_type
+        : null;
+
+    let q = r.db
+      .from('service_moderation_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (eventType) {
+      q = q.eq('event_type', eventType);
+    }
+
+    const { data: rows, error } = await q;
+
+    if (error) {
+      const em = (error.message || '').toLowerCase();
+      if (
+        error.code === '42P01' ||
+        em.includes('does not exist') ||
+        em.includes('schema cache') ||
+        em.includes('service_moderation_events')
+      ) {
+        return {
+          status: 200,
+          msg: 'OK',
+          data: {
+            events: [],
+            limit,
+            offset,
+            hint: 'Run database_migrations/admin_audit_history.sql in Supabase SQL editor.',
+          },
+        };
+      }
+      return { status: 400, msg: error.message, data: null };
+    }
+
+    const list = rows || [];
+    const serviceIds = [...new Set(list.map((e) => e.service_id).filter(Boolean))];
+    let servicesById = {};
+    if (serviceIds.length > 0) {
+      const { data: svcs } = await r.db
+        .from('services')
+        .select('id, user_id, is_verified, is_active, category, default_price')
+        .in('id', serviceIds);
+      servicesById = Object.fromEntries((svcs || []).map((s) => [s.id, s]));
+    }
+
+    const sellerIds = [...new Set(Object.values(servicesById).map((s) => s.user_id).filter(Boolean))];
+    let sellersById = {};
+    if (sellerIds.length > 0) {
+      const { data: profs } = await r.db
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', sellerIds);
+      sellersById = Object.fromEntries((profs || []).map((p) => [p.id, p]));
+    }
+
+    const events = list.map((ev) => {
+      const svc = servicesById[ev.service_id];
+      const seller = svc?.user_id ? sellersById[svc.user_id] : null;
+      return {
+        ...ev,
+        service: svc || null,
+        seller: seller || null,
+      };
+    });
+
+    return {
+      status: 200,
+      msg: 'OK',
+      data: { events, limit, offset },
+    };
+  } catch (e) {
+    console.error('getServiceModerationHistory error:', e);
+    return { status: 500, msg: 'Failed to load moderation history', data: null };
   }
 };
 

@@ -8,7 +8,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { initializeTransaction, verifyTransaction } from '../config/paystack.js';
 import { isMomoManualMode } from '../config/paymentMode.js';
-import { initiateMomoManualCheckout } from './momoPaymentService.js';
+import { assertBuyerCanPayBooking, initiateMomoManualCheckout } from './momoPaymentService.js';
 import { generateInvoiceNumber } from './invoiceNumberUtils.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hustlevillage.app';
@@ -45,7 +45,7 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
     // Fetch booking
     const { data: booking, error: bookingError } = await db
       .from('bookings')
-      .select('id, buyer_id, service_id, payment_status, payment_amount')
+      .select('id, buyer_id, service_id, status, payment_status, payment_amount')
       .eq('id', bookingId)
       .single();
 
@@ -74,6 +74,9 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
     if (!ownsBooking) {
       return { status: 403, msg: 'You do not have permission to pay for this booking', data: null };
     }
+
+    const bookingGate = assertBuyerCanPayBooking(booking);
+    if (bookingGate) return { ...bookingGate, data: null };
 
     if (booking.payment_status === 'paid') {
       return { status: 400, msg: 'Booking already paid', data: null };

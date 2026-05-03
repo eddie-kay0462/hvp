@@ -35,6 +35,14 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
     return 'Please verify your email address before signing in. Check your inbox for the verification link.';
   }
 
+  // Supabase Auth + custom SMTP (e.g. Zoho): GoTrue could not send the signup email
+  if (
+    lowerMessage.includes('error sending confirmation email') ||
+    lowerMessage.includes('sending confirmation email')
+  ) {
+    return 'We could not send the verification email. Signup did not complete. Try again later, or contact support if this continues.';
+  }
+
   // Email validation errors
   if (lowerMessage.includes('invalid email') || 
       lowerMessage.includes('email format') ||
@@ -424,6 +432,22 @@ export const api = {
       apiFetch('/admin/payments/momo/pending', {
         method: 'GET',
       }),
+    getMomoPaymentHistory: (params?: { limit?: number; offset?: number; event_type?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.limit != null) q.append('limit', String(params.limit));
+      if (params?.offset != null) q.append('offset', String(params.offset));
+      if (params?.event_type) q.append('event_type', params.event_type);
+      const qs = q.toString();
+      return apiFetch(`/admin/payments/momo/history${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    },
+    getServiceModerationHistory: (params?: { limit?: number; offset?: number; event_type?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.limit != null) q.append('limit', String(params.limit));
+      if (params?.offset != null) q.append('offset', String(params.offset));
+      if (params?.event_type) q.append('event_type', params.event_type);
+      const qs = q.toString();
+      return apiFetch(`/admin/services/moderation-history${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    },
     verifyMomoPayment: (bookingId: string, approve: boolean, rejectionReason?: string) =>
       apiFetch(`/admin/payments/momo/${bookingId}/verify`, {
         method: 'POST',

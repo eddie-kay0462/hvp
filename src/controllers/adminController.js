@@ -1,6 +1,7 @@
 import * as adminService from '../services/adminService.js';
 import {
   listPendingMomoPaymentsAdmin,
+  listMomoPaymentHistoryAdmin,
   adminVerifyMomoPayment,
   adminConfirmPayout,
 } from '../services/momoPaymentService.js';
@@ -153,6 +154,34 @@ export const getPendingMomoPayments = async (_req) => {
   } catch (error) {
     console.error("Get pending MoMo payments error:", error);
     return { status: 500, msg: "Failed to retrieve pending MoMo payments", data: null };
+  }
+};
+
+export const getMomoPaymentHistory = async (req) => {
+  try {
+    const q = {
+      limit: req.query.limit,
+      offset: req.query.offset,
+      event_type: req.query.event_type,
+    };
+    return await listMomoPaymentHistoryAdmin(q);
+  } catch (error) {
+    console.error("Get MoMo payment history error:", error);
+    return { status: 500, msg: "Failed to retrieve payment history", data: null };
+  }
+};
+
+export const getServiceModerationHistory = async (req) => {
+  try {
+    const q = {
+      limit: req.query.limit,
+      offset: req.query.offset,
+      event_type: req.query.event_type,
+    };
+    return await adminService.getServiceModerationHistory(q);
+  } catch (error) {
+    console.error("Get service moderation history error:", error);
+    return { status: 500, msg: "Failed to retrieve moderation history", data: null };
   }
 };
 

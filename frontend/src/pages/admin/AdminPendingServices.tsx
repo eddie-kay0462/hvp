@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, XCircle, Eye, Clock, AlertCircle, ArrowLeft, Store } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Eye, Clock, ArrowLeft, Store, History } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -34,13 +35,31 @@ interface Service {
   };
 }
 
+interface ModerationEventRow {
+  id: string;
+  service_id: string;
+  event_type: string;
+  admin_id: string | null;
+  rejection_reason: string | null;
+  admin_notes: string | null;
+  service_title: string | null;
+  created_at: string;
+  service?: { id: string; user_id: string; is_verified: boolean | null; is_active: boolean | null } | null;
+  seller?: { first_name: string | null; last_name: string | null; email: string | null } | null;
+}
+
 export default function AdminPendingServices() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [mainTab, setMainTab] = useState<'queue' | 'history'>('queue');
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, active: 0 });
+  const [historyEvents, setHistoryEvents] = useState<ModerationEventRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyHint, setHistoryHint] = useState<string | null>(null);
+  const [historyFilter, setHistoryFilter] = useState('');
   
   // Rejection dialog state
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -85,6 +104,34 @@ export default function AdminPendingServices() {
     }
   };
 
+  const fetchModerationHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryHint(null);
+    try {
+      const response: any = await api.admin.getServiceModerationHistory({
+        limit: 100,
+        offset: 0,
+        event_type: historyFilter || undefined,
+      });
+      if (response.status === 200) {
+        setHistoryEvents(response.data?.events || []);
+        setHistoryHint(response.data?.hint || null);
+      } else {
+        toast.error(response.msg || 'Failed to load review log');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load review log');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && mainTab === 'history') {
+      fetchModerationHistory();
+    }
+  }, [user, mainTab, historyFilter]);
+
   const handleApprove = async (serviceId: string) => {
     setActionLoading(serviceId);
     try {
@@ -96,6 +143,7 @@ export default function AdminPendingServices() {
         }
         fetchPendingServices();
         fetchStats();
+        if (mainTab === 'history') fetchModerationHistory();
       } else {
         toast.error(response.msg || 'Failed to approve service');
       }
@@ -135,6 +183,7 @@ export default function AdminPendingServices() {
         setRejectDialogOpen(false);
         fetchPendingServices();
         fetchStats();
+        if (mainTab === 'history') fetchModerationHistory();
       } else {
         toast.error(response.msg || 'Failed to reject service');
       }
@@ -155,14 +204,6 @@ export default function AdminPendingServices() {
       minute: '2-digit'
     });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background px-4 pt-4 md:px-6 md:pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
@@ -236,125 +277,233 @@ export default function AdminPendingServices() {
           </Card>
         </div>
 
-        {/* Pending Services List */}
-        {services.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">All caught up!</h3>
-              <p className="text-muted-foreground">There are no pending services to review!.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {services.map((service) => (
-              <Card key={service.id}>
-                <CardHeader>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg sm:text-xl mb-1">{service.title}</CardTitle>
-                      <CardDescription className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 text-sm">
-                        <span>By: {service.profiles?.first_name} {service.profiles?.last_name}</span>
-                        {service.seller_email && <span className="break-all">({service.seller_email})</span>}
-                        {service.profiles?.phone && <span>📞 {service.profiles.phone}</span>}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 shrink-0 w-fit">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Pending
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Service Details */}
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Description:</p>
-                      <p className="text-sm">{service.description}</p>
-                    </div>
+        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'queue' | 'history')} className="space-y-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="queue" className="gap-1">
+              <Clock className="h-4 w-4" />
+              Queue
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1">
+              <History className="h-4 w-4" />
+              Review log
+            </TabsTrigger>
+          </TabsList>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Category</p>
-                        <p className="text-sm font-medium">{service.category}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Price</p>
-                        <p className="text-sm font-medium">
-                          GH₵ {service.default_price?.toFixed(2) || 'N/A'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Delivery Time</p>
-                        <p className="text-sm font-medium">{service.default_delivery_time || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Submitted</p>
-                        <p className="text-sm font-medium">{formatDate(service.created_at)}</p>
-                      </div>
-                    </div>
-
-                    {service.portfolio && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Portfolio</p>
-                        <p className="text-sm">{service.portfolio}</p>
-                      </div>
-                    )}
-
-                    {service.image_urls && service.image_urls.length > 0 && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-2">Images</p>
-                        <div className="flex gap-2 overflow-x-auto">
-                          {service.image_urls.map((url, index) => (
-                            <img
-                              key={index}
-                              src={url}
-                              alt={`Service image ${index + 1}`}
-                              className="h-20 w-20 object-cover rounded border"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 border-t">
-                      <Button
-                        onClick={() => handleApprove(service.id)}
-                        disabled={actionLoading === service.id}
-                        className="bg-green-600 hover:bg-green-700 min-h-10 w-full sm:w-auto justify-center"
-                      >
-                        {actionLoading === service.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                        )}
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => openRejectDialog(service)}
-                        disabled={actionLoading === service.id}
-                        variant="destructive"
-                        className="min-h-10 w-full sm:w-auto justify-center"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                      <Button
-                        onClick={() => navigate(`/service/${service.id}`)}
-                        variant="outline"
-                        className="min-h-10 w-full sm:w-auto justify-center"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
+          <TabsContent value="queue" className="space-y-4 mt-4">
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : services.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">All caught up!</h3>
+                  <p className="text-muted-foreground">There are no pending services to review.</p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-4">
+                {services.map((service) => (
+                  <Card key={service.id}>
+                    <CardHeader>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg sm:text-xl mb-1">{service.title}</CardTitle>
+                          <CardDescription className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 text-sm">
+                            <span>By: {service.profiles?.first_name} {service.profiles?.last_name}</span>
+                            {service.seller_email && <span className="break-all">({service.seller_email})</span>}
+                            {service.profiles?.phone && <span>📞 {service.profiles.phone}</span>}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 shrink-0 w-fit">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-2">Description:</p>
+                          <p className="text-sm">{service.description}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Category</p>
+                            <p className="text-sm font-medium">{service.category}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                            <p className="text-sm font-medium">
+                              GH₵ {service.default_price?.toFixed(2) || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Delivery Time</p>
+                            <p className="text-sm font-medium">{service.default_delivery_time || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Submitted</p>
+                            <p className="text-sm font-medium">{formatDate(service.created_at)}</p>
+                          </div>
+                        </div>
+
+                        {service.portfolio && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Portfolio</p>
+                            <p className="text-sm">{service.portfolio}</p>
+                          </div>
+                        )}
+
+                        {service.image_urls && service.image_urls.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Images</p>
+                            <div className="flex gap-2 overflow-x-auto">
+                              {service.image_urls.map((url, index) => (
+                                <img
+                                  key={index}
+                                  src={url}
+                                  alt={`Service image ${index + 1}`}
+                                  className="h-20 w-20 object-cover rounded border"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4 border-t">
+                          <Button
+                            onClick={() => handleApprove(service.id)}
+                            disabled={actionLoading === service.id}
+                            className="bg-green-600 hover:bg-green-700 min-h-10 w-full sm:w-auto justify-center"
+                          >
+                            {actionLoading === service.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                            )}
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => openRejectDialog(service)}
+                            disabled={actionLoading === service.id}
+                            variant="destructive"
+                            className="min-h-10 w-full sm:w-auto justify-center"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject
+                          </Button>
+                          <Button
+                            onClick={() => navigate(`/service/${service.id}`)}
+                            variant="outline"
+                            className="min-h-10 w-full sm:w-auto justify-center"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0">
+                <div>
+                  <CardTitle>Approve / reject log</CardTitle>
+                  <CardDescription>Recorded decisions (newest first). Approvals and rejections from this release onward.</CardDescription>
+                </div>
+                <select
+                  className="border rounded-md px-3 py-2 text-sm bg-background min-h-10 max-w-full sm:max-w-[200px]"
+                  value={historyFilter}
+                  onChange={(e) => setHistoryFilter(e.target.value)}
+                >
+                  <option value="">All outcomes</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </CardHeader>
+              <CardContent>
+                {historyHint && (
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mb-4 p-3 rounded-md bg-amber-50 dark:bg-amber-950/40">
+                    {historyHint}
+                  </p>
+                )}
+                {historyLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : historyEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">No moderation events yet.</p>
+                ) : (
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                          <th className="pb-2 pr-3 font-medium">When</th>
+                          <th className="pb-2 pr-3 font-medium">Outcome</th>
+                          <th className="pb-2 pr-3 font-medium">Listing</th>
+                          <th className="pb-2 pr-3 font-medium">Seller</th>
+                          <th className="pb-2 font-medium">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyEvents.map((ev) => (
+                          <tr key={ev.id} className="border-b border-border/60 align-top">
+                            <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">
+                              {formatDate(ev.created_at)}
+                            </td>
+                            <td className="py-2 pr-3">
+                              <Badge
+                                variant="secondary"
+                                className={
+                                  ev.event_type === 'approved'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
+                                }
+                              >
+                                {ev.event_type}
+                              </Badge>
+                            </td>
+                            <td className="py-2 pr-3 min-w-[160px]">
+                              <div className="font-medium">{ev.service_title || ev.service?.id || '—'}</div>
+                              <Button
+                                variant="link"
+                                className="h-auto p-0 text-xs"
+                                onClick={() => navigate(`/service/${ev.service_id}`)}
+                              >
+                                Open listing
+                              </Button>
+                            </td>
+                            <td className="py-2 pr-3">
+                              {ev.seller
+                                ? `${ev.seller.first_name || ''} ${ev.seller.last_name || ''}`.trim() || ev.seller.email || '—'
+                                : '—'}
+                            </td>
+                            <td className="py-2 max-w-[280px]">
+                              {ev.event_type === 'rejected' && ev.rejection_reason && (
+                                <p className="text-xs text-muted-foreground line-clamp-3">{ev.rejection_reason}</p>
+                              )}
+                              {ev.admin_notes && (
+                                <p className="text-xs text-muted-foreground mt-1 italic">Internal: {ev.admin_notes}</p>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Rejection Dialog */}

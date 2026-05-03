@@ -45,6 +45,28 @@ function narrationForBooking(bookingId) {
   return `HV-${compact}`;
 }
 
+/** Booking workflow statuses where the buyer may start or complete platform payment */
+const BUYER_PAYMENT_ALLOWED_STATUSES = new Set(['accepted', 'in_progress', 'delivered']);
+
+/**
+ * @param {{ status?: string } | null} booking
+ * @returns {{ status: number, msg: string } | null} error response, or null if OK
+ */
+export function assertBuyerCanPayBooking(booking) {
+  const s = booking?.status;
+  if (BUYER_PAYMENT_ALLOWED_STATUSES.has(s)) return null;
+  if (s === 'pending') {
+    return {
+      status: 400,
+      msg: 'The provider must accept this booking before you can pay.',
+    };
+  }
+  if (s === 'cancelled') {
+    return { status: 400, msg: 'This booking was cancelled and cannot be paid.' };
+  }
+  return { status: 400, msg: 'Payment is not available for this booking at its current status.' };
+}
+
 export async function initiateMomoManualCheckout(userId, bookingId) {
   try {
     if (!userId || !bookingId) {
@@ -65,7 +87,7 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
     const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(
-        'id, buyer_id, service_id, payment_status, payment_amount, payment_method, momo_transaction_id'
+        'id, buyer_id, service_id, status, payment_status, payment_amount, payment_method, momo_transaction_id'
       )
       .eq('id', bookingId)
       .single();
@@ -78,6 +100,9 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
     if (!ownsBooking) {
       return { status: 403, msg: 'You do not have permission to pay for this booking', data: null };
     }
+
+    const bookingGate = assertBuyerCanPayBooking(booking);
+    if (bookingGate) return { ...bookingGate, data: null };
 
     if (booking.payment_status === 'paid' || booking.payment_status === 'released') {
       return { status: 400, msg: 'Booking already paid', data: null };
@@ -151,6 +176,44 @@ function extFromMime(mime) {
   return '.jpg';
 }
 
+const PROOF_BUCKET = () => process.env.MOMO_PROOF_BUCKET || 'payment-proofs';
+
+/** Append-only audit (requires migration admin_audit_history.sql). */
+async function insertPaymentVerificationEvent(bookingId, eventType, actorId, metadata = {}) {
+  if (!supabaseAdmin) return;
+  try {
+    const { error } = await supabaseAdmin.from('payment_verification_events').insert({
+      booking_id: bookingId,
+      event_type: eventType,
+      actor_id: actorId || null,
+      metadata,
+    });
+    if (error) console.error('[momo] payment_verification_events:', error.message);
+  } catch (e) {
+    console.error('[momo] payment_verification_events:', e?.message || e);
+  }
+}
+
+/** Receipt path from latest submitted event (works without bookings.momo_proof_storage_path). */
+async function getLastSubmittedProofPath(bookingId) {
+  if (!supabaseAdmin || !bookingId) return null;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('payment_verification_events')
+      .select('metadata')
+      .eq('booking_id', bookingId)
+      .eq('event_type', 'submitted')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data?.metadata) return null;
+    const m = data.metadata;
+    return m.object_path || m.storage_path || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function submitMomoPaymentProof(userId, bookingId, momoTransactionId, file) {
   try {
     if (!userId || !bookingId) {
@@ -186,7 +249,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
     const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(
-        'id, buyer_id, service_id, payment_status, payment_amount, payment_method, momo_transaction_id'
+        'id, buyer_id, service_id, status, payment_status, payment_amount, payment_method, momo_transaction_id'
       )
       .eq('id', bookingId)
       .single();
@@ -199,6 +262,9 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
     if (!ownsBooking) {
       return { status: 403, msg: 'You do not have permission to update this booking', data: null };
     }
+
+    const bookingGate = assertBuyerCanPayBooking(booking);
+    if (bookingGate) return { ...bookingGate, data: null };
 
     if (booking.payment_status === 'paid' || booking.payment_status === 'released') {
       return { status: 400, msg: 'This booking is already paid', data: null };
@@ -228,7 +294,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       };
     }
 
-    const bucket = process.env.MOMO_PROOF_BUCKET || 'payment-proofs';
+    const bucket = PROOF_BUCKET();
     const ext = extFromMime(file.mimetype);
     const objectPath = `${bookingId}/${Date.now()}-${randomBytes(6).toString('hex')}${ext}`;
 
@@ -276,6 +342,13 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       console.error('Booking update after proof upload:', updErr);
       return { status: 500, msg: 'Failed to save payment proof', data: null };
     }
+
+    await insertPaymentVerificationEvent(bookingId, 'submitted', userId, {
+      bucket,
+      object_path: objectPath,
+      momo_transaction_id: normalizedTxn,
+      payment_amount: booking.payment_amount,
+    });
 
     try {
       const { data: svc } = await db
@@ -510,6 +583,14 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
 
     if (!approve) {
       const note = (rejectionReason || '').trim() || 'Payment could not be verified. Please resubmit proof.';
+      const proofPath = await getLastSubmittedProofPath(bookingId);
+      await insertPaymentVerificationEvent(bookingId, 'rejected', _adminUserId, {
+        payment_review_note: note,
+        momo_transaction_id: booking.momo_transaction_id,
+        object_path: proofPath,
+        bucket: PROOF_BUCKET(),
+        payment_amount: booking.payment_amount,
+      });
       const { error: rejErr } = await db
         .from('bookings')
         .update({
@@ -585,6 +666,14 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
       return { status: 500, msg: 'Failed to confirm payment', data: null };
     }
 
+    const proofPathForApprove = await getLastSubmittedProofPath(bookingId);
+    await insertPaymentVerificationEvent(bookingId, 'approved', _adminUserId, {
+      momo_transaction_id: reference,
+      object_path: proofPathForApprove,
+      bucket: PROOF_BUCKET(),
+      payment_amount: booking.payment_amount,
+    });
+
     const invoiceNumber = await generateInvoiceNumber();
     const { data: invoice, error: invErr } = await db
       .from('invoices')
@@ -653,5 +742,117 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
   } catch (e) {
     console.error('adminVerifyMomoPayment error:', e);
     return { status: 500, msg: 'Failed to verify payment', data: null };
+  }
+}
+
+/**
+ * Admin: paginated MoMo verification audit (submit / approve / reject).
+ */
+export async function listMomoPaymentHistoryAdmin(query = {}) {
+  try {
+    if (!supabaseAdmin) {
+      return {
+        status: 503,
+        msg: 'SUPABASE_SERVICE_ROLE_KEY is required for payment history',
+        data: null,
+      };
+    }
+
+    const limit = Math.min(Math.max(parseInt(String(query.limit), 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(String(query.offset), 10) || 0, 0);
+    const eventType =
+      query.event_type && ['submitted', 'approved', 'rejected'].includes(query.event_type)
+        ? query.event_type
+        : null;
+
+    let q = supabaseAdmin
+      .from('payment_verification_events')
+      .select('id, booking_id, event_type, actor_id, metadata, created_at')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (eventType) {
+      q = q.eq('event_type', eventType);
+    }
+
+    const { data: events, error } = await q;
+
+    if (error) {
+      const em = (error.message || '').toLowerCase();
+      if (
+        error.code === '42P01' ||
+        em.includes('does not exist') ||
+        em.includes('schema cache') ||
+        em.includes('payment_verification_events')
+      ) {
+        return {
+          status: 200,
+          msg: 'OK',
+          data: {
+            events: [],
+            limit,
+            offset,
+            hint: 'Run database_migrations/admin_audit_history.sql in Supabase SQL editor.',
+          },
+        };
+      }
+      console.error('listMomoPaymentHistoryAdmin:', error);
+      return { status: 500, msg: error.message || 'Failed to load history', data: null };
+    }
+
+    const list = events || [];
+    const bookingIds = [...new Set(list.map((e) => e.booking_id).filter(Boolean))];
+    let bookingsById = {};
+    if (bookingIds.length > 0) {
+      const { data: bookings } = await supabaseAdmin
+        .from('bookings')
+        .select(
+          'id, buyer_id, payment_amount, payment_status, payment_method, momo_transaction_id, momo_submitted_at, service:services(id,title)'
+        )
+        .in('id', bookingIds);
+      bookingsById = Object.fromEntries((bookings || []).map((b) => [b.id, b]));
+    }
+
+    const buyerIds = [...new Set(Object.values(bookingsById).map((b) => b.buyer_id).filter(Boolean))];
+    let buyersById = {};
+    if (buyerIds.length > 0) {
+      const { data: profs } = await supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', buyerIds);
+      buyersById = Object.fromEntries((profs || []).map((p) => [p.id, p]));
+    }
+
+    const defaultBucket = PROOF_BUCKET();
+    const enriched = await Promise.all(
+      list.map(async (ev) => {
+        const meta = ev.metadata || {};
+        const objectPath = meta.object_path || meta.storage_path;
+        const bucket = meta.bucket || defaultBucket;
+        let proof_signed_url = null;
+        if (objectPath) {
+          const { data: su, error: se } = await supabaseAdmin.storage
+            .from(bucket)
+            .createSignedUrl(objectPath, 60 * 60);
+          if (!se && su?.signedUrl) proof_signed_url = su.signedUrl;
+        }
+        const b = bookingsById[ev.booking_id];
+        return {
+          ...ev,
+          booking: b || null,
+          buyer: b?.buyer_id ? buyersById[b.buyer_id] || null : null,
+          proof_signed_url,
+        };
+      })
+    );
+
+    return {
+      status: 200,
+      msg: 'OK',
+      data: { events: enriched, limit, offset },
+    };
+  } catch (e) {
+    console.error('listMomoPaymentHistoryAdmin error:', e);
+    return { status: 500, msg: 'Failed to load payment history', data: null };
   }
 }

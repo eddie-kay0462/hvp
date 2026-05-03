@@ -14,6 +14,14 @@ function getAuthEmailRedirectOrigin() {
 
 export const signup = async ({ email, password, firstName, lastName, phoneNumber, profilePic, role }) => {
   try {
+    if (!supabaseAdmin) {
+      return {
+        status: 500,
+        msg: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is required for signup.",
+        data: null,
+      };
+    }
+
     // Include the password_updated_after_requirements_change flag since password already meets requirements
     const metadata = { 
       firstName, 
@@ -26,47 +34,61 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
 
     const redirectUrl = `${getAuthEmailRedirectOrigin()}/verify-email`;
 
-    // Step 1: Create auth user
-    const { data, error } = await supabaseAdmin.auth.signUp({
+    // Step 1: Create auth user (anon client — GoTrue sends confirmation email.
+    // signUp with the service role skips that flow, so custom SMTP never gets used.)
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { 
+      options: {
         data: metadata,
-        emailRedirectTo: redirectUrl
-      }
+        emailRedirectTo: redirectUrl,
+      },
     });
 
     if (error) {
+      console.error("Supabase signUp error:", error.message, error);
       return { status: 400, msg: error.message, data: null };
     }
 
-    // Step 2: Insert profile using service role (bypasses RLS)
-    if (data.user?.id) {
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          id: data.user.id,           // match auth.users.id
-          email: email || null,
-          first_name: firstName || null,
-          last_name: lastName || null,
-          phone: phoneNumber || null,
-          role: role || 'buyer',
-          profile_pic: profilePic || null
-        });
+    if (!data.user?.id) {
+      return {
+        status: 400,
+        msg: "Could not create account. If this email is already registered, sign in or reset your password.",
+        data: null,
+      };
+    }
 
-      if (profileError) {
-        console.error("Profile creation failed:", profileError);
-        // You can still return success because auth user exists
-      }
+    // Step 2: Insert profile using service role (bypasses RLS)
+    const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+      id: data.user.id,
+      email: email || null,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      phone: phoneNumber || null,
+      role: role || "buyer",
+      profile_pic: profilePic || null,
+    });
+
+    if (profileError) {
+      console.error("Profile creation failed:", profileError);
+      const hint =
+        profileError.code === "23503"
+          ? " Database profiles.id must reference auth.users (run database_migrations/fix_profiles_fkey_auth_users.sql in Supabase SQL editor)."
+          : "";
+      return {
+        status: 500,
+        msg: `Profile setup failed after account creation.${hint} You may need to remove the partial user in Authentication → Users and try again.`,
+        data: { userId: data.user.id },
+      };
     }
 
     return {
       status: 201,
       msg: "Signup successful. Please verify your email.",
       data: {
-        userId: data.user?.id,
-        email: data.user?.email
-      }
+        userId: data.user.id,
+        email: data.user.email,
+      },
     };
 
   } catch (e) {

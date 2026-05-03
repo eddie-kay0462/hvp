@@ -15,8 +15,10 @@ router.get('/services', responseHandler(adminController.getAllServices));
 router.post('/services/:serviceId/approve', responseHandler(adminController.approveService));
 router.post('/services/:serviceId/reject', responseHandler(adminController.rejectService));
 router.get('/services/stats', responseHandler(adminController.getServiceStats));
+router.get('/services/moderation-history', responseHandler(adminController.getServiceModerationHistory));
 
 router.get('/payments/momo/pending', responseHandler(adminController.getPendingMomoPayments));
+router.get('/payments/momo/history', responseHandler(adminController.getMomoPaymentHistory));
 router.post(
   '/payments/momo/:bookingId/verify',
   responseHandler(adminController.verifyMomoPayment)
