@@ -27,6 +27,8 @@ interface Booking {
   date: string | null;
   time: string | null;
   status: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled";
+  quote_status?: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null;
+  quoted_price?: number | null;
   created_at: string;
   service?: {
     id: string;
@@ -34,6 +36,9 @@ interface Booking {
     description: string;
     default_price: number | null;
     express_price: number | null;
+    pricing_type?: 'fixed' | 'range';
+    price_min?: number | null;
+    price_max?: number | null;
   };
 }
 
@@ -261,12 +266,24 @@ export default function Bookings() {
                                 )}
                               </TableCell>
                               <TableCell className="font-medium">
-                                {formatPrice(booking.service?.default_price)}
+                                {booking.quoted_price
+                                  ? `GH₵${booking.quoted_price.toFixed(2)}`
+                                  : booking.service?.pricing_type === 'range' && booking.service.price_min != null && booking.service.price_max != null
+                                    ? `GH₵${booking.service.price_min}–${booking.service.price_max}`
+                                    : formatPrice(booking.service?.default_price)}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={getStatusBadge(booking.status)}>
-                                  {getStatusLabel(booking.status)}
-                                </Badge>
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant={getStatusBadge(booking.status)}>
+                                    {getStatusLabel(booking.status)}
+                                  </Badge>
+                                  {booking.quote_status === 'quote_sent' && (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 text-xs">Quote received</Badge>
+                                  )}
+                                  {booking.quote_status === 'pending_quote' && (
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300 text-xs">Awaiting quote</Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <Button
@@ -317,9 +334,19 @@ export default function Bookings() {
                               <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Amount:</span>
                                 <span className="font-semibold">
-                                  {formatPrice(booking.service?.default_price)}
+                                  {booking.quoted_price
+                                    ? `GH₵${booking.quoted_price.toFixed(2)}`
+                                    : booking.service?.pricing_type === 'range' && booking.service.price_min != null && booking.service.price_max != null
+                                      ? `GH₵${booking.service.price_min}–${booking.service.price_max}`
+                                      : formatPrice(booking.service?.default_price)}
                                 </span>
                               </div>
+                              {booking.quote_status === 'quote_sent' && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-muted-foreground">Quote:</span>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">Review quote</Badge>
+                                </div>
+                              )}
                             </div>
 
                             <Button

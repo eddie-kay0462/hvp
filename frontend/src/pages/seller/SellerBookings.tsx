@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye, Loader2, SendHorizonal } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -15,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -25,6 +36,10 @@ interface Booking {
   date: string | null;
   time: string | null;
   status: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled";
+  quote_status: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null;
+  buyer_requirements: string | null;
+  quoted_price: number | null;
+  seller_quote_note: string | null;
   created_at: string;
   buyer?: {
     first_name: string | null;
@@ -33,6 +48,9 @@ interface Booking {
   service?: {
     title: string;
     default_price: number | null;
+    pricing_type: 'fixed' | 'range';
+    price_min: number | null;
+    price_max: number | null;
   };
 }
 
@@ -63,6 +81,11 @@ export default function SellerBookings() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedTab, setSelectedTab] = useState(initialTab);
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false);
+  const [quotingBooking, setQuotingBooking] = useState<Booking | null>(null);
+  const [quotePrice, setQuotePrice] = useState('');
+  const [quoteNote, setQuoteNote] = useState('');
+  const [submittingQuote, setSubmittingQuote] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -116,6 +139,10 @@ export default function SellerBookings() {
           date,
           time,
           status,
+          quote_status,
+          buyer_requirements,
+          quoted_price,
+          seller_quote_note,
           created_at
         `)
         .in('service_id', serviceIds)
@@ -140,7 +167,7 @@ export default function SellerBookings() {
       // Fetch service details
       const { data: servicesData } = await supabase
         .from('services')
-        .select('id, title, default_price')
+        .select('id, title, default_price, pricing_type, price_min, price_max')
         .in('id', serviceIds);
 
       const servicesMap: Record<string, any> = {};
@@ -164,11 +191,53 @@ export default function SellerBookings() {
     }
   };
 
+  const openQuoteDialog = (booking: Booking) => {
+    setQuotingBooking(booking);
+    setQuotePrice('');
+    setQuoteNote('');
+    setQuoteDialogOpen(true);
+  };
+
+  const handleSendQuote = async () => {
+    if (!quotingBooking || !quotePrice) return;
+    const price = parseFloat(quotePrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    setSubmittingQuote(true);
+    try {
+      const result = await (api.bookings as any).submitQuote(quotingBooking.id, {
+        quotedPrice: price,
+        quoteNote: quoteNote.trim() || undefined,
+      }) as any;
+      if (result.status === 200) {
+        toast.success('Quote sent to buyer!');
+        setQuoteDialogOpen(false);
+        fetchBookings();
+      } else {
+        toast.error(result.msg || 'Failed to send quote');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to send quote');
+    } finally {
+      setSubmittingQuote(false);
+    }
+  };
+
   const getBuyerName = (booking: Booking) => {
     if (booking.buyer?.first_name && booking.buyer?.last_name) {
       return `${booking.buyer.first_name} ${booking.buyer.last_name}`;
     }
     return booking.buyer?.first_name || booking.buyer?.last_name || 'Unknown';
+  };
+
+  const getBookingAmount = (booking: Booking) => {
+    if (booking.quoted_price) return `GH₵ ${booking.quoted_price.toFixed(2)}`;
+    if (booking.service?.pricing_type === 'range' && booking.service.price_min != null && booking.service.price_max != null) {
+      return `GH₵ ${booking.service.price_min}–${booking.service.price_max}`;
+    }
+    return booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A';
   };
 
   const filteredBookings = selectedTab === "all"
@@ -251,23 +320,39 @@ export default function SellerBookings() {
                               )}
                             </TableCell>
                             <TableCell className="font-medium">
-                              {booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A'}
+                              {getBookingAmount(booking)}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={getStatusBadge(booking.status)}>
-                                {booking.status.replace("_", " ")}
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge variant={getStatusBadge(booking.status)}>
+                                  {booking.status.replace("_", " ")}
+                                </Badge>
+                                {booking.quote_status === 'pending_quote' && (
+                                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-300 text-xs">Quote needed</Badge>
+                                )}
+                                {booking.quote_status === 'quote_sent' && (
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs">Quote sent</Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="gap-2"
-                                onClick={() => navigate(`/booking/${booking.id}`)}
-                              >
-                                <Eye className="h-4 w-4" />
-                                View
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                {booking.quote_status === 'pending_quote' && (
+                                  <Button variant="default" size="sm" className="gap-1" onClick={() => openQuoteDialog(booking)}>
+                                    <SendHorizonal className="h-3 w-3" />
+                                    Quote
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => navigate(`/booking/${booking.id}`)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -316,20 +401,39 @@ export default function SellerBookings() {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">Amount:</span>
-                              <span className="font-semibold">
-                                {booking.service?.default_price ? `GH₵ ${booking.service.default_price.toFixed(2)}` : 'N/A'}
-                              </span>
+                              <span className="font-semibold">{getBookingAmount(booking)}</span>
                             </div>
+                            {booking.quote_status && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Quote:</span>
+                                <Badge variant="secondary" className={`text-xs ${booking.quote_status === 'pending_quote' ? 'bg-purple-100 text-purple-700' : booking.quote_status === 'quote_sent' ? 'bg-blue-100 text-blue-700' : ''}`}>
+                                  {booking.quote_status.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                            )}
+                            {booking.buyer_requirements && (
+                              <div className="text-xs text-muted-foreground border-l-2 border-purple-300 pl-2 mt-1">
+                                <span className="font-medium text-foreground">Buyer needs: </span>{booking.buyer_requirements}
+                              </div>
+                            )}
                           </div>
 
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => navigate(`/booking/${booking.id}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
+                          <div className="flex gap-2">
+                            {booking.quote_status === 'pending_quote' && (
+                              <Button variant="default" className="flex-1" onClick={() => openQuoteDialog(booking)}>
+                                <SendHorizonal className="h-4 w-4 mr-2" />
+                                Send Quote
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => navigate(`/booking/${booking.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -340,6 +444,64 @@ export default function SellerBookings() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Send Quote Dialog */}
+      <Dialog open={quoteDialogOpen} onOpenChange={setQuoteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send a Quote</DialogTitle>
+            <DialogDescription>
+              {quotingBooking?.service?.title} — review the buyer's requirements and enter your price.
+            </DialogDescription>
+          </DialogHeader>
+
+          {quotingBooking?.buyer_requirements && (
+            <div className="bg-muted/50 rounded-md p-3 text-sm border-l-4 border-purple-400">
+              <p className="text-xs font-medium text-muted-foreground mb-1">What the buyer needs:</p>
+              <p className="text-foreground">{quotingBooking.buyer_requirements}</p>
+            </div>
+          )}
+
+          {quotingBooking?.service?.pricing_type === 'range' && quotingBooking.service.price_min != null && quotingBooking.service.price_max != null && (
+            <p className="text-xs text-muted-foreground">
+              Your listed range: GH₵{quotingBooking.service.price_min} – GH₵{quotingBooking.service.price_max}
+            </p>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="quote-price">Your Price (GHS) *</Label>
+              <Input
+                id="quote-price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={quotePrice}
+                onChange={(e) => setQuotePrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quote-note">Message to Buyer (Optional)</Label>
+              <Textarea
+                id="quote-note"
+                placeholder="e.g. 'This price includes two revisions and delivery within 5 days.'"
+                value={quoteNote}
+                onChange={(e) => setQuoteNote(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setQuoteDialogOpen(false)} disabled={submittingQuote}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleSendQuote} disabled={submittingQuote || !quotePrice}>
+                {submittingQuote ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : 'Send Quote'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

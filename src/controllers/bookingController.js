@@ -11,7 +11,7 @@ const bookNow = async (req) => {
       return { status: 401, msg: "Unauthorized: user not found", data: null };
     }
 
-    const { serviceId, date, time, status } = req.body;
+    const { serviceId, date, time, status, buyer_requirements } = req.body;
 
     // Validation
     if (!serviceId) {
@@ -46,6 +46,7 @@ const bookNow = async (req) => {
       date: date || null,
       time: time || null,
       status: status || 'pending',
+      buyer_requirements: buyer_requirements || null,
     });
 
     return {
@@ -236,6 +237,38 @@ const cancelBooking = async (req) => {
 };
 
 
+const submitQuote = async (req) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return { status: 401, msg: "Unauthorized: user not found", data: null };
+    const { bookingId } = req.params;
+    const { quotedPrice, quoteNote } = req.body;
+    if (!bookingId) return { status: 400, msg: "Booking ID is required", data: null };
+    if (!quotedPrice) return { status: 400, msg: "Quoted price is required", data: null };
+    const result = await bookingService.submitQuote(userId, bookingId, quotedPrice, quoteNote);
+    return { status: result.status, msg: result.msg, data: result.data };
+  } catch (error) {
+    console.error("Submit quote error:", error);
+    return { status: 500, msg: "Failed to submit quote", data: null };
+  }
+};
+
+const respondToQuote = async (req) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return { status: 401, msg: "Unauthorized: user not found", data: null };
+    const { bookingId } = req.params;
+    const { accepted } = req.body;
+    if (!bookingId) return { status: 400, msg: "Booking ID is required", data: null };
+    if (accepted === undefined || accepted === null) return { status: 400, msg: "accepted (true/false) is required", data: null };
+    const result = await bookingService.respondToQuote(userId, bookingId, Boolean(accepted));
+    return { status: result.status, msg: result.msg, data: result.data };
+  } catch (error) {
+    console.error("Respond to quote error:", error);
+    return { status: 500, msg: "Failed to process quote response", data: null };
+  }
+};
+
 export default {
   bookNow,
   getBookingById,
@@ -243,6 +276,8 @@ export default {
   acceptBooking,
   updateBookingStatus,
   confirmBookingCompletion,
-  cancelBooking
+  cancelBooking,
+  submitQuote,
+  respondToQuote,
 };
 
