@@ -455,14 +455,14 @@ export default function SellerServices() {
                     <button
                       type="button"
                       onClick={() => setPricingType('fixed')}
-                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input hover:bg-accent'}`}
+                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
                     >
                       Fixed Price
                     </button>
                     <button
                       type="button"
                       onClick={() => setPricingType('range')}
-                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input hover:bg-accent'}`}
+                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
                     >
                       Price Range
                     </button>
@@ -840,8 +840,8 @@ export default function SellerServices() {
               <div className="space-y-2">
                 <Label>Pricing Type *</Label>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setPricingType('fixed')} className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input hover:bg-accent'}`}>Fixed Price</button>
-                  <button type="button" onClick={() => setPricingType('range')} className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input hover:bg-accent'}`}>Price Range</button>
+                  <button type="button" onClick={() => setPricingType('fixed')} className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}>Fixed Price</button>
+                  <button type="button" onClick={() => setPricingType('range')} className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}>Price Range</button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {pricingType === 'fixed' ? 'Set a single price. Buyers book and pay immediately.' : 'Set a range. Buyers describe their needs, you quote a specific price.'}
