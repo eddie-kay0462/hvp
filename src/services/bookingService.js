@@ -482,10 +482,15 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
       return { status: 400, msg: `Cannot update booking with status: ${currentStatus}`, data: null };
     }
 
-    // Update status
+    // Update status (stamp delivered_at when seller marks delivered)
+    const updateFields = { status: newStatus };
+    if (newStatus === 'delivered' && isSeller) {
+      updateFields.delivered_at = new Date().toISOString();
+    }
+
     const { data, error } = await db
       .from('bookings')
-      .update({ status: newStatus })
+      .update(updateFields)
       .eq('id', bookingId)
       .select()
       .single();

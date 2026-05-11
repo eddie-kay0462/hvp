@@ -203,6 +203,51 @@ export const verifyMomoPayment = async (req) => {
   }
 };
 
+export const getPendingPayouts = async (_req) => {
+  try {
+    const { supabaseAdmin, supabase } = await import('../config/supabase.js');
+    const db = supabaseAdmin ?? supabase;
+
+    const { data, error } = await db
+      .from('bookings')
+      .select(`
+        id,
+        payment_amount,
+        payment_released_at,
+        payout_status,
+        delivered_at,
+        service:services(title, user_id),
+        seller_profile:profiles!bookings_buyer_id_fkey(first_name, last_name, phone)
+      `)
+      .eq('payment_status', 'released')
+      .neq('payout_status', 'sent')
+      .order('payment_released_at', { ascending: true });
+
+    if (error) return { status: 400, msg: error.message, data: null };
+
+    // Fetch seller (via service.user_id) profiles separately for accurate MoMo numbers
+    const userIds = [...new Set((data || []).map(b => b.service?.user_id).filter(Boolean))];
+    let profilesMap = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await db
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .in('id', userIds);
+      (profiles || []).forEach(p => { profilesMap[p.id] = p; });
+    }
+
+    const enriched = (data || []).map(b => ({
+      ...b,
+      seller: profilesMap[b.service?.user_id] || null,
+    }));
+
+    return { status: 200, msg: 'Pending payouts retrieved', data: enriched };
+  } catch (error) {
+    console.error('getPendingPayouts error:', error);
+    return { status: 500, msg: 'Failed to retrieve pending payouts', data: null };
+  }
+};
+
 export const confirmPayout = async (req) => {
   try {
     const { bookingId } = req.params;

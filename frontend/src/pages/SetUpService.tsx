@@ -20,10 +20,13 @@ const SetUpService = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [pricingType, setPricingType] = useState<'fixed' | 'range'>('fixed');
   const [defaultPrice, setDefaultPrice] = useState('');
   const [defaultDeliveryTime, setDefaultDeliveryTime] = useState('');
   const [expressPrice, setExpressPrice] = useState('');
   const [expressDeliveryTime, setExpressDeliveryTime] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
   const [portfolio, setPortfolio] = useState('');
   const [portfolioLinks, setPortfolioLinks] = useState<string[]>([]);
   const [portfolioImages, setPortfolioImages] = useState<string[]>([]);
@@ -182,8 +185,14 @@ const SetUpService = () => {
     }
 
     // Validate required fields
-    if (!title || !description || !category || !defaultPrice) {
+    const priceValid = pricingType === 'fixed' ? !!defaultPrice : (!!priceMin && !!priceMax);
+    if (!title || !description || !category || !priceValid) {
       toast.error('Please fill in all required fields (Title, Description, Category, and Price)');
+      return;
+    }
+
+    if (pricingType === 'range' && parseFloat(priceMin) >= parseFloat(priceMax)) {
+      toast.error('Minimum price must be less than maximum price');
       return;
     }
 
@@ -191,16 +200,18 @@ const SetUpService = () => {
     const hasPortfolioDescription = portfolio.trim();
     const hasPortfolioLinks = portfolioLinks.length > 0;
     const hasPortfolioImages = portfolioImages.length > 0;
-    
+
     if (!hasPortfolioDescription && !hasPortfolioLinks && !hasPortfolioImages) {
       toast.error('Please provide at least one: portfolio description, links, or images to showcase your work');
       return;
     }
 
-    const price = parseFloat(defaultPrice);
-    if (isNaN(price) || price < 0) {
-      toast.error('Please enter a valid default price');
-      return;
+    if (pricingType === 'fixed') {
+      const price = parseFloat(defaultPrice);
+      if (isNaN(price) || price < 0) {
+        toast.error('Please enter a valid price');
+        return;
+      }
     }
 
     if (expressPrice) {
@@ -213,16 +224,32 @@ const SetUpService = () => {
 
     setLoading(true);
 
+    const pricePayload = pricingType === 'fixed'
+      ? {
+          default_price: parseFloat(defaultPrice),
+          express_price: expressPrice ? parseFloat(expressPrice) : null,
+          express_delivery_time: expressDeliveryTime || null,
+          price_min: null,
+          price_max: null,
+        }
+      : {
+          default_price: null,
+          express_price: null,
+          express_delivery_time: null,
+          price_min: parseFloat(priceMin),
+          price_max: parseFloat(priceMax),
+        };
+
     try {
-      // First, setup seller profile
+      // First, setup seller profile (sellers table has no range pricing columns)
       const sellerData = {
         title: title.trim(),
         description: description.trim(),
         category,
-        default_price: price,
+        default_price: pricePayload.default_price,
         default_delivery_time: defaultDeliveryTime || null,
-        express_price: expressPrice ? parseFloat(expressPrice) : null,
-        express_delivery_time: expressDeliveryTime || null,
+        express_price: pricePayload.express_price,
+        express_delivery_time: pricePayload.express_delivery_time,
         portfolio: formatPortfolio(),
       };
 
@@ -239,11 +266,10 @@ const SetUpService = () => {
         title: title.trim(),
         description: description.trim(),
         category,
-        default_price: price,
+        pricing_type: pricingType,
         default_delivery_time: defaultDeliveryTime || null,
-        express_price: expressPrice ? parseFloat(expressPrice) : null,
-        express_delivery_time: expressDeliveryTime || null,
         portfolio: formatPortfolio(),
+        ...pricePayload,
       }) as any;
 
       if (serviceResponse.status !== 201) {
@@ -286,7 +312,7 @@ const SetUpService = () => {
     },
     {
       title: 'Set your pricing',
-      description: 'Choose a fair price for your service. You can also add an express option for faster delivery.',
+      description: 'Choose a fixed price or a range. Range pricing lets buyers describe their needs and you quote a specific amount.',
       icon: null,
     },
     {
@@ -430,56 +456,124 @@ const SetUpService = () => {
                   </Select>
                 </div>
 
-                {/* Pricing */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="defaultPrice">Default Price (GHS) *</Label>
-                    <Input
-                      id="defaultPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={defaultPrice}
-                      onChange={(e) => setDefaultPrice(e.target.value)}
-                      required
-                    />
+                {/* Pricing Type */}
+                <div className="space-y-2">
+                  <Label>Pricing Type *</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPricingType('fixed')}
+                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                    >
+                      Fixed Price
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPricingType('range')}
+                      className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                    >
+                      Price Range
+                    </button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="defaultDeliveryTime">Default Delivery Time</Label>
-                    <Input
-                      id="defaultDeliveryTime"
-                      placeholder="e.g., 3-5 days"
-                      value={defaultDeliveryTime}
-                      onChange={(e) => setDefaultDeliveryTime(e.target.value)}
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {pricingType === 'fixed'
+                      ? 'Set a single price. Buyers book and pay immediately.'
+                      : 'Set a range. Buyers describe their needs, you quote a specific price.'}
+                  </p>
                 </div>
 
-                {/* Express Pricing */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="expressPrice">Express Price (GHS) - Optional</Label>
-                    <Input
-                      id="expressPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={expressPrice}
-                      onChange={(e) => setExpressPrice(e.target.value)}
-                    />
+                {pricingType === 'fixed' ? (
+                  <>
+                    {/* Fixed Pricing */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultPrice">Price (GHS) *</Label>
+                        <Input
+                          id="defaultPrice"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={defaultPrice}
+                          onChange={(e) => setDefaultPrice(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultDeliveryTime">Delivery Time</Label>
+                        <Input
+                          id="defaultDeliveryTime"
+                          placeholder="e.g., 3-5 days"
+                          value={defaultDeliveryTime}
+                          onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {/* Express Pricing */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="expressPrice">Express Price (GHS) - Optional</Label>
+                        <Input
+                          id="expressPrice"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={expressPrice}
+                          onChange={(e) => setExpressPrice(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="expressDeliveryTime">Express Delivery Time</Label>
+                        <Input
+                          id="expressDeliveryTime"
+                          placeholder="e.g., 1-2 days"
+                          value={expressDeliveryTime}
+                          onChange={(e) => setExpressDeliveryTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Range Pricing */
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="priceMin">Minimum Price (GHS) *</Label>
+                      <Input
+                        id="priceMin"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={priceMin}
+                        onChange={(e) => setPriceMin(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="priceMax">Maximum Price (GHS) *</Label>
+                      <Input
+                        id="priceMax"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={priceMax}
+                        onChange={(e) => setPriceMax(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="defaultDeliveryTime">Typical Delivery Time</Label>
+                      <Input
+                        id="defaultDeliveryTime"
+                        placeholder="e.g., 3-5 days"
+                        value={defaultDeliveryTime}
+                        onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expressDeliveryTime">Express Delivery Time</Label>
-                    <Input
-                      id="expressDeliveryTime"
-                      placeholder="e.g., 1-2 days"
-                      value={expressDeliveryTime}
-                      onChange={(e) => setExpressDeliveryTime(e.target.value)}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Portfolio Section */}
                 <div className="space-y-2">
