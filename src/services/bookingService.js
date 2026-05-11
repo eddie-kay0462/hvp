@@ -4,7 +4,6 @@ import { supabase, supabaseAdmin } from '../config/supabase.js';
 const db = supabaseAdmin ?? supabase;
 
 /**
- * 
  * Book a service now
  * @param {string} userId - Buyer's user ID
  * @param {string} serviceId - Service ID to book
@@ -552,17 +551,18 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
         // Notify seller + alert admin to process payout
         try {
           const { sendPaymentReleasedToSeller, sendPayoutRequiredToAdmin } = await import('./emailService.js');
+          const payoutAmount = booking.payment_amount || booking.quoted_price;
           sendPaymentReleasedToSeller(sellerAuthUserId, {
             bookingId,
             serviceTitle,
-            amountGhs: booking.payment_amount,
+            amountGhs: payoutAmount,
           })
             .then((r) => console.log('[email] payment released→seller result:', JSON.stringify(r)))
             .catch((e) => console.error('[email] payment released notify failed:', e.message));
           sendPayoutRequiredToAdmin(sellerAuthUserId, {
             bookingId,
             serviceTitle,
-            amountGhs: booking.payment_amount,
+            amountGhs: payoutAmount,
           })
             .then((r) => console.log('[email] payout required→admin result:', JSON.stringify(r)))
             .catch((e) => console.error('[email] payout admin notify failed:', e.message));
