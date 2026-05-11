@@ -143,8 +143,11 @@ async function apiFetch<T>(
     },
   };
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   try {
-    const response = await fetch(url, config);
+    const response = await fetch(url, { ...config, signal: controller.signal });
     
     if (!response.ok) {
       // Try to parse error response from backend
@@ -174,18 +177,25 @@ async function apiFetch<T>(
       throw new Error(friendlyMessage);
     }
 
+    clearTimeout(timeoutId);
     return await response.json();
   } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. The server may be starting up — please try again in a moment.');
+    }
+
     // If it's already our formatted error, re-throw it
     if (error.message && !error.message.includes('API request failed')) {
       throw error;
     }
-    
+
     // Handle network errors and other edge cases
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       throw new Error('Unable to connect to the server. Please check your internet connection.');
     }
-    
+
     console.error('API Error:', error);
     throw new Error(error.message || 'Something went wrong. Please try again.');
   }
