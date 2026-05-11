@@ -18,10 +18,13 @@ const ListService = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [pricingType, setPricingType] = useState<'fixed' | 'range'>('fixed');
   const [defaultPrice, setDefaultPrice] = useState('');
   const [defaultDeliveryTime, setDefaultDeliveryTime] = useState('');
   const [expressPrice, setExpressPrice] = useState('');
   const [expressDeliveryTime, setExpressDeliveryTime] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
   const [portfolio, setPortfolio] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -98,24 +101,44 @@ const ListService = () => {
       return;
     }
 
-    if (!title || !description || !category || !defaultPrice) {
+    const priceValid = pricingType === 'fixed' ? !!defaultPrice : (!!priceMin && !!priceMax);
+    if (!title || !description || !category || !portfolio || !priceValid) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (pricingType === 'range' && parseFloat(priceMin) >= parseFloat(priceMax)) {
+      toast.error('Minimum price must be less than maximum price');
       return;
     }
 
     setLoading(true);
 
     try {
+      const pricePayload = pricingType === 'fixed'
+        ? {
+            default_price: parseFloat(defaultPrice) || null,
+            express_price: expressPrice ? parseFloat(expressPrice) : null,
+            express_delivery_time: expressDeliveryTime || null,
+            price_min: null,
+            price_max: null,
+          }
+        : {
+            default_price: null,
+            express_price: null,
+            express_delivery_time: null,
+            price_min: parseFloat(priceMin),
+            price_max: parseFloat(priceMax),
+          };
+
       // Call backend API to create service (this sends email notifications!)
       const response: any = await api.sellers.createService({
         title: title.trim(),
         description: description.trim(),
         category,
-        default_price: parseFloat(defaultPrice) || null,
+        pricing_type: pricingType,
         default_delivery_time: defaultDeliveryTime || null,
-        express_price: expressPrice ? parseFloat(expressPrice) : null,
-        express_delivery_time: expressDeliveryTime || null,
-        portfolio: portfolio || null,
+        portfolio: portfolio.trim(),
+        ...pricePayload,
       });
 
       if (response.status !== 201) {
@@ -197,56 +220,121 @@ const ListService = () => {
                   </Select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="default-price">Default Price (GHS) *</Label>
-                  <Input
-                    id="default-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={defaultPrice}
-                    onChange={(e) => setDefaultPrice(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="default-delivery-time">Default Delivery Time</Label>
-                  <Input
-                    id="default-delivery-time"
-                    placeholder="e.g., 3-5 days"
-                    value={defaultDeliveryTime}
-                    onChange={(e) => setDefaultDeliveryTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                  <Label htmlFor="express-price">Express Price (GHS) - Optional</Label>
-                <Input
-                    id="express-price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                    value={expressPrice}
-                    onChange={(e) => setExpressPrice(e.target.value)}
-                />
+                <Label>Pricing Type *</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPricingType('fixed')}
+                    className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'fixed' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                  >
+                    Fixed Price
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPricingType('range')}
+                    className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'range' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                  >
+                    Price Range
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {pricingType === 'fixed' ? 'Set a single price. Buyers book and pay immediately.' : 'Set a range. Buyers describe their needs, you quote a specific price.'}
+                </p>
               </div>
 
-              <div className="space-y-2">
-                  <Label htmlFor="express-delivery-time">Express Delivery Time</Label>
-                  <Input
-                    id="express-delivery-time"
-                    placeholder="e.g., 1-2 days"
-                    value={expressDeliveryTime}
-                    onChange={(e) => setExpressDeliveryTime(e.target.value)}
-                  />
+              {pricingType === 'fixed' ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="default-price">Price (GHS) *</Label>
+                      <Input
+                        id="default-price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={defaultPrice}
+                        onChange={(e) => setDefaultPrice(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="default-delivery-time">Delivery Time</Label>
+                      <Input
+                        id="default-delivery-time"
+                        placeholder="e.g., 3-5 days"
+                        value={defaultDeliveryTime}
+                        onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="express-price">Express Price (GHS) - Optional</Label>
+                      <Input
+                        id="express-price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={expressPrice}
+                        onChange={(e) => setExpressPrice(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="express-delivery-time">Express Delivery Time</Label>
+                      <Input
+                        id="express-delivery-time"
+                        placeholder="e.g., 1-2 days"
+                        value={expressDeliveryTime}
+                        onChange={(e) => setExpressDeliveryTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price-min">Minimum Price (GHS) *</Label>
+                    <Input
+                      id="price-min"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={priceMin}
+                      onChange={(e) => setPriceMin(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price-max">Maximum Price (GHS) *</Label>
+                    <Input
+                      id="price-max"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={priceMax}
+                      onChange={(e) => setPriceMax(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="default-delivery-time">Typical Delivery Time</Label>
+                    <Input
+                      id="default-delivery-time"
+                      placeholder="e.g., 3-5 days"
+                      value={defaultDeliveryTime}
+                      onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="portfolio">Portfolio/Work Samples *</Label>

@@ -16,7 +16,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       return { status: 400, msg: "User ID and Service ID are required", data: null };
     }
 
-    const { date, time, status = 'pending' } = bookingData;
+    const { date, time, status = 'pending', buyer_requirements } = bookingData;
 
     // Date and time are now optional (for instant bookings)
     // Only validate if both are provided (scheduled booking)
@@ -56,7 +56,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // First, verify the service exists and is verified
     const { data: service, error: serviceError } = await db
       .from('services')
-      .select('id, title, is_verified, is_active, user_id')
+      .select('id, title, is_verified, is_active, user_id, pricing_type')
       .eq('id', serviceId)
       .single();
 
@@ -127,16 +127,22 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       };
     }
 
-    // Create the booking using profile.id (not userId)
-    // Date and time are optional (null for instant bookings)
+    const isRangeService = service.pricing_type === 'range';
+
+    // Range services require a description of scope from the buyer
+    if (isRangeService && !buyer_requirements?.trim()) {
+      return { status: 400, msg: "Please describe what you need so the seller can quote you accurately.", data: null };
+    }
+
     const bookingDataToInsert = {
-      buyer_id: profile.id, // Use profile.id instead of userId
+      buyer_id: profile.id,
       service_id: serviceId,
-      date: date || null, // Can be null for instant bookings
-      time: time || null, // Can be null for instant bookings
-      status: status,
-      // Payment fields - will be populated when payment API is ready
-      payment_status: null, // 'pending', 'captured', 'in_escrow' (held securely), 'released', 'refunded'
+      date: date || null,
+      time: time || null,
+      status,
+      buyer_requirements: buyer_requirements?.trim() || null,
+      quote_status: isRangeService ? 'pending_quote' : null,
+      payment_status: null,
       payment_captured_at: null,
       payment_released_at: null,
       payment_amount: null,
@@ -157,19 +163,28 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // Notify seller — fire and forget so email failure never blocks booking
     try {
       const buyerName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'A customer';
-      const { sendNewBookingToSeller } = await import('./emailService.js');
-      sendNewBookingToSeller(service.user_id, {
-        bookingId: booking.id,
-        serviceTitle: service.title,
-        buyerName,
-      }).catch((err) => console.error('[email] new booking notification failed:', err.message));
+      if (isRangeService) {
+        const { sendQuoteRequestToSeller } = await import('./emailService.js');
+        sendQuoteRequestToSeller(service.user_id, {
+          serviceTitle: service.title,
+          buyerName,
+          buyerRequirements: booking.buyer_requirements,
+        }).catch((err) => console.error('[email] quote request notification failed:', err.message));
+      } else {
+        const { sendNewBookingToSeller } = await import('./emailService.js');
+        sendNewBookingToSeller(service.user_id, {
+          bookingId: booking.id,
+          serviceTitle: service.title,
+          buyerName,
+        }).catch((err) => console.error('[email] new booking notification failed:', err.message));
+      }
     } catch (emailErr) {
       console.error('[email] failed to import emailService for new booking:', emailErr.message);
     }
 
     return {
       status: 201,
-      msg: "Booking created successfully",
+      msg: isRangeService ? "Quote request sent. The seller will review your requirements and get back to you." : "Booking created successfully",
       data: booking
     };
   } catch (e) {
@@ -202,7 +217,10 @@ export const getBookingById = async (userId, bookingId, userRole = 'buyer') => {
           description,
           category,
           default_price,
-          express_price
+          express_price,
+          pricing_type,
+          price_min,
+          price_max
         )
       `)
       .eq('id', bookingId)
@@ -262,7 +280,10 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
       description,
       category,
       default_price,
-      express_price
+      express_price,
+      pricing_type,
+      price_min,
+      price_max
     `;
 
     if (role === 'buyer') {
@@ -334,6 +355,11 @@ export const acceptBooking = async (userId, bookingId) => {
     // Verify user is the seller (owns the service)
     if (booking.service.user_id !== userId) {
       return { status: 403, msg: "You do not have permission to accept this booking", data: null };
+    }
+
+    // Range-priced bookings go through the quote flow, not direct accept
+    if (booking.quote_status === 'pending_quote') {
+      return { status: 400, msg: "This booking requires a quote. Use the Send Quote action instead.", data: null };
     }
 
     // Check if booking is in pending status
@@ -456,10 +482,15 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
       return { status: 400, msg: `Cannot update booking with status: ${currentStatus}`, data: null };
     }
 
-    // Update status
+    // Update status (stamp delivered_at when seller marks delivered)
+    const updateFields = { status: newStatus };
+    if (newStatus === 'delivered' && isSeller) {
+      updateFields.delivered_at = new Date().toISOString();
+    }
+
     const { data, error } = await db
       .from('bookings')
-      .update({ status: newStatus })
+      .update(updateFields)
       .eq('id', bookingId)
       .select()
       .single();
@@ -615,4 +646,146 @@ export const confirmBookingCompletion = async (userId, bookingId) => {
  */
 export const cancelBooking = async (userId, bookingId) => {
   return await updateBookingStatus(userId, bookingId, 'cancelled');
+};
+
+/**
+ * Seller submits a price quote for a range-priced booking
+ * @param {string} userId - Seller's auth user ID
+ * @param {string} bookingId - Booking ID
+ * @param {number} quotedPrice - The specific price being quoted
+ * @param {string} [quoteNote] - Optional message to the buyer
+ */
+export const submitQuote = async (userId, bookingId, quotedPrice, quoteNote) => {
+  try {
+    if (!bookingId || !quotedPrice) {
+      return { status: 400, msg: "Booking ID and quoted price are required", data: null };
+    }
+    if (isNaN(Number(quotedPrice)) || Number(quotedPrice) <= 0) {
+      return { status: 400, msg: "Quoted price must be a positive number", data: null };
+    }
+
+    const { data: booking, error: bookingError } = await db
+      .from('bookings')
+      .select('*, service:services(user_id, title, price_min, price_max)')
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError || !booking) {
+      return { status: 404, msg: "Booking not found", data: null };
+    }
+
+    if (booking.service.user_id !== userId) {
+      return { status: 403, msg: "You do not have permission to quote on this booking", data: null };
+    }
+
+    if (booking.quote_status !== 'pending_quote') {
+      return { status: 400, msg: `Cannot submit quote. Current quote status: ${booking.quote_status}`, data: null };
+    }
+
+    const { data, error } = await db
+      .from('bookings')
+      .update({
+        quoted_price: Number(quotedPrice),
+        seller_quote_note: quoteNote?.trim() || null,
+        quote_status: 'quote_sent',
+      })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (error) {
+      return { status: 400, msg: error.message, data: null };
+    }
+
+    // Notify buyer
+    try {
+      const { sendQuoteSentToBuyer } = await import('./emailService.js');
+      sendQuoteSentToBuyer(booking.buyer_id, {
+        serviceTitle: booking.service.title,
+        quotedPrice: Number(quotedPrice),
+        quoteNote: quoteNote?.trim() || null,
+      }).catch((e) => console.error('[email] quote sent notify failed:', e.message));
+    } catch (e) { console.error('[email] import failed for submitQuote:', e.message); }
+
+    return { status: 200, msg: "Quote sent to buyer", data };
+  } catch (e) {
+    console.error("submitQuote error:", e);
+    return { status: 500, msg: "Failed to submit quote", data: null };
+  }
+};
+
+/**
+ * Buyer accepts or declines a quote
+ * @param {string} userId - Buyer's profile ID
+ * @param {string} bookingId - Booking ID
+ * @param {boolean} accepted - true to accept, false to decline
+ */
+export const respondToQuote = async (userId, bookingId, accepted) => {
+  try {
+    if (!bookingId || accepted === undefined) {
+      return { status: 400, msg: "Booking ID and response are required", data: null };
+    }
+
+    const { data: booking, error: bookingError } = await db
+      .from('bookings')
+      .select('*, service:services(user_id, title)')
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError || !booking) {
+      return { status: 404, msg: "Booking not found", data: null };
+    }
+
+    if (booking.buyer_id !== userId) {
+      return { status: 403, msg: "Only the buyer can respond to a quote", data: null };
+    }
+
+    if (booking.quote_status !== 'quote_sent') {
+      return { status: 400, msg: `No pending quote to respond to. Current quote status: ${booking.quote_status}`, data: null };
+    }
+
+    if (accepted) {
+      const { data, error } = await db
+        .from('bookings')
+        .update({ quote_status: 'quote_accepted', status: 'accepted' })
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) return { status: 400, msg: error.message, data: null };
+
+      // Notify seller
+      try {
+        const { sendQuoteAcceptedToSeller } = await import('./emailService.js');
+        sendQuoteAcceptedToSeller(booking.service.user_id, {
+          serviceTitle: booking.service.title,
+          quotedPrice: booking.quoted_price,
+        }).catch((e) => console.error('[email] quote accepted notify failed:', e.message));
+      } catch (e) { console.error('[email] import failed for respondToQuote accept:', e.message); }
+
+      return { status: 200, msg: "Quote accepted. You can now proceed to payment.", data };
+    } else {
+      const { data, error } = await db
+        .from('bookings')
+        .update({ quote_status: 'quote_declined', status: 'cancelled' })
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) return { status: 400, msg: error.message, data: null };
+
+      // Notify seller
+      try {
+        const { sendQuoteDeclinedToSeller } = await import('./emailService.js');
+        sendQuoteDeclinedToSeller(booking.service.user_id, {
+          serviceTitle: booking.service.title,
+        }).catch((e) => console.error('[email] quote declined notify failed:', e.message));
+      } catch (e) { console.error('[email] import failed for respondToQuote decline:', e.message); }
+
+      return { status: 200, msg: "Quote declined. Booking has been cancelled.", data };
+    }
+  } catch (e) {
+    console.error("respondToQuote error:", e);
+    return { status: 500, msg: "Failed to process quote response", data: null };
+  }
 };

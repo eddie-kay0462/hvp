@@ -319,7 +319,7 @@ export const api = {
 
   // Booking endpoints
   bookings: {
-    create: (data: { serviceId: string; date: string | null; time: string | null; status?: string; note?: string | null }) =>
+    create: (data: { serviceId: string; date: string | null; time: string | null; status?: string; note?: string | null; buyer_requirements?: string | null }) =>
       apiFetch('/bookings/book-now', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -344,6 +344,16 @@ export const api = {
     cancel: (bookingId: string) =>
       apiFetch(`/bookings/${bookingId}/cancel`, {
         method: 'PATCH',
+      }),
+    submitQuote: (bookingId: string, data: { quotedPrice: number; quoteNote?: string }) =>
+      apiFetch(`/bookings/${bookingId}/quote`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    respondToQuote: (bookingId: string, accepted: boolean) =>
+      apiFetch(`/bookings/${bookingId}/quote/respond`, {
+        method: 'POST',
+        body: JSON.stringify({ accepted }),
       }),
   },
 
@@ -455,6 +465,23 @@ export const api = {
       }),
     confirmPayout: (bookingId: string, formData: FormData) =>
       apiFetchFormData(`/admin/payouts/${bookingId}/confirm`, formData),
+    getPendingPayouts: () =>
+      apiFetch('/admin/payouts/pending', { method: 'GET' }),
+  },
+
+  disputes: {
+    raise: (bookingId: string, reason: string, details?: string) =>
+      apiFetch('/disputes', {
+        method: 'POST',
+        body: JSON.stringify({ bookingId, reason, details }),
+      }),
+    getAll: (status?: string) =>
+      apiFetch(`/disputes/admin${status ? `?status=${status}` : ''}`, { method: 'GET' }),
+    resolve: (disputeId: string, resolution: string, newStatus?: string) =>
+      apiFetch(`/disputes/admin/${disputeId}/resolve`, {
+        method: 'PATCH',
+        body: JSON.stringify({ resolution, newStatus }),
+      }),
   },
 
   // Health check

@@ -66,48 +66,39 @@ export const createService = async (userId, serviceData) => {
       }
     }
 
-    // Duplicate prevention checks
-    const { title, category } = serviceData;
+    const { title, pricing_type = 'fixed' } = serviceData;
 
-    // Check 1: Exact title match (same seller, same title, same category)
-    const { data: exactMatches, error: exactCheckError } = await db
+    // Validate pricing fields based on type
+    if (pricing_type === 'range') {
+      if (!serviceData.price_min || !serviceData.price_max) {
+        return { status: 400, msg: "Range pricing requires both a minimum and maximum price.", data: null };
+      }
+      if (Number(serviceData.price_min) >= Number(serviceData.price_max)) {
+        return { status: 400, msg: "Minimum price must be less than maximum price.", data: null };
+      }
+    } else {
+      if (!serviceData.default_price) {
+        return { status: 400, msg: "A price is required for fixed-price services.", data: null };
+      }
+    }
+
+    // Duplicate prevention: unique title per seller
+    const { data: titleMatches, error: titleCheckError } = await db
       .from('services')
       .select('id, title')
       .eq('user_id', userId)
-      .eq('category', category)
       .ilike('title', title.trim());
 
-    if (exactCheckError) {
-      console.error("Error checking for exact duplicates:", exactCheckError);
+    if (titleCheckError) {
+      console.error("Error checking for title duplicates:", titleCheckError);
       return { status: 500, msg: "Failed to validate service", data: null };
     }
 
-    if (exactMatches && exactMatches.length > 0) {
-      return { 
-        status: 409, 
-        msg: `You already have a service titled "${title}" in the ${category} category. Please edit your existing service or choose a different title.`, 
-        data: null 
-      };
-    }
-
-    // Check 2: Any service in the same category (prevents "Cake Making" vs "Cake Baking" duplicates)
-    const { data: categoryServices, error: categoryCheckError } = await db
-      .from('services')
-      .select('id, title')
-      .eq('user_id', userId)
-      .eq('category', category);
-
-    if (categoryCheckError) {
-      console.error("Error checking for category duplicates:", categoryCheckError);
-      return { status: 500, msg: "Failed to validate service", data: null };
-    }
-
-    if (categoryServices && categoryServices.length > 0) {
-      const existingTitle = categoryServices[0].title;
-      return { 
-        status: 409, 
-        msg: `You already have a service "${existingTitle}" in the ${category} category. Each seller can only have one service per category. Please edit your existing service or choose a different category.`, 
-        data: null 
+    if (titleMatches && titleMatches.length > 0) {
+      return {
+        status: 409,
+        msg: `You already have a service titled "${title}". Please use a different title.`,
+        data: null
       };
     }
 
@@ -115,7 +106,8 @@ export const createService = async (userId, serviceData) => {
     const serviceToCreate = {
       user_id: userId,
       ...serviceData,
-      is_verified: false // All new services require approval
+      pricing_type,
+      is_verified: false
     };
 
     const { data, error } = await db
@@ -182,13 +174,27 @@ export const editService = async (userId, serviceId, updates) => {
       return { status: 404, msg: "Service not found or you do not have permission", data: null };
     }
 
+    // Validate pricing fields if pricing_type is being updated
+    if (updates.pricing_type === 'range') {
+      const min = updates.price_min ?? service.price_min;
+      const max = updates.price_max ?? service.price_max;
+      if (!min || !max) {
+        return { status: 400, msg: "Range pricing requires both a minimum and maximum price.", data: null };
+      }
+      if (Number(min) >= Number(max)) {
+        return { status: 400, msg: "Minimum price must be less than maximum price.", data: null };
+      }
+    } else if (updates.pricing_type === 'fixed' && updates.default_price === null) {
+      return { status: 400, msg: "A price is required for fixed-price services.", data: null };
+    }
+
     // Remove undefined and null fields to allow partial updates
     // Also remove is_verified from updates (should be managed by admin/system)
     const cleanUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([key, v]) => 
-        v !== undefined && 
-        v !== null && 
-        key !== 'is_verified' // Don't allow sellers to update verification status
+      Object.entries(updates).filter(([key, v]) =>
+        v !== undefined &&
+        v !== null &&
+        key !== 'is_verified'
       )
     );
 

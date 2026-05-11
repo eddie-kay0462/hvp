@@ -57,5 +57,21 @@ router.patch('/:bookingId/confirm', verifyToken, responseHandler(bookingControll
  */
 router.patch('/:bookingId/cancel', verifyToken, responseHandler(bookingController.cancelBooking));
 
+/**
+ * @route   POST /api/bookings/:bookingId/quote
+ * @desc    Seller submits a price quote for a range-priced booking
+ * @access  Private (seller only)
+ * @body    { quotedPrice: number, quoteNote?: string }
+ */
+router.post('/:bookingId/quote', verifyToken, responseHandler(bookingController.submitQuote));
+
+/**
+ * @route   POST /api/bookings/:bookingId/quote/respond
+ * @desc    Buyer accepts or declines a quote
+ * @access  Private (buyer only)
+ * @body    { accepted: boolean }
+ */
+router.post('/:bookingId/quote/respond', verifyToken, responseHandler(bookingController.respondToQuote));
+
 export default router;
 

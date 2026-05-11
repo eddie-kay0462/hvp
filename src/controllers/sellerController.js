@@ -60,27 +60,33 @@ const setupSeller = async (req) => {
         title,
         description,
         category,
+        pricing_type,
         default_price,
         default_delivery_time,
         express_price,
         express_delivery_time,
+        price_min,
+        price_max,
         portfolio
       } = req.body;
-  
+
       // Basic validation
       if (!title || !description || !category || !portfolio) {
         return { status: 400, msg: "Title, description, category, and portfolio are required", data: null };
       }
-  
+
       // Call the service layer
       const result = await sellerService.createService(userId, {
         title,
         description,
         category,
+        pricing_type,
         default_price,
         default_delivery_time,
         express_price,
         express_delivery_time,
+        price_min,
+        price_max,
         portfolio
       });
   

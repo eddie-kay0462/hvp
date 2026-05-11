@@ -17,6 +17,9 @@ interface BookingFormProps {
   serviceTitle: string;
   defaultPrice: number | null;
   expressPrice: number | null;
+  pricingType?: 'fixed' | 'range';
+  priceMin?: number | null;
+  priceMax?: number | null;
   onSuccess?: (bookingId: string) => void;
   onCancel?: () => void;
 }
@@ -41,13 +44,18 @@ export const BookingForm = ({
   serviceTitle,
   defaultPrice,
   expressPrice,
+  pricingType = 'fixed',
+  priceMin,
+  priceMax,
   onSuccess,
   onCancel,
 }: BookingFormProps) => {
+  const isRange = pricingType === 'range';
   const [scheduleForLater, setScheduleForLater] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [preferredTimeNote, setPreferredTimeNote] = useState<string>("");
+  const [buyerRequirements, setBuyerRequirements] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,26 +99,31 @@ export const BookingForm = ({
       }
     }
 
+    if (isRange && !buyerRequirements.trim()) {
+      setError("Please describe what you need so the seller can quote you accurately.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Format date/time - can be null for instant bookings
-      const dateStr = scheduleForLater && selectedDate 
-        ? format(selectedDate, "yyyy-MM-dd") 
+      const dateStr = scheduleForLater && selectedDate
+        ? format(selectedDate, "yyyy-MM-dd")
         : null;
-      const timeStr = scheduleForLater && selectedTime 
-        ? selectedTime 
+      const timeStr = scheduleForLater && selectedTime
+        ? selectedTime
         : null;
 
       const result = await api.bookings.create({
         serviceId,
         date: dateStr,
         time: timeStr,
-        note: preferredTimeNote || null, // Optional note for preferred time
+        note: preferredTimeNote || null,
+        buyer_requirements: isRange ? buyerRequirements.trim() : null,
       }) as any;
 
       if (result.status === 201) {
-        toast.success("Booking created successfully!");
+        toast.success(isRange ? "Quote request sent!" : "Booking created successfully!");
         onSuccess?.(result.data.id);
       } else {
         const errorMessage = result.msg || "Failed to create booking";
@@ -139,23 +152,54 @@ export const BookingForm = ({
       </div>
 
       {/* Price Display */}
-      {(defaultPrice || expressPrice) && (
-        <Card className="p-3 md:p-4 bg-muted/50">
-          <div className="space-y-2">
-            {defaultPrice && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-muted-foreground">Default Price</span>
-                <span className="text-sm md:text-base font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
-              </div>
-            )}
-            {expressPrice && (
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-muted-foreground">Express Price</span>
-                <span className="text-sm md:text-base font-semibold">GH₵{expressPrice.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        </Card>
+      <Card className="p-3 md:p-4 bg-muted/50">
+        <div className="space-y-2">
+          {isRange && priceMin != null && priceMax != null ? (
+            <div className="flex justify-between items-center">
+              <span className="text-xs md:text-sm text-muted-foreground">Price Range</span>
+              <span className="text-sm md:text-base font-semibold">GH₵{priceMin.toFixed(2)} – GH₵{priceMax.toFixed(2)}</span>
+            </div>
+          ) : (
+            <>
+              {defaultPrice && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm text-muted-foreground">Price</span>
+                  <span className="text-sm md:text-base font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
+                </div>
+              )}
+              {expressPrice && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm text-muted-foreground">Express Price</span>
+                  <span className="text-sm md:text-base font-semibold">GH₵{expressPrice.toFixed(2)}</span>
+                </div>
+              )}
+            </>
+          )}
+          {isRange && (
+            <p className="text-xs text-muted-foreground">The seller will quote a specific price based on your requirements.</p>
+          )}
+        </div>
+      </Card>
+
+      {/* Buyer Requirements — required for range-priced services */}
+      {isRange && (
+        <div className="space-y-2">
+          <Label htmlFor="buyer-requirements" className="flex items-center gap-2 text-sm md:text-base">
+            <MessageSquare className="h-4 w-4" />
+            Describe What You Need *
+          </Label>
+          <Textarea
+            id="buyer-requirements"
+            placeholder="Tell the seller exactly what you need — e.g. scope, timeline, any specific requirements. The more detail you provide, the more accurate the quote will be."
+            value={buyerRequirements}
+            onChange={(e) => setBuyerRequirements(e.target.value)}
+            className="min-h-[120px] text-sm"
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            The seller will review this and send you a quote within the price range.
+          </p>
+        </div>
       )}
 
       {/* Schedule Option */}
@@ -279,10 +323,10 @@ export const BookingForm = ({
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating Booking...
+              {isRange ? 'Sending Request...' : 'Creating Booking...'}
             </>
           ) : (
-            "Confirm Booking"
+            isRange ? 'Send Quote Request' : 'Confirm Booking'
           )}
         </Button>
       </div>

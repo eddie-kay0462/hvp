@@ -24,6 +24,7 @@ CREATE TABLE public.bookings (
   payout_transaction_id text,
   payout_proof_url text,
   payout_confirmed_at timestamp with time zone,
+  momo_proof_storage_path text,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
   CONSTRAINT bookings_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id),
   CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
@@ -95,6 +96,17 @@ CREATE TABLE public.messages (
   CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
   CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.payment_verification_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  booking_id uuid NOT NULL,
+  event_type text NOT NULL CHECK (event_type = ANY (ARRAY['submitted'::text, 'approved'::text, 'rejected'::text])),
+  actor_id uuid,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT payment_verification_events_pkey PRIMARY KEY (id),
+  CONSTRAINT payment_verification_events_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
+  CONSTRAINT payment_verification_events_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.profiles (
   id uuid NOT NULL,
   first_name text,
@@ -151,6 +163,30 @@ CREATE TABLE public.sellers (
   is_verified boolean DEFAULT false,
   CONSTRAINT sellers_pkey PRIMARY KEY (id),
   CONSTRAINT sellers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.service_moderation_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  service_id uuid NOT NULL,
+  event_type text NOT NULL CHECK (event_type = ANY (ARRAY['approved'::text, 'rejected'::text])),
+  admin_id uuid,
+  rejection_reason text,
+  admin_notes text,
+  service_title text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT service_moderation_events_pkey PRIMARY KEY (id),
+  CONSTRAINT service_moderation_events_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT service_moderation_events_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.service_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  service_id uuid NOT NULL,
+  viewer_id uuid,
+  session_id text,
+  source text,
+  viewed_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT service_views_pkey PRIMARY KEY (id),
+  CONSTRAINT service_views_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT service_views_viewer_id_fkey FOREIGN KEY (viewer_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.services (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

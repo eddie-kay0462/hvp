@@ -22,10 +22,13 @@ interface Service {
   id: string;
   title: string;
   description: string;
+  pricing_type: 'fixed' | 'range';
   default_price: number | null;
   express_price: number | null;
   default_delivery_time: string | null;
   express_delivery_time: string | null;
+  price_min: number | null;
+  price_max: number | null;
   category: string;
   portfolio: string | null;
   image_urls: string[] | null;
@@ -321,7 +324,9 @@ const ServiceDetail = () => {
           title: srv.title,
           description: srv.description,
           price: srv.default_price || 0,
-          pricingType: 'fixed',
+          pricingType: srv.pricing_type || 'fixed',
+          priceMin: srv.price_min || null,
+          priceMax: srv.price_max || null,
           imageUrls: srv.image_urls || [],
           sellerName,
           sellerVerified: false,
@@ -340,7 +345,9 @@ const ServiceDetail = () => {
           title: srv.title,
           description: srv.description,
           price: srv.default_price || 0,
-          pricingType: 'fixed',
+          pricingType: srv.pricing_type || 'fixed',
+          priceMin: srv.price_min || null,
+          priceMax: srv.price_max || null,
           imageUrls: srv.image_urls || [],
           sellerName: getSellerName(sellerResult.data),
           sellerVerified: false,
@@ -561,14 +568,25 @@ const ServiceDetail = () => {
               <Card className="p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">What to Expect</h2>
                 <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Default Price</h3>
-                    <p className="text-muted-foreground">
-                      {service.default_price ? `GH₵${service.default_price}` : 'Price on request'}
-                      {service.default_delivery_time && ` - Delivery: ${service.default_delivery_time}`}
-                    </p>
-                  </div>
-                  {service.express_price && (
+                  {service.pricing_type === 'range' ? (
+                    <div>
+                      <h3 className="font-semibold mb-2">Price Range</h3>
+                      <p className="text-muted-foreground">
+                        GH₵{service.price_min} – GH₵{service.price_max}
+                        {service.default_delivery_time && ` · Typical delivery: ${service.default_delivery_time}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Final price is quoted based on your specific requirements.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="font-semibold mb-2">Price</h3>
+                      <p className="text-muted-foreground">
+                        {service.default_price ? `GH₵${service.default_price}` : 'Price on request'}
+                        {service.default_delivery_time && ` - Delivery: ${service.default_delivery_time}`}
+                      </p>
+                    </div>
+                  )}
+                  {service.pricing_type === 'fixed' && service.express_price && (
                     <div>
                       <h3 className="font-semibold mb-2">Express Option</h3>
                       <p className="text-muted-foreground">
@@ -672,9 +690,11 @@ const ServiceDetail = () => {
                     <Badge variant="category" className="mb-2 md:mb-3">{getCategoryLabel(service.category)}</Badge>
                     <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">{service.title}</h1>
                     <div className="text-2xl md:text-3xl font-bold text-primary mb-4 md:mb-6">
-                      {formatPrice(service.default_price)}
+                      {service.pricing_type === 'range' && service.price_min != null && service.price_max != null
+                        ? `GH₵${service.price_min} – GH₵${service.price_max}`
+                        : formatPrice(service.default_price)}
                     </div>
-                    {service.express_price && (
+                    {service.pricing_type === 'fixed' && service.express_price && (
                       <div className="text-base md:text-lg text-muted-foreground mb-4 md:mb-6">
                         Express: {formatPrice(service.express_price)}
                       </div>
@@ -717,7 +737,7 @@ const ServiceDetail = () => {
                   {/* CTA Buttons */}
                   <div className="space-y-2 md:space-y-3">
                     <Button className="w-full" size="default" onClick={handleBookNow}>
-                      Book Now
+                      {service.pricing_type === 'range' ? 'Request a Quote' : 'Book Now'}
                     </Button>
                     <Button
                       variant="outline"
@@ -748,6 +768,8 @@ const ServiceDetail = () => {
                     description={srv.description}
                     price={srv.price}
                     pricingType={srv.pricingType}
+                    priceMin={srv.priceMin}
+                    priceMax={srv.priceMax}
                     imageUrls={srv.imageUrls}
                     sellerName={srv.sellerName}
                     sellerVerified={srv.sellerVerified}
@@ -772,6 +794,8 @@ const ServiceDetail = () => {
                     description={srv.description}
                     price={srv.price}
                     pricingType={srv.pricingType}
+                    priceMin={srv.priceMin}
+                    priceMax={srv.priceMax}
                     imageUrls={srv.imageUrls}
                     sellerName={srv.sellerName}
                     sellerVerified={srv.sellerVerified}
@@ -800,6 +824,9 @@ const ServiceDetail = () => {
               serviceTitle={service.title}
               defaultPrice={service.default_price}
               expressPrice={service.express_price}
+              pricingType={service.pricing_type || 'fixed'}
+              priceMin={service.price_min}
+              priceMax={service.price_max}
               onSuccess={handleBookingSuccess}
               onCancel={() => setShowBookingForm(false)}
             />

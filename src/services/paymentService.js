@@ -82,18 +82,29 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
       return { status: 400, msg: 'Booking already paid', data: null };
     }
 
-    // Determine amount
+    // Determine amount — quoted_price takes precedence for range-priced bookings
     let amount = booking.payment_amount;
     if (!amount) {
-      const { data: service, error: serviceError } = await db
-        .from('services')
-        .select('default_price')
-        .eq('id', booking.service_id)
+      // Re-fetch booking with quoted_price in case it wasn't in the initial select
+      const { data: fullBooking } = await db
+        .from('bookings')
+        .select('quoted_price')
+        .eq('id', bookingId)
         .single();
-      if (serviceError || !service) {
-        return { status: 404, msg: 'Service not found for booking', data: null };
+
+      if (fullBooking?.quoted_price) {
+        amount = fullBooking.quoted_price;
+      } else {
+        const { data: service, error: serviceError } = await db
+          .from('services')
+          .select('default_price')
+          .eq('id', booking.service_id)
+          .single();
+        if (serviceError || !service) {
+          return { status: 404, msg: 'Service not found for booking', data: null };
+        }
+        amount = service.default_price || 0;
       }
-      amount = service.default_price || 0;
       // Persist amount on booking
       await db
         .from('bookings')

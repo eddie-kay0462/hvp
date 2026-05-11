@@ -12,6 +12,8 @@ import requestRoutes from './routes/requestRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import disputeRoutes from './routes/disputeRoutes.js';
+import { runAutoRelease } from './services/autoReleaseService.js';
 
 // Load environment variables
 dotenv.config();
@@ -103,10 +105,15 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/disputes', disputeRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);
 app.use(errorHandler);
+
+// Auto-release delivered bookings after 72h if buyer hasn't confirmed
+runAutoRelease();
+setInterval(runAutoRelease, 60 * 60 * 1000); // check every hour
 
 // Start server
 app.listen(PORT, () => {

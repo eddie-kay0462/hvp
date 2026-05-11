@@ -22,6 +22,10 @@ export type Database = {
           date: string | null
           time: string | null
           status: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled"
+          buyer_requirements: string | null
+          quoted_price: number | null
+          seller_quote_note: string | null
+          quote_status: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null
           created_at: string | null
           payment_status: string | null
           payment_captured_at: string | null
@@ -41,6 +45,10 @@ export type Database = {
           date?: string | null
           time?: string | null
           status?: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled"
+          buyer_requirements?: string | null
+          quoted_price?: number | null
+          seller_quote_note?: string | null
+          quote_status?: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null
           created_at?: string | null
           payment_status?: string | null
           payment_captured_at?: string | null
@@ -60,6 +68,10 @@ export type Database = {
           date?: string | null
           time?: string | null
           status?: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled"
+          buyer_requirements?: string | null
+          quoted_price?: number | null
+          seller_quote_note?: string | null
+          quote_status?: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null
           created_at?: string | null
           payment_status?: string | null
           payment_captured_at?: string | null
@@ -241,6 +253,9 @@ export type Database = {
           title: string
           description: string
           category: string
+          pricing_type: "fixed" | "range"
+          price_min: number | null
+          price_max: number | null
           default_price: number | null
           default_delivery_time: string | null
           express_price: number | null
@@ -258,6 +273,9 @@ export type Database = {
           title: string
           description: string
           category: string
+          pricing_type?: "fixed" | "range"
+          price_min?: number | null
+          price_max?: number | null
           default_price?: number | null
           default_delivery_time?: string | null
           express_price?: number | null
@@ -275,6 +293,9 @@ export type Database = {
           title?: string
           description?: string
           category?: string
+          pricing_type?: "fixed" | "range"
+          price_min?: number | null
+          price_max?: number | null
           default_price?: number | null
           default_delivery_time?: string | null
           express_price?: number | null

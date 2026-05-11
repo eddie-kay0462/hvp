@@ -10,6 +10,8 @@ interface ServiceCardProps {
   description: string;
   price: number;
   pricingType: string;
+  priceMin?: number | null;
+  priceMax?: number | null;
   imageUrls: string[];
   sellerName: string;
   sellerVerified: boolean;
@@ -24,6 +26,8 @@ export const ServiceCard = ({
   description,
   price,
   pricingType,
+  priceMin,
+  priceMax,
   imageUrls,
   sellerName,
   sellerVerified,
@@ -34,6 +38,9 @@ export const ServiceCard = ({
   const navigate = useNavigate();
 
   const formatPrice = () => {
+    if (pricingType === 'range' && priceMin != null && priceMax != null) {
+      return `GH₵ ${priceMin} – ${priceMax}`;
+    }
     if (pricingType === 'hourly') {
       return `GH₵ ${price}/hr`;
     } else if (pricingType === 'custom') {

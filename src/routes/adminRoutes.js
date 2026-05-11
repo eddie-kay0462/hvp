@@ -17,6 +17,8 @@ router.post('/services/:serviceId/reject', responseHandler(adminController.rejec
 router.get('/services/stats', responseHandler(adminController.getServiceStats));
 router.get('/services/moderation-history', responseHandler(adminController.getServiceModerationHistory));
 
+router.get('/payouts/pending', responseHandler(adminController.getPendingPayouts));
+
 router.get('/payments/momo/pending', responseHandler(adminController.getPendingMomoPayments));
 router.get('/payments/momo/history', responseHandler(adminController.getMomoPaymentHistory));
 router.post(

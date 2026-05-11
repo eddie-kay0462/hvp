@@ -54,7 +54,12 @@ interface Booking {
   date: string | null;
   time: string | null;
   status: "pending" | "accepted" | "in_progress" | "delivered" | "completed" | "cancelled";
+  quote_status?: "pending_quote" | "quote_sent" | "quote_accepted" | "quote_declined" | null;
+  buyer_requirements?: string | null;
+  quoted_price?: number | null;
+  seller_quote_note?: string | null;
   created_at: string;
+  delivered_at?: string | null;
   payment_status?: string | null;
   payment_captured_at?: string | null;
   payment_released_at?: string | null;
@@ -77,6 +82,9 @@ interface Booking {
     category: string;
     default_price: number | null;
     express_price: number | null;
+    pricing_type?: 'fixed' | 'range';
+    price_min?: number | null;
+    price_max?: number | null;
   };
   buyer?: {
     id: string;
@@ -161,6 +169,11 @@ export default function BookingDetail() {
   const [submittingPayout, setSubmittingPayout] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [autoReleaseCountdown, setAutoReleaseCountdown] = useState<string>('');
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeDetails, setDisputeDetails] = useState('');
+  const [submittingDispute, setSubmittingDispute] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -324,6 +337,24 @@ export default function BookingDetail() {
     }
   };
 
+  const handleRespondToQuote = async (accepted: boolean) => {
+    if (!booking || !id) return;
+    try {
+      setUpdating(true);
+      const result = await (api.bookings as any).respondToQuote(id, accepted) as any;
+      if (result.status === 200) {
+        toast.success(accepted ? "Quote accepted! You can now proceed to payment." : "Quote declined.");
+        fetchBookingDetails();
+      } else {
+        toast.error(result.msg || "Failed to respond to quote");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to respond to quote");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const checkExistingReview = async () => {
     if (!id || !user) return;
 
@@ -400,6 +431,27 @@ export default function BookingDetail() {
     }
   };
 
+  const handleRaiseDispute = async () => {
+    if (!booking || !id || !disputeReason) return;
+    try {
+      setSubmittingDispute(true);
+      const result = await (api as any).disputes.raise(id, disputeReason, disputeDetails || undefined) as any;
+      if (result.status === 201) {
+        toast.success('Dispute raised. Our team will review it shortly.');
+        setDisputeDialogOpen(false);
+        setDisputeReason('');
+        setDisputeDetails('');
+        fetchBookingDetails();
+      } else {
+        toast.error(result.msg || 'Failed to raise dispute');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to raise dispute');
+    } finally {
+      setSubmittingDispute(false);
+    }
+  };
+
   const formatPrice = (price: number | null) => {
     if (!price) return "Price on request";
     return `GH₵${price.toFixed(2)}`;
@@ -435,6 +487,28 @@ export default function BookingDetail() {
     }
     return person.first_name || person.last_name || "Unknown";
   };
+
+  // Countdown timer for auto-release (72h after delivered_at)
+  useEffect(() => {
+    if (!booking?.delivered_at || booking.status !== 'delivered') return;
+    const AUTO_RELEASE_MS = 72 * 60 * 60 * 1000;
+    const releaseAt = new Date(booking.delivered_at).getTime() + AUTO_RELEASE_MS;
+
+    const tick = () => {
+      const remaining = releaseAt - Date.now();
+      if (remaining <= 0) {
+        setAutoReleaseCountdown('Payment releasing soon...');
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      setAutoReleaseCountdown(`${h}h ${m}m`);
+    };
+
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, [booking?.delivered_at, booking?.status]);
 
   // Check if current user is buyer, seller, or admin
   const isBuyer = booking?.buyer_id === user?.id;
@@ -630,7 +704,65 @@ export default function BookingDetail() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {isBuyer && booking.status === "pending" && (
+                  {/* Quote request submitted — waiting for seller */}
+                  {isBuyer && booking.quote_status === 'pending_quote' && (
+                    <div className="p-4 rounded-md border border-purple-200 bg-purple-50 dark:bg-purple-950/20 dark:border-purple-800">
+                      <p className="text-sm font-medium text-purple-900 dark:text-purple-100">Quote request sent</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The seller is reviewing your requirements and will send a quote shortly.
+                      </p>
+                      {booking.buyer_requirements && (
+                        <div className="mt-2 text-xs border-l-2 border-purple-300 pl-2 text-muted-foreground">
+                          <span className="font-medium">Your requirements: </span>{booking.buyer_requirements}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Seller sent a quote — buyer to accept/decline */}
+                  {isBuyer && booking.quote_status === 'quote_sent' && (
+                    <div className="p-4 rounded-md border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100">You have a quote!</p>
+                        <p className="text-2xl font-bold text-green-700 mt-1">GH₵{booking.quoted_price?.toFixed(2)}</p>
+                        {booking.seller_quote_note && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">"{booking.seller_quote_note}"</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleRespondToQuote(true)}
+                          disabled={updating}
+                        >
+                          Accept Quote
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRespondToQuote(false)}
+                          disabled={updating}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seller send quote UI hint */}
+                  {isSeller && booking.quote_status === 'pending_quote' && (
+                    <div className="p-4 rounded-md border border-purple-200 bg-purple-50 dark:bg-purple-950/20">
+                      <p className="text-sm font-medium text-purple-900 dark:text-purple-100">Quote needed</p>
+                      <p className="text-xs text-muted-foreground mt-1">Go to your Bookings dashboard to send a quote for this request.</p>
+                      {booking.buyer_requirements && (
+                        <div className="mt-2 text-xs border-l-2 border-purple-300 pl-2 text-muted-foreground">
+                          <span className="font-medium">Buyer needs: </span>{booking.buyer_requirements}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isBuyer && booking.status === "pending" && !booking.quote_status && (
                     <div className="p-4 rounded-md border border-muted bg-muted/40">
                       <p className="text-sm font-medium">Awaiting provider</p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -987,6 +1119,11 @@ export default function BookingDetail() {
                         <p className="text-xs text-blue-700 dark:text-blue-300">
                           The seller has marked this service as delivered. Please review and confirm if you're satisfied. Payment will be released upon your confirmation.
                         </p>
+                        {autoReleaseCountdown && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
+                            Auto-releases in {autoReleaseCountdown} if not confirmed
+                          </p>
+                        )}
                       </div>
                       <Button
                         onClick={handleConfirmCompletion}
@@ -1050,6 +1187,25 @@ export default function BookingDetail() {
                         </AlertDialogContent>
                       </AlertDialog>
                     )}
+
+                  {/* Dispute button — buyer or seller, when delivered or completed */}
+                  {(isBuyer || isSeller) &&
+                    (booking.status === "delivered" || booking.status === "completed") &&
+                    !(booking as any).has_dispute && (
+                      <Button
+                        variant="ghost"
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border border-destructive/30"
+                        onClick={() => setDisputeDialogOpen(true)}
+                      >
+                        Raise a Dispute
+                      </Button>
+                    )}
+
+                  {(booking as any).has_dispute && (
+                    <div className="p-3 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-sm text-amber-800 dark:text-amber-200">
+                      A dispute is open on this booking. Our team is reviewing it.
+                    </div>
+                  )}
 
                   {/* Delivered Status (Seller view) */}
                   {isSeller && booking.status === "delivered" && (
@@ -1305,6 +1461,65 @@ export default function BookingDetail() {
       </main>
 
       <Footer />
+
+      {/* Dispute Dialog */}
+      <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Raise a Dispute</DialogTitle>
+            <DialogDescription>
+              Describe the issue. Our team will review it and follow up within 24–48 hours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="dispute-reason">Reason *</Label>
+              <select
+                id="dispute-reason"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+              >
+                <option value="">Select a reason…</option>
+                <option value="Quality issue">Quality issue — work doesn't match description</option>
+                <option value="Not delivered">Not delivered — seller marked done but didn't deliver</option>
+                <option value="Wrong amount">Wrong amount — payment doesn't match agreed price</option>
+                <option value="Buyer ghosted">Buyer ghosted — won't confirm after delivery</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dispute-details">Details (optional)</Label>
+              <textarea
+                id="dispute-details"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring min-h-[80px] resize-none"
+                placeholder="Describe what happened…"
+                value={disputeDetails}
+                onChange={(e) => setDisputeDetails(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDisputeDialogOpen(false)} disabled={submittingDispute}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRaiseDispute}
+              disabled={submittingDispute || !disputeReason}
+            >
+              {submittingDispute ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                'Submit dispute'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

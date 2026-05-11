@@ -21,10 +21,13 @@ interface Service {
   id: string;
   title: string;
   description: string;
+  pricing_type?: 'fixed' | 'range';
   default_price: number | null;
   express_price: number | null;
   default_delivery_time: string | null;
   express_delivery_time: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
   category: string;
   user_id: string;
   image_urls?: string[] | null;
@@ -39,7 +42,6 @@ interface Service {
   seller_verified: boolean;
   average_rating: number | null;
   review_count: number;
-  // For backward compatibility
   price?: number;
 }
 
@@ -398,7 +400,9 @@ const Services = () => {
                               {service.title}
                             </h3>
                             <span className="text-lg font-bold text-primary whitespace-nowrap">
-                              {formatPrice(service.default_price)}
+                              {service.pricing_type === 'range' && service.price_min != null && service.price_max != null
+                                ? `GH₵${service.price_min}–${service.price_max}`
+                                : formatPrice(service.default_price)}
                             </span>
                           </div>
 
@@ -435,11 +439,11 @@ const Services = () => {
                             >
                               View Details
                             </Button>
-                            <Button 
+                            <Button
                               className="flex-1"
                               onClick={() => navigate(`/service/${service.id}`)}
                             >
-                              Book Now
+                              {service.pricing_type === 'range' ? 'Request a Quote' : 'Book Now'}
                             </Button>
                           </div>
                         </div>

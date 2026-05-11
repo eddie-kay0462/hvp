@@ -621,6 +621,78 @@ export const sendBookingCancelledToBuyer = async (buyerProfileId, { serviceTitle
 };
 
 // ---------------------------------------------------------------------------
+// RFQ (Request for Quote) notifications
+// ---------------------------------------------------------------------------
+
+export const sendQuoteRequestToSeller = async (sellerAuthUserId, { serviceTitle, buyerName, buyerRequirements }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/seller/bookings`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#7c3aed;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.requirements{background:#fff;border-left:4px solid #7c3aed;padding:12px 16px;margin:16px 0;border-radius:0 4px 4px 0}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">New Quote Request</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p><strong>${escapeHtml(buyerName)}</strong> has requested a quote for <strong>${escapeHtml(serviceTitle)}</strong>.</p><p><strong>What they need:</strong></p><div class="requirements">${escapeHtml(buyerRequirements || 'No additional details provided.')}</div><p>Log in to your dashboard to review the request and send a quote.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">Send a Quote</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\n${buyerName} has requested a quote for "${serviceTitle}".\n\nWhat they need:\n${buyerRequirements || 'No additional details provided.'}\n\nLog in to send a quote: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `New quote request for ${serviceTitle}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendQuoteRequestToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendQuoteSentToBuyer = async (buyerProfileId, { serviceTitle, quotedPrice, quoteNote }) => {
+  try {
+    const { email, name: buyerName } = await resolveBuyerContact(buyerProfileId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/bookings`;
+    const formattedPrice = `GH₵${Number(quotedPrice).toFixed(2)}`;
+    const noteHtml = quoteNote ? `<p><strong>Note from seller:</strong> ${escapeHtml(quoteNote)}</p>` : '';
+    const noteText = quoteNote ? `\nNote from seller: ${quoteNote}\n` : '';
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#059669;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.price-box{background:#fff;border:2px solid #059669;border-radius:8px;padding:16px;text-align:center;margin:16px 0}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">You Have a Quote!</h1></div><div class="content"><p>Hi ${escapeHtml(buyerName)},</p><p>The seller has sent you a quote for <strong>${escapeHtml(serviceTitle)}</strong>.</p><div class="price-box"><p style="margin:0;font-size:13px;color:#666">Quoted Price</p><p style="margin:4px 0;font-size:28px;font-weight:bold;color:#059669">${escapeHtml(formattedPrice)}</p></div>${noteHtml}<p>Log in to accept or decline this quote. The quote will expire if not responded to.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">Review Quote</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${buyerName},\n\nThe seller has sent you a quote for "${serviceTitle}".\n\nQuoted price: ${formattedPrice}${noteText}\nLog in to accept or decline: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Quote received for ${serviceTitle} — ${formattedPrice}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendQuoteSentToBuyer failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendQuoteAcceptedToSeller = async (sellerAuthUserId, { serviceTitle, quotedPrice }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/seller/bookings`;
+    const formattedPrice = `GH₵${Number(quotedPrice).toFixed(2)}`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#059669;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Quote Accepted!</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p>Great news! The buyer has accepted your quote of <strong>${escapeHtml(formattedPrice)}</strong> for <strong>${escapeHtml(serviceTitle)}</strong>.</p><p>They will now proceed to payment. Once payment is confirmed, you can begin work.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">View Booking</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\nThe buyer has accepted your quote of ${formattedPrice} for "${serviceTitle}".\n\nThey will now proceed to payment. View the booking: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Quote accepted — ${serviceTitle}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendQuoteAcceptedToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendQuoteDeclinedToSeller = async (sellerAuthUserId, { serviceTitle }) => {
+  try {
+    const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
+    if (!email) return { sent: false, reason: 'no_email' };
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const bookingUrl = `${frontendUrl}/seller/bookings`;
+    const html = `<!DOCTYPE html><html><head><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#dc2626;color:white;padding:30px;text-align:center;border-radius:10px 10px 0 0}.content{background:#f9f9f9;padding:30px;border-radius:0 0 10px 10px}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0}.footer{text-align:center;padding:20px;color:#666;font-size:13px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0">Quote Declined</h1></div><div class="content"><p>Hi ${escapeHtml(sellerName)},</p><p>The buyer has declined your quote for <strong>${escapeHtml(serviceTitle)}</strong>. The booking has been closed.</p><p>No action is needed. You can view your other bookings in your dashboard.</p><p style="text-align:center"><a href="${bookingUrl}" class="button">View Bookings</a></p><p>Best regards,<br>The Hustle Village Team</p></div><div class="footer"><p>&copy; ${new Date().getFullYear()} Hustle Village</p></div></div></body></html>`;
+    const text = `Hi ${sellerName},\n\nThe buyer has declined your quote for "${serviceTitle}". The booking has been closed.\n\nView your bookings: ${bookingUrl}\n\nBest regards,\nThe Hustle Village Team`;
+    const info = await sendMail({ to: email, subject: `Quote declined — ${serviceTitle}`, html, text });
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendQuoteDeclinedToSeller failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
+
+// ---------------------------------------------------------------------------
 // MoMo manual payments — admin alert + buyer confirmation
 // ---------------------------------------------------------------------------
 
