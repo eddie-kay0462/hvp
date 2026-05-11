@@ -1,26 +1,8 @@
 import nodemailer from 'nodemailer';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 
-// ---------------------------------------------------------------------------
-// Zoho Mail SMTP transport
-// Credentials come from environment variables — never hardcode them.
-// ---------------------------------------------------------------------------
-
-const SMTP_PORT = parseInt(process.env.ZOHO_SMTP_PORT || '587');
-
-const transporter = nodemailer.createTransport({
-  host: process.env.ZOHO_SMTP_HOST || 'smtp.zoho.com',
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465,
-  requireTLS: SMTP_PORT === 587,
-  auth: {
-    user: process.env.ZOHO_SMTP_USER,
-    pass: process.env.ZOHO_SMTP_PASS,
-  },
-});
-
 const FROM_NAME = 'Hustle Village';
-const FROM_ADDRESS = process.env.ZOHO_SMTP_USER;
+const FROM_ADDRESS = process.env.ZOHO_SMTP_USER || process.env.FROM_EMAIL || 'noreply@hustlevillage.app';
 
 const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://hustlevillage.app';
 
@@ -33,10 +15,37 @@ function getAdminEmail() {
 }
 
 // ---------------------------------------------------------------------------
-// Shared send helper — Zoho SMTP
+// Shared send helper — uses Resend (HTTP) if RESEND_API_KEY is set,
+// otherwise falls back to Zoho SMTP.
 // ---------------------------------------------------------------------------
 
 async function sendMail({ to, subject, html, text }) {
+  if (process.env.RESEND_API_KEY) {
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: `${FROM_NAME} <${process.env.FROM_EMAIL || 'noreply@hustlevillage.app'}>`,
+      to,
+      subject,
+      html,
+      text,
+    });
+    if (error) throw new Error(error.message);
+    return { messageId: `resend-${Date.now()}` };
+  }
+
+  // Zoho SMTP fallback
+  const SMTP_PORT = parseInt(process.env.ZOHO_SMTP_PORT || '465');
+  const transporter = nodemailer.createTransport({
+    host: process.env.ZOHO_SMTP_HOST || 'smtp.zoho.com',
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    requireTLS: SMTP_PORT === 587,
+    auth: {
+      user: process.env.ZOHO_SMTP_USER,
+      pass: process.env.ZOHO_SMTP_PASS,
+    },
+  });
   return transporter.sendMail({
     from: `"${FROM_NAME}" <${FROM_ADDRESS}>`,
     to,
