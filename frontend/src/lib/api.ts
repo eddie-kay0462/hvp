@@ -144,7 +144,7 @@ async function apiFetch<T>(
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
 
   try {
     const response = await fetch(url, { ...config, signal: controller.signal });
@@ -183,7 +183,7 @@ async function apiFetch<T>(
     clearTimeout(timeoutId);
 
     if (error.name === 'AbortError') {
-      throw new Error('Request timed out. The server may be starting up — please try again in a moment.');
+      throw new Error('Request timed out. The server took too long to respond — your action may have already been saved. Please refresh before trying again.');
     }
 
     // If it's already our formatted error, re-throw it

@@ -287,6 +287,15 @@ const Signup = () => {
                           <p className="text-muted-foreground">
                             Refunds are managed by Hustle Village and follow a fair and transparent policy. If a Customer wishes to cancel a booking before the Hustler begins working, the Customer may be entitled to a full refund apart from platform fees. If the Customer cancels after work has started, the amount refunded will depend on the type of service and the stage of completion. For services that require upfront expenses, the initial deposit is generally non refundable because it is used immediately to purchase materials. For simpler services, refunds may still be possible but will depend on the extent of work already completed. If a Hustler cancels a service after accepting a booking, the Customer will receive a full refund and the Hustler may face platform penalties. Hustle Village reviews all refund requests carefully and may require supporting evidence such as screenshots, photos or descriptions of the issue.
                           </p>
+                          <h4 className="font-semibold mb-2 mt-4">Refund policy</h4>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium text-foreground">1. Time-constrained or perishable services</span>{' '}
+                            (e.g. birthday cakes, catering services for events, and similar): For services whose value depends on delivery within a specific time frame, customers will be eligible for a full refund if the agreed delivery timeline is missed and the service is no longer reasonably usable for its intended purpose.
+                          </p>
+                          <p className="text-muted-foreground mt-2">
+                            <span className="font-medium text-foreground">2. Non-perishable or milestone-based services</span>{' '}
+                            (e.g. graphic design, website development, laundry services, and similar): For services that can still be used beyond the agreed deadline, delayed delivery penalties will apply instead of full refunds. A deduction equivalent to 5% of the vendor's expected payment will be applied for every 24 hours past the agreed delivery deadline. The deducted amount will be refunded to the customer as compensation for the delay.
+                          </p>
                         </div>
 
                         <div>
