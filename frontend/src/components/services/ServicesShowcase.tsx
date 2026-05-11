@@ -27,7 +27,10 @@ export function ServicesShowcase({
       id: string;
       title: string;
       description: string;
-      price: number;
+      price: number | null;
+      pricingType: 'fixed' | 'range';
+      priceMin: number | null;
+      priceMax: number | null;
       imageUrls: string[];
       sellerName: string;
       categoryLabel: string;
@@ -45,7 +48,7 @@ export function ServicesShowcase({
         let query = supabase
           .from("services")
           .select(
-            "id, title, description, default_price, image_urls, user_id, category",
+            "id, title, description, default_price, pricing_type, price_min, price_max, image_urls, user_id, category",
           )
           .eq("is_verified", true)
           .eq("is_active", true)
@@ -86,7 +89,10 @@ export function ServicesShowcase({
             id: s.id,
             title: s.title,
             description: s.description,
-            price: s.default_price ?? 0,
+            price: s.default_price ?? null,
+            pricingType: (s.pricing_type as 'fixed' | 'range') || 'fixed',
+            priceMin: s.price_min ?? null,
+            priceMax: s.price_max ?? null,
             imageUrls: s.image_urls || [],
             sellerName,
             categoryLabel,
@@ -148,8 +154,10 @@ export function ServicesShowcase({
               id={s.id}
               title={s.title}
               description={s.description}
-              price={s.price}
-              pricingType="fixed"
+              price={s.price ?? 0}
+              pricingType={s.pricingType}
+              priceMin={s.priceMin}
+              priceMax={s.priceMax}
               imageUrls={s.imageUrls}
               sellerName={s.sellerName}
               sellerVerified

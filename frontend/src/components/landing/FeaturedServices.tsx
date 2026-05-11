@@ -127,7 +127,10 @@ export const FeaturedServices = () => {
             id: service.id,
             title: service.title,
             category: categoryName,
-            price: service.default_price || 0,
+            price: service.default_price ?? null,
+            pricingType: (service.pricing_type as 'fixed' | 'range') || 'fixed',
+            priceMin: service.price_min ?? null,
+            priceMax: service.price_max ?? null,
             rating: reviews.rating,
             reviews: reviews.count,
             provider: providerName,
@@ -266,9 +269,13 @@ export const FeaturedServices = () => {
 
                 <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">From</p>
+                    <p className="text-xs text-muted-foreground">
+                      {service.pricingType === 'range' ? 'Range' : 'From'}
+                    </p>
                     <p className="text-lg font-bold text-foreground">
-                      GH₵{service.price}
+                      {service.pricingType === 'range' && service.priceMin != null && service.priceMax != null
+                        ? `GH₵${service.priceMin}–${service.priceMax}`
+                        : `GH₵${service.price ?? 0}`}
                     </p>
                   </div>
                   <button
