@@ -4,6 +4,7 @@ import { supabase, supabaseAdmin } from '../config/supabase.js';
 const db = supabaseAdmin ?? supabase;
 
 /**
+ * 
  * Book a service now
  * @param {string} userId - Buyer's user ID
  * @param {string} serviceId - Service ID to book
@@ -747,7 +748,7 @@ export const respondToQuote = async (userId, bookingId, accepted) => {
     if (accepted) {
       const { data, error } = await db
         .from('bookings')
-        .update({ quote_status: 'quote_accepted', status: 'accepted' })
+        .update({ quote_status: 'quote_accepted', status: 'accepted', payment_amount: booking.quoted_price })
         .eq('id', bookingId)
         .select()
         .single();

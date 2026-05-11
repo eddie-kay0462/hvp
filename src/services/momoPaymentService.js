@@ -87,7 +87,7 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
     const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(
-        'id, buyer_id, service_id, status, payment_status, payment_amount, payment_method, momo_transaction_id'
+        'id, buyer_id, service_id, status, payment_status, payment_amount, quoted_price, payment_method, momo_transaction_id'
       )
       .eq('id', bookingId)
       .single();
@@ -116,7 +116,7 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
       };
     }
 
-    let amount = booking.payment_amount;
+    let amount = booking.payment_amount || booking.quoted_price;
     if (!amount) {
       const { data: service, error: serviceError } = await db
         .from('services')
@@ -126,7 +126,10 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
       if (serviceError || !service) {
         return { status: 404, msg: 'Service not found for booking', data: null };
       }
-      amount = service.default_price || 0;
+      amount = service.default_price;
+      if (!amount) {
+        return { status: 400, msg: 'No price found for this booking. The seller may not have sent a quote yet.', data: null };
+      }
       await db.from('bookings').update({ payment_amount: amount }).eq('id', bookingId);
     }
 
@@ -249,7 +252,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
     const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(
-        'id, buyer_id, service_id, status, payment_status, payment_amount, payment_method, momo_transaction_id'
+        'id, buyer_id, service_id, status, payment_status, payment_amount, quoted_price, payment_method, momo_transaction_id'
       )
       .eq('id', bookingId)
       .single();
