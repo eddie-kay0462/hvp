@@ -41,7 +41,7 @@ const VerifyEmail = () => {
 
           if (!services || services.length === 0) {
             // No service yet, redirect to setup
-            navigate('/setup-service');
+            navigate('/list-service');
             return;
           }
         }

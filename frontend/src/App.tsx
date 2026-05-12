@@ -14,7 +14,6 @@ import SellerProfile from "./pages/SellerProfile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
-import SetUpService from "./pages/SetUpService";
 import ListService from "./pages/ListService";
 import NotFound from "./pages/NotFound";
 import SellerDashboard from "./pages/seller/SellerDashboard";
@@ -73,7 +72,7 @@ const App = () => (
             <Route path="/messages/:conversationId" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
             <Route path="/payment/callback" element={<ProtectedRoute><PaymentCallback /></ProtectedRoute>} />
             <Route path="/invoice/:invoiceId" element={<ProtectedRoute><InvoicePage /></ProtectedRoute>} />
-            <Route path="/setup-service" element={<ProtectedRoute><SetUpService /></ProtectedRoute>} />
+            <Route path="/setup-service" element={<ProtectedRoute><ListService /></ProtectedRoute>} />
             <Route path="/list-service" element={<ProtectedRoute><ListService /></ProtectedRoute>} />
 
             {/* Protected: seller dashboard */}
