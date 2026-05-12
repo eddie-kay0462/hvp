@@ -3,7 +3,6 @@ import { Hero } from "@/components/landing/Hero";
 import { TrustBadges } from "@/components/landing/TrustBadges";
 import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { FeaturedServices } from "@/components/landing/FeaturedServices";
-import { ServicesShowcase } from "@/components/services/ServicesShowcase";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { CtaBanner } from "@/components/landing/CtaBanner";
@@ -17,7 +16,6 @@ const Index = () => {
         <Hero />
         <TrustBadges />
         <FeaturedServices />
-        <ServicesShowcase />
         <CategoryGrid />
         <HowItWorks />
         <Testimonials />
