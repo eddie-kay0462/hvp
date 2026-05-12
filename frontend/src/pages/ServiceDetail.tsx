@@ -22,13 +22,14 @@ interface Service {
   id: string;
   title: string;
   description: string;
-  pricing_type: 'fixed' | 'range';
+  pricing_type: 'fixed' | 'range' | 'packages';
   default_price: number | null;
   express_price: number | null;
   default_delivery_time: string | null;
   express_delivery_time: string | null;
   price_min: number | null;
   price_max: number | null;
+  service_packages: { name: string; price: number; description?: string }[] | null;
   category: string;
   portfolio: string | null;
   image_urls: string[] | null;
@@ -568,7 +569,25 @@ const ServiceDetail = () => {
               <Card className="p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">What to Expect</h2>
                 <div className="space-y-4">
-                  {service.pricing_type === 'range' ? (
+                  {service.pricing_type === 'packages' && service.service_packages?.length ? (
+                    <div>
+                      <h3 className="font-semibold mb-3">Packages</h3>
+                      <div className="space-y-2">
+                        {service.service_packages.map((pkg) => (
+                          <div key={pkg.name} className="flex justify-between items-start p-3 rounded-md bg-muted/50 border border-border">
+                            <div>
+                              <p className="font-medium text-sm">{pkg.name}</p>
+                              {pkg.description && <p className="text-xs text-muted-foreground mt-0.5">{pkg.description}</p>}
+                            </div>
+                            <span className="font-bold text-sm text-primary ml-4 shrink-0">GH₵{Number(pkg.price).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {service.default_delivery_time && (
+                        <p className="text-xs text-muted-foreground mt-2">Typical delivery: {service.default_delivery_time}</p>
+                      )}
+                    </div>
+                  ) : service.pricing_type === 'range' ? (
                     <div>
                       <h3 className="font-semibold mb-2">Price Range</h3>
                       <p className="text-muted-foreground">
@@ -690,9 +709,11 @@ const ServiceDetail = () => {
                     <Badge variant="category" className="mb-2 md:mb-3">{getCategoryLabel(service.category)}</Badge>
                     <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">{service.title}</h1>
                     <div className="text-2xl md:text-3xl font-bold text-primary mb-4 md:mb-6">
-                      {service.pricing_type === 'range' && service.price_min != null && service.price_max != null
-                        ? `GH₵${service.price_min} – GH₵${service.price_max}`
-                        : formatPrice(service.default_price)}
+                      {service.pricing_type === 'packages' && service.service_packages?.length
+                        ? `From GH₵${Math.min(...service.service_packages.map(p => Number(p.price))).toFixed(2)}`
+                        : service.pricing_type === 'range' && service.price_min != null && service.price_max != null
+                          ? `GH₵${service.price_min} – GH₵${service.price_max}`
+                          : formatPrice(service.default_price)}
                     </div>
                     {service.pricing_type === 'fixed' && service.express_price && (
                       <div className="text-base md:text-lg text-muted-foreground mb-4 md:mb-6">
@@ -737,7 +758,7 @@ const ServiceDetail = () => {
                   {/* CTA Buttons */}
                   <div className="space-y-2 md:space-y-3">
                     <Button className="w-full" size="default" onClick={handleBookNow}>
-                      {service.pricing_type === 'range' ? 'Request a Quote' : 'Book Now'}
+                      {service.pricing_type === 'range' ? 'Request a Quote' : service.pricing_type === 'packages' ? 'Choose a Package' : 'Book Now'}
                     </Button>
                     <Button
                       variant="outline"
@@ -827,6 +848,7 @@ const ServiceDetail = () => {
               pricingType={service.pricing_type || 'fixed'}
               priceMin={service.price_min}
               priceMax={service.price_max}
+              servicePackages={service.service_packages || []}
               onSuccess={handleBookingSuccess}
               onCancel={() => setShowBookingForm(false)}
             />

@@ -76,6 +76,15 @@ export const createService = async (userId, serviceData) => {
       if (Number(serviceData.price_min) >= Number(serviceData.price_max)) {
         return { status: 400, msg: "Minimum price must be less than maximum price.", data: null };
       }
+    } else if (pricing_type === 'packages') {
+      const packages = serviceData.service_packages || [];
+      if (!Array.isArray(packages) || packages.length < 2) {
+        return { status: 400, msg: "Package pricing requires at least 2 packages.", data: null };
+      }
+      for (const pkg of packages) {
+        if (!pkg.name?.trim()) return { status: 400, msg: "Each package must have a name.", data: null };
+        if (!pkg.price || Number(pkg.price) <= 0) return { status: 400, msg: `Package "${pkg.name}" must have a valid price.`, data: null };
+      }
     } else {
       if (!serviceData.default_price) {
         return { status: 400, msg: "A price is required for fixed-price services.", data: null };
@@ -183,6 +192,15 @@ export const editService = async (userId, serviceId, updates) => {
       }
       if (Number(min) >= Number(max)) {
         return { status: 400, msg: "Minimum price must be less than maximum price.", data: null };
+      }
+    } else if (updates.pricing_type === 'packages') {
+      const pkgs = updates.service_packages || [];
+      if (!Array.isArray(pkgs) || pkgs.length < 2) {
+        return { status: 400, msg: "Package pricing requires at least 2 packages.", data: null };
+      }
+      for (const pkg of pkgs) {
+        if (!pkg.name?.trim()) return { status: 400, msg: "Each package must have a name.", data: null };
+        if (!pkg.price || Number(pkg.price) <= 0) return { status: 400, msg: `Package "${pkg.name}" must have a valid price.`, data: null };
       }
     } else if (updates.pricing_type === 'fixed' && updates.default_price === null) {
       return { status: 400, msg: "A price is required for fixed-price services.", data: null };

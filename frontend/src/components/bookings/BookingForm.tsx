@@ -12,14 +12,21 @@ import { toast } from "sonner";
 import { Loader2, Clock, Calendar as CalendarIcon, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface ServicePackage {
+  name: string;
+  price: number;
+  description?: string;
+}
+
 interface BookingFormProps {
   serviceId: string;
   serviceTitle: string;
   defaultPrice: number | null;
   expressPrice: number | null;
-  pricingType?: 'fixed' | 'range';
+  pricingType?: 'fixed' | 'range' | 'packages';
   priceMin?: number | null;
   priceMax?: number | null;
+  servicePackages?: ServicePackage[];
   onSuccess?: (bookingId: string) => void;
   onCancel?: () => void;
 }
@@ -47,15 +54,18 @@ export const BookingForm = ({
   pricingType = 'fixed',
   priceMin,
   priceMax,
+  servicePackages = [],
   onSuccess,
   onCancel,
 }: BookingFormProps) => {
   const isRange = pricingType === 'range';
+  const isPackages = pricingType === 'packages';
   const [scheduleForLater, setScheduleForLater] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [preferredTimeNote, setPreferredTimeNote] = useState<string>("");
   const [buyerRequirements, setBuyerRequirements] = useState<string>("");
+  const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,6 +114,11 @@ export const BookingForm = ({
       return;
     }
 
+    if (isPackages && !selectedPackage) {
+      setError("Please select a package to continue.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -120,6 +135,7 @@ export const BookingForm = ({
         time: timeStr,
         note: preferredTimeNote || null,
         buyer_requirements: isRange ? buyerRequirements.trim() : null,
+        selected_package_name: isPackages ? selectedPackage!.name : null,
       }) as any;
 
       if (result.status === 201) {
@@ -151,35 +167,66 @@ export const BookingForm = ({
         <p className="text-xs md:text-sm text-muted-foreground">{serviceTitle}</p>
       </div>
 
-      {/* Price Display */}
-      <Card className="p-3 md:p-4 bg-muted/50">
+      {/* Package selector */}
+      {isPackages && servicePackages.length > 0 && (
         <div className="space-y-2">
-          {isRange && priceMin != null && priceMax != null ? (
-            <div className="flex justify-between items-center">
-              <span className="text-xs md:text-sm text-muted-foreground">Price Range</span>
-              <span className="text-sm md:text-base font-semibold">GH₵{priceMin.toFixed(2)} – GH₵{priceMax.toFixed(2)}</span>
-            </div>
-          ) : (
-            <>
-              {defaultPrice && (
+          <Label className="text-sm md:text-base font-semibold">Select a Package *</Label>
+          <div className="space-y-2">
+            {servicePackages.map((pkg) => (
+              <button
+                key={pkg.name}
+                type="button"
+                onClick={() => setSelectedPackage(pkg)}
+                className={`w-full text-left p-3 rounded-md border transition-colors ${
+                  selectedPackage?.name === pkg.name
+                    ? 'border-primary bg-primary/5'
+                    : 'border-input bg-background hover:bg-accent'
+                }`}
+              >
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-muted-foreground">Price</span>
-                  <span className="text-sm md:text-base font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
+                  <span className="font-medium text-sm">{pkg.name}</span>
+                  <span className="font-bold text-sm text-primary">GH₵{Number(pkg.price).toFixed(2)}</span>
                 </div>
-              )}
-              {expressPrice && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-muted-foreground">Express Price</span>
-                  <span className="text-sm md:text-base font-semibold">GH₵{expressPrice.toFixed(2)}</span>
-                </div>
-              )}
-            </>
-          )}
-          {isRange && (
-            <p className="text-xs text-muted-foreground">The seller will quote a specific price based on your requirements.</p>
-          )}
+                {pkg.description && (
+                  <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      </Card>
+      )}
+
+      {/* Price Display — fixed/range only */}
+      {!isPackages && (
+        <Card className="p-3 md:p-4 bg-muted/50">
+          <div className="space-y-2">
+            {isRange && priceMin != null && priceMax != null ? (
+              <div className="flex justify-between items-center">
+                <span className="text-xs md:text-sm text-muted-foreground">Price Range</span>
+                <span className="text-sm md:text-base font-semibold">GH₵{priceMin.toFixed(2)} – GH₵{priceMax.toFixed(2)}</span>
+              </div>
+            ) : (
+              <>
+                {defaultPrice && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs md:text-sm text-muted-foreground">Price</span>
+                    <span className="text-sm md:text-base font-semibold">GH₵{defaultPrice.toFixed(2)}</span>
+                  </div>
+                )}
+                {expressPrice && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs md:text-sm text-muted-foreground">Express Price</span>
+                    <span className="text-sm md:text-base font-semibold">GH₵{expressPrice.toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+            {isRange && (
+              <p className="text-xs text-muted-foreground">The seller will quote a specific price based on your requirements.</p>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Buyer Requirements — required for range-priced services */}
       {isRange && (

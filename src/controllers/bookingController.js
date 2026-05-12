@@ -11,7 +11,7 @@ const bookNow = async (req) => {
       return { status: 401, msg: "Unauthorized: user not found", data: null };
     }
 
-    const { serviceId, date, time, status, buyer_requirements } = req.body;
+    const { serviceId, date, time, status, buyer_requirements, selected_package_name } = req.body;
 
     // Validation
     if (!serviceId) {
@@ -47,6 +47,7 @@ const bookNow = async (req) => {
       time: time || null,
       status: status || 'pending',
       buyer_requirements: buyer_requirements || null,
+      selected_package_name: selected_package_name || null,
     });
 
     return {

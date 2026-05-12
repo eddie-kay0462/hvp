@@ -329,7 +329,7 @@ export const api = {
 
   // Booking endpoints
   bookings: {
-    create: (data: { serviceId: string; date: string | null; time: string | null; status?: string; note?: string | null; buyer_requirements?: string | null }) =>
+    create: (data: { serviceId: string; date: string | null; time: string | null; status?: string; note?: string | null; buyer_requirements?: string | null; selected_package_name?: string | null }) =>
       apiFetch('/bookings/book-now', {
         method: 'POST',
         body: JSON.stringify(data),

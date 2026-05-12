@@ -70,6 +70,7 @@ interface Booking {
   payment_proof_url?: string | null;
   momo_submitted_at?: string | null;
   payment_review_note?: string | null;
+  selected_package_name?: string | null;
   payout_status?: string | null;
   payout_transaction_id?: string | null;
   payout_proof_url?: string | null;
@@ -82,7 +83,7 @@ interface Booking {
     category: string;
     default_price: number | null;
     express_price: number | null;
-    pricing_type?: 'fixed' | 'range';
+    pricing_type?: 'fixed' | 'range' | 'packages';
     price_min?: number | null;
     price_max?: number | null;
   };
@@ -592,14 +593,23 @@ export default function BookingDetail() {
                             {booking.service.description}
                           </p>
                         )}
+                        {booking.selected_package_name && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                              Package: {booking.selected_package_name}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-4 pt-2">
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold">
-                              {formatPrice(booking.service.default_price)}
+                              {booking.payment_amount
+                                ? formatPrice(booking.payment_amount)
+                                : formatPrice(booking.service.default_price)}
                             </span>
                           </div>
-                          {booking.service.express_price && (
+                          {booking.service.express_price && !booking.selected_package_name && (
                             <div className="text-sm text-muted-foreground">
                               Express: {formatPrice(booking.service.express_price)}
                             </div>

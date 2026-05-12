@@ -9,7 +9,10 @@ interface FeaturedService {
   id: string;
   title: string;
   category: string;
-  price: number;
+  price: number | null;
+  pricingType: 'fixed' | 'range' | 'packages';
+  priceMin: number | null;
+  priceMax: number | null;
   rating: number;
   reviews: number;
   provider: string;
@@ -127,8 +130,10 @@ export const FeaturedServices = () => {
             id: service.id,
             title: service.title,
             category: categoryName,
-            price: service.default_price ?? null,
-            pricingType: (service.pricing_type as 'fixed' | 'range') || 'fixed',
+            price: service.pricing_type === 'packages' && Array.isArray(service.service_packages) && service.service_packages.length
+              ? Math.min(...service.service_packages.map((p: any) => Number(p.price)))
+              : service.default_price ?? null,
+            pricingType: (service.pricing_type as 'fixed' | 'range' | 'packages') || 'fixed',
             priceMin: service.price_min ?? null,
             priceMax: service.price_max ?? null,
             rating: reviews.rating,

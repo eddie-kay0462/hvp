@@ -16,7 +16,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       return { status: 400, msg: "User ID and Service ID are required", data: null };
     }
 
-    const { date, time, status = 'pending', buyer_requirements } = bookingData;
+    const { date, time, status = 'pending', buyer_requirements, selected_package_name } = bookingData;
 
     // Date and time are now optional (for instant bookings)
     // Only validate if both are provided (scheduled booking)
@@ -56,7 +56,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     // First, verify the service exists and is verified
     const { data: service, error: serviceError } = await db
       .from('services')
-      .select('id, title, is_verified, is_active, user_id, pricing_type')
+      .select('id, title, is_verified, is_active, user_id, pricing_type, default_price, service_packages')
       .eq('id', serviceId)
       .single();
 
@@ -128,10 +128,25 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     }
 
     const isRangeService = service.pricing_type === 'range';
+    const isPackagesService = service.pricing_type === 'packages';
 
     // Range services require a description of scope from the buyer
     if (isRangeService && !buyer_requirements?.trim()) {
       return { status: 400, msg: "Please describe what you need so the seller can quote you accurately.", data: null };
+    }
+
+    // Packages services require a selected package
+    let packageAmount = null;
+    if (isPackagesService) {
+      if (!selected_package_name?.trim()) {
+        return { status: 400, msg: "Please select a package to continue.", data: null };
+      }
+      const packages = service.service_packages || [];
+      const pkg = packages.find(p => p.name === selected_package_name);
+      if (!pkg) {
+        return { status: 400, msg: "Selected package not found.", data: null };
+      }
+      packageAmount = Number(pkg.price);
     }
 
     const bookingDataToInsert = {
@@ -141,11 +156,12 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       time: time || null,
       status,
       buyer_requirements: buyer_requirements?.trim() || null,
+      selected_package_name: isPackagesService ? selected_package_name : null,
       quote_status: isRangeService ? 'pending_quote' : null,
       payment_status: null,
       payment_captured_at: null,
       payment_released_at: null,
-      payment_amount: null,
+      payment_amount: packageAmount,
       payment_transaction_id: null,
     };
 

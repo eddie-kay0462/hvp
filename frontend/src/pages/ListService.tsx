@@ -18,13 +18,14 @@ const ListService = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [pricingType, setPricingType] = useState<'fixed' | 'range'>('fixed');
+  const [pricingType, setPricingType] = useState<'fixed' | 'range' | 'packages'>('fixed');
   const [defaultPrice, setDefaultPrice] = useState('');
   const [defaultDeliveryTime, setDefaultDeliveryTime] = useState('');
   const [expressPrice, setExpressPrice] = useState('');
   const [expressDeliveryTime, setExpressDeliveryTime] = useState('');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+  const [packages, setPackages] = useState([{ name: '', price: '', description: '' }]);
   const [portfolio, setPortfolio] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -101,7 +102,15 @@ const ListService = () => {
       return;
     }
 
-    const priceValid = pricingType === 'fixed' ? !!defaultPrice : (!!priceMin && !!priceMax);
+    if (pricingType === 'packages') {
+      const validPkgs = packages.filter(p => p.name.trim() && p.price);
+      if (validPkgs.length < 2) {
+        toast.error('Please add at least 2 packages with a name and price each');
+        return;
+      }
+    }
+
+    const priceValid = pricingType === 'fixed' ? !!defaultPrice : pricingType === 'range' ? (!!priceMin && !!priceMax) : true;
     if (!title || !description || !category || !portfolio || !priceValid) {
       toast.error('Please fill in all required fields');
       return;
@@ -121,13 +130,26 @@ const ListService = () => {
             express_delivery_time: expressDeliveryTime || null,
             price_min: null,
             price_max: null,
+            service_packages: [],
           }
-        : {
+        : pricingType === 'range'
+        ? {
             default_price: null,
             express_price: null,
             express_delivery_time: null,
             price_min: parseFloat(priceMin),
             price_max: parseFloat(priceMax),
+            service_packages: [],
+          }
+        : {
+            default_price: null,
+            express_price: null,
+            express_delivery_time: null,
+            price_min: null,
+            price_max: null,
+            service_packages: packages
+              .filter(p => p.name.trim() && p.price)
+              .map(p => ({ name: p.name.trim(), price: parseFloat(p.price), description: p.description.trim() || undefined })),
           };
 
       // Call backend API to create service (this sends email notifications!)
@@ -237,9 +259,20 @@ const ListService = () => {
                   >
                     Price Range
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPricingType('packages')}
+                    className={`flex-1 py-2 px-3 rounded-md border text-sm font-medium transition-colors ${pricingType === 'packages' ? 'bg-primary text-primary-foreground border-primary hover:bg-primary-hover hover:text-primary-foreground' : 'border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                  >
+                    Packages
+                  </button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {pricingType === 'fixed' ? 'Set a single price. Buyers book and pay immediately.' : 'Set a range. Buyers describe their needs, you quote a specific price.'}
+                  {pricingType === 'fixed'
+                    ? 'Set a single price. Buyers book and pay immediately.'
+                    : pricingType === 'range'
+                    ? 'Set a range. Buyers describe their needs, you quote a specific price.'
+                    : 'Define multiple options (e.g. "Birthday Card – GH₵15, Graduation Card – GH₵25").'}
                 </p>
               </div>
 
@@ -296,7 +329,7 @@ const ListService = () => {
                     </div>
                   </div>
                 </>
-              ) : (
+              ) : pricingType === 'range' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price-min">Minimum Price (GHS) *</Label>
@@ -333,6 +366,76 @@ const ListService = () => {
                       onChange={(e) => setDefaultDeliveryTime(e.target.value)}
                     />
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Packages * <span className="text-muted-foreground font-normal">(min. 2)</span></Label>
+                    <button
+                      type="button"
+                      onClick={() => setPackages([...packages, { name: '', price: '', description: '' }])}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      + Add package
+                    </button>
+                  </div>
+                  {packages.map((pkg, idx) => (
+                    <div key={idx} className="border rounded-md p-3 space-y-2 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Package {idx + 1}</span>
+                        {packages.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setPackages(packages.filter((_, i) => i !== idx))}
+                            className="text-xs text-destructive hover:underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Name *</Label>
+                          <Input
+                            placeholder="e.g., Birthday Card"
+                            value={pkg.name}
+                            onChange={(e) => {
+                              const updated = [...packages];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setPackages(updated);
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Price (GHS) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={pkg.price}
+                            onChange={(e) => {
+                              const updated = [...packages];
+                              updated[idx] = { ...updated[idx], price: e.target.value };
+                              setPackages(updated);
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description (optional)</Label>
+                        <Input
+                          placeholder="Brief description of what's included"
+                          value={pkg.description}
+                          onChange={(e) => {
+                            const updated = [...packages];
+                            updated[idx] = { ...updated[idx], description: e.target.value };
+                            setPackages(updated);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

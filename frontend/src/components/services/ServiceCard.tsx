@@ -41,6 +41,9 @@ export const ServiceCard = ({
     if (pricingType === 'range' && priceMin != null && priceMax != null) {
       return `GH₵ ${priceMin} – ${priceMax}`;
     }
+    if (pricingType === 'packages') {
+      return `From GH₵ ${price ?? 0}`;
+    }
     if (pricingType === 'hourly') {
       return `GH₵ ${price}/hr`;
     } else if (pricingType === 'custom') {
