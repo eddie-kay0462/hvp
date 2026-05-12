@@ -13,6 +13,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import disputeRoutes from './routes/disputeRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
 import { runAutoRelease } from './services/autoReleaseService.js';
 
 // Load environment variables
@@ -107,6 +108,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/disputes', disputeRoutes);
+app.use('/api/offers', offerRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);
