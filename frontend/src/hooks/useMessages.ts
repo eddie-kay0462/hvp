@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+export interface OfferData {
+  price: number;
+  note?: string | null;
+  service_id: string;
+  service_title: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -11,8 +18,10 @@ export interface Message {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
-  attachments?: string[] | null; // Array of image URLs
-  link_url?: string | null; // Optional external URL link (Canva, websites, etc.)
+  attachments?: string[] | null;
+  link_url?: string | null;
+  offer_data?: OfferData | null;
+  offer_status?: 'pending' | 'accepted' | 'declined' | null;
 }
 
 export interface Conversation {

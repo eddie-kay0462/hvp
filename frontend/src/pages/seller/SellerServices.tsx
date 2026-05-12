@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeImageFile } from "@/lib/imageUtils";
 
 interface Service {
   id: string;
@@ -147,11 +148,11 @@ export default function SellerServices() {
     try {
       const toUpload = Array.from(files).slice(0, remaining);
       if (files.length > remaining) toast.warning(`Only ${remaining} image(s) can be added.`);
-      for (const file of toUpload) {
-        if (!file.type.startsWith('image/')) { toast.error(`${file.name} is not an image file`); continue; }
-        if (file.size > 5 * 1024 * 1024) { toast.error(`${file.name} is too large. Max 5MB`); continue; }
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      for (const raw of toUpload) {
+        if (!raw.type.startsWith('image/') && !/\.(heic|heif)$/i.test(raw.name)) { toast.error(`${raw.name} is not an image file`); continue; }
+        if (raw.size > 5 * 1024 * 1024) { toast.error(`${raw.name} is too large. Max 5MB`); continue; }
+        const { file, ext } = await normalizeImageFile(raw);
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
         const { error: uploadError } = await supabase.storage.from('service-images').upload(fileName, file, { cacheControl: '3600', upsert: false });
         if (uploadError) throw uploadError;
         const { data: { publicUrl } } = supabase.storage.from('service-images').getPublicUrl(fileName);

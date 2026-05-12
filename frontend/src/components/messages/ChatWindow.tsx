@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Send, Image as ImageIcon, Link as LinkIcon, X } from 'lucide-react';
+import { Loader2, Send, Image as ImageIcon, Link as LinkIcon, X, Tag } from 'lucide-react';
 import { Message } from './Message';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
+import { normalizeImageFile } from '@/lib/imageUtils';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +18,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
 interface ChatWindowProps {
   conversationId: string;
   otherUserName?: string;
   otherUserAvatar?: string;
-  serviceId?: string | null; // Optional service ID from conversation (not used for links)
+  serviceId?: string | null;
 }
 
 export const ChatWindow = ({
@@ -36,9 +41,25 @@ export const ChatWindow = ({
   const [uploadingImages, setUploadingImages] = useState(false);
   const [linkUrl, setLinkUrl] = useState<string>('');
   const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
+  const [showOfferDialog, setShowOfferDialog] = useState(false);
+  const [offerPrice, setOfferPrice] = useState('');
+  const [offerNote, setOfferNote] = useState('');
+  const [sendingOffer, setSendingOffer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Determine if current user is the seller of the linked service
+  useEffect(() => {
+    if (!serviceId || !user) { setIsSeller(false); return; }
+    supabase
+      .from('services')
+      .select('user_id')
+      .eq('id', serviceId)
+      .single()
+      .then(({ data }) => setIsSeller(data?.user_id === user.id));
+  }, [serviceId, user]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -55,23 +76,20 @@ export const ChatWindow = ({
 
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        const raw = files[i];
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file`);
+        if (!raw.type.startsWith('image/') && !/\.(heic|heif)$/i.test(raw.name)) {
+          toast.error(`${raw.name} is not an image file`);
           continue;
         }
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} is too large. Max size is 5MB`);
+        if (raw.size > 5 * 1024 * 1024) {
+          toast.error(`${raw.name} is too large. Max size is 5MB`);
           continue;
         }
 
-        // Create unique filename
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { file, ext } = await normalizeImageFile(raw);
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
         const filePath = fileName;
 
         // Upload to Supabase Storage
@@ -140,6 +158,26 @@ export const ChatWindow = ({
 
   const removeLink = () => {
     setLinkUrl('');
+  };
+
+  const handleSendOffer = async () => {
+    const price = parseFloat(offerPrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    setSendingOffer(true);
+    try {
+      await (api.offers.send as any)({ conversationId, price, note: offerNote.trim() || undefined });
+      toast.success('Offer sent');
+      setShowOfferDialog(false);
+      setOfferPrice('');
+      setOfferNote('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send offer');
+    } finally {
+      setSendingOffer(false);
+    }
   };
 
   const handleSend = async () => {
@@ -322,6 +360,19 @@ export const ChatWindow = ({
             <LinkIcon className="h-4 w-4" />
           </Button>
 
+          {/* Send Offer Button — sellers only */}
+          {isSeller && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowOfferDialog(true)}
+              disabled={sending}
+              title="Send a price offer"
+            >
+              <Tag className="h-4 w-4" />
+            </Button>
+          )}
+
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -349,6 +400,51 @@ export const ChatWindow = ({
           </Button>
         </div>
       </div>
+
+      {/* Send Offer Dialog */}
+      <Dialog open={showOfferDialog} onOpenChange={setShowOfferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send a Custom Offer</DialogTitle>
+            <DialogDescription>
+              The buyer can accept this offer directly in chat, which will create a booking.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="offer-price">Price (GH₵)</Label>
+              <Input
+                id="offer-price"
+                type="number"
+                min="1"
+                step="0.01"
+                placeholder="e.g. 250"
+                value={offerPrice}
+                onChange={(e) => setOfferPrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="offer-note">Note (optional)</Label>
+              <Textarea
+                id="offer-note"
+                placeholder="Describe what's included in this price..."
+                value={offerNote}
+                onChange={(e) => setOfferNote(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowOfferDialog(false)} disabled={sendingOffer}>
+                Cancel
+              </Button>
+              <Button onClick={handleSendOffer} disabled={sendingOffer || !offerPrice}>
+                {sendingOffer ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Send Offer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Link URL Dialog */}
       <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>

@@ -13,6 +13,7 @@ import { Navbar } from '@/components/landing/Navbar';
 import { useCategories } from '@/hooks/useCategories';
 import { Upload, X, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
+import { normalizeImageFile } from '@/lib/imageUtils';
 
 const ListService = () => {
   const [title, setTitle] = useState('');
@@ -51,18 +52,18 @@ const ListService = () => {
         toast.warning(`Only ${remaining} image(s) can be added. Uploading the first ${remaining}.`);
       }
 
-      for (const file of toUpload) {
-        if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file`);
+      for (const raw of toUpload) {
+        if (!raw.type.startsWith('image/') && !/\.(heic|heif)$/i.test(raw.name)) {
+          toast.error(`${raw.name} is not an image file`);
           continue;
         }
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} is too large. Max size is 5MB`);
+        if (raw.size > 5 * 1024 * 1024) {
+          toast.error(`${raw.name} is too large. Max size is 5MB`);
           continue;
         }
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { file, ext } = await normalizeImageFile(raw);
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from('service-images')

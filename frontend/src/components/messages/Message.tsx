@@ -1,9 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { Link as LinkIcon, ExternalLink, CheckCircle, XCircle, Tag } from 'lucide-react';
 import type { Message as MessageType } from '@/hooks/useMessages';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface MessageProps {
   message: MessageType;
@@ -13,8 +17,30 @@ interface MessageProps {
 
 export const Message = ({ message, senderName, senderAvatar }: MessageProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isOwnMessage = message.sender_id === user?.id;
   const [imageError, setImageError] = useState<Record<number, boolean>>({});
+  const [offerStatus, setOfferStatus] = useState(message.offer_status);
+  const [respondingOffer, setRespondingOffer] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+
+  const handleRespondToOffer = async (accepted: boolean) => {
+    setRespondingOffer(true);
+    try {
+      const res: any = await (api.offers.respond as any)({ messageId: message.id, accepted });
+      setOfferStatus(accepted ? 'accepted' : 'declined');
+      if (accepted && res.data?.booking?.id) {
+        setBookingId(res.data.booking.id);
+        toast.success('Offer accepted! Booking created.');
+      } else {
+        toast.success('Offer declined.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to respond to offer');
+    } finally {
+      setRespondingOffer(false);
+    }
+  };
 
   const getInitials = (name?: string | null) => {
     if (!name) return '?';
@@ -30,6 +56,7 @@ export const Message = ({ message, senderName, senderAvatar }: MessageProps) => 
   const hasContent = message.content && message.content.trim().length > 0;
   const hasAttachments = attachments.length > 0;
   const hasLink = !!message.link_url;
+  const isOffer = !!message.offer_data;
 
   // Function to detect URLs in text and convert them to clickable links
   const linkifyText = (text: string) => {
@@ -123,6 +150,67 @@ export const Message = ({ message, senderName, senderAvatar }: MessageProps) => 
               </span>
               <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             </a>
+          </div>
+        )}
+
+        {/* Offer Card */}
+        {isOffer && message.offer_data && (
+          <div className="mb-2 w-full border rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b">
+              <Tag className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Custom Offer</span>
+            </div>
+            <div className="px-4 py-3 bg-card space-y-1">
+              <p className="text-xs text-muted-foreground">{message.offer_data.service_title}</p>
+              <p className="text-2xl font-bold">GH₵ {message.offer_data.price.toFixed(2)}</p>
+              {message.offer_data.note && (
+                <p className="text-sm text-muted-foreground">{message.offer_data.note}</p>
+              )}
+            </div>
+            {/* Status / Actions */}
+            <div className="px-4 py-2 border-t bg-muted/30">
+              {offerStatus === 'accepted' && (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-sm font-medium text-green-600">
+                    <CheckCircle className="h-4 w-4" /> Accepted
+                  </span>
+                  {bookingId && (
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/booking/${bookingId}`)}>
+                      View Booking
+                    </Button>
+                  )}
+                </div>
+              )}
+              {offerStatus === 'declined' && (
+                <span className="flex items-center gap-1 text-sm font-medium text-destructive">
+                  <XCircle className="h-4 w-4" /> Declined
+                </span>
+              )}
+              {offerStatus === 'pending' && !isOwnMessage && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                    onClick={() => handleRespondToOffer(false)}
+                    disabled={respondingOffer}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleRespondToOffer(true)}
+                    disabled={respondingOffer}
+                  >
+                    {respondingOffer ? 'Processing...' : 'Accept'}
+                  </Button>
+                </div>
+              )}
+              {offerStatus === 'pending' && isOwnMessage && (
+                <span className="text-xs text-muted-foreground">Awaiting buyer response</span>
+              )}
+            </div>
           </div>
         )}
 

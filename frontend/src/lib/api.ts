@@ -367,6 +367,20 @@ export const api = {
       }),
   },
 
+  // Offer endpoints (seller sends custom price offer in chat)
+  offers: {
+    send: (data: { conversationId: string; price: number; note?: string }) =>
+      apiFetch('/offers/send', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    respond: (data: { messageId: string; accepted: boolean }) =>
+      apiFetch('/offers/respond', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+
   // Request endpoints
   requests: {
     create: (data: { title: string; description: string; needed_by: string }) =>
