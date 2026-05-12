@@ -177,11 +177,14 @@ export const BookingForm = ({
                 key={pkg.name}
                 type="button"
                 onClick={() => setSelectedPackage(pkg)}
-                className={`w-full text-left p-3 rounded-md border transition-colors ${
+                aria-pressed={selectedPackage?.name === pkg.name}
+                className={cn(
+                  "w-full cursor-pointer rounded-lg border p-3 text-left transition-[background-color,border-color,box-shadow] duration-200",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   selectedPackage?.name === pkg.name
-                    ? 'border-primary bg-primary/5'
-                    : 'border-input bg-background hover:bg-accent'
-                }`}
+                    ? "border-primary bg-primary/10 shadow-sm"
+                    : "border-border bg-muted/40 hover:border-primary hover:bg-primary/[0.07] hover:shadow-sm active:bg-primary/10"
+                )}
               >
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-sm">{pkg.name}</span>
