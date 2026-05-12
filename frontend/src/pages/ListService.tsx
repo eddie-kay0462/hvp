@@ -21,8 +21,6 @@ const ListService = () => {
   const [pricingType, setPricingType] = useState<'fixed' | 'range' | 'packages'>('fixed');
   const [defaultPrice, setDefaultPrice] = useState('');
   const [defaultDeliveryTime, setDefaultDeliveryTime] = useState('');
-  const [expressPrice, setExpressPrice] = useState('');
-  const [expressDeliveryTime, setExpressDeliveryTime] = useState('');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [packages, setPackages] = useState([{ name: '', price: '', description: '' }]);
@@ -38,50 +36,49 @@ const ListService = () => {
   const handleImageUpload = async (files: FileList) => {
     if (!user) return;
 
+    const remaining = 5 - imageUrls.length;
+    if (remaining <= 0) {
+      toast.error('Maximum 5 images allowed');
+      return;
+    }
+
     setUploadingImages(true);
     const uploadedUrls: string[] = [];
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Validate file type
+      const toUpload = Array.from(files).slice(0, remaining);
+      if (files.length > remaining) {
+        toast.warning(`Only ${remaining} image(s) can be added. Uploading the first ${remaining}.`);
+      }
+
+      for (const file of toUpload) {
         if (!file.type.startsWith('image/')) {
           toast.error(`${file.name} is not an image file`);
           continue;
         }
-
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(`${file.name} is too large. Max size is 5MB`);
           continue;
         }
 
-        // Create unique filename
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = fileName;
 
-        // Upload to Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from('service-images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
+          .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('service-images')
-          .getPublicUrl(filePath);
+          .getPublicUrl(fileName);
 
         uploadedUrls.push(publicUrl);
       }
 
-      setImageUrls([...imageUrls, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
+      setImageUrls(prev => [...prev, ...uploadedUrls]);
+      if (uploadedUrls.length > 0) toast.success(`${uploadedUrls.length} image(s) uploaded`);
     } catch (error: any) {
       console.error('Error uploading images:', error);
       toast.error(error.message || 'Failed to upload images');
@@ -125,9 +122,7 @@ const ListService = () => {
     try {
       const pricePayload = pricingType === 'fixed'
         ? {
-            default_price: parseFloat(defaultPrice) || null,
-            express_price: expressPrice ? parseFloat(expressPrice) : null,
-            express_delivery_time: expressDeliveryTime || null,
+            default_price: parseFloat(defaultPrice),
             price_min: null,
             price_max: null,
             service_packages: [],
@@ -135,16 +130,12 @@ const ListService = () => {
         : pricingType === 'range'
         ? {
             default_price: null,
-            express_price: null,
-            express_delivery_time: null,
             price_min: parseFloat(priceMin),
             price_max: parseFloat(priceMax),
             service_packages: [],
           }
         : {
             default_price: null,
-            express_price: null,
-            express_delivery_time: null,
             price_min: null,
             price_max: null,
             service_packages: packages
@@ -152,7 +143,6 @@ const ListService = () => {
               .map(p => ({ name: p.name.trim(), price: parseFloat(p.price), description: p.description.trim() || undefined })),
           };
 
-      // Call backend API to create service (this sends email notifications!)
       const response: any = await api.sellers.createService({
         title: title.trim(),
         description: description.trim(),
@@ -160,24 +150,12 @@ const ListService = () => {
         pricing_type: pricingType,
         default_delivery_time: defaultDeliveryTime || null,
         portfolio: portfolio.trim(),
+        image_urls: imageUrls.length > 0 ? imageUrls : null,
         ...pricePayload,
       });
 
       if (response.status !== 201) {
         throw new Error(response.msg || 'Failed to create service');
-      }
-
-      // If we have images, update the service with image_urls
-      if (imageUrls.length > 0 && response.data?.id) {
-        const { error: imageError } = await supabase
-          .from('services')
-          .update({ image_urls: imageUrls })
-          .eq('id', response.data.id);
-
-        if (imageError) {
-          console.error('Failed to update service images:', imageError);
-          // Don't fail the whole operation if image update fails
-        }
       }
 
       toast.success('Service submitted for review! You\'ll be notified once it\'s approved.');
@@ -277,58 +255,30 @@ const ListService = () => {
               </div>
 
               {pricingType === 'fixed' ? (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="default-price">Price (GHS) *</Label>
-                      <Input
-                        id="default-price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={defaultPrice}
-                        onChange={(e) => setDefaultPrice(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="default-delivery-time">Delivery Time</Label>
-                      <Input
-                        id="default-delivery-time"
-                        placeholder="e.g., 3-5 days"
-                        value={defaultDeliveryTime}
-                        onChange={(e) => setDefaultDeliveryTime(e.target.value)}
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="default-price">Price (GHS) *</Label>
+                    <Input
+                      id="default-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={defaultPrice}
+                      onChange={(e) => setDefaultPrice(e.target.value)}
+                      required
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="express-price">Express Price (GHS) - Optional</Label>
-                      <Input
-                        id="express-price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={expressPrice}
-                        onChange={(e) => setExpressPrice(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="express-delivery-time">Express Delivery Time</Label>
-                      <Input
-                        id="express-delivery-time"
-                        placeholder="e.g., 1-2 days"
-                        value={expressDeliveryTime}
-                        onChange={(e) => setExpressDeliveryTime(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="default-delivery-time">Delivery Time</Label>
+                    <Input
+                      id="default-delivery-time"
+                      placeholder="e.g., 3-5 days"
+                      value={defaultDeliveryTime}
+                      onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                    />
                   </div>
-                </>
+                </div>
               ) : pricingType === 'range' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -378,6 +328,15 @@ const ListService = () => {
                     >
                       + Add package
                     </button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pkg-delivery-time">Typical Delivery Time</Label>
+                    <Input
+                      id="pkg-delivery-time"
+                      placeholder="e.g., 3-5 days"
+                      value={defaultDeliveryTime}
+                      onChange={(e) => setDefaultDeliveryTime(e.target.value)}
+                    />
                   </div>
                   {packages.map((pkg, idx) => (
                     <div key={idx} className="border rounded-md p-3 space-y-2 bg-muted/30">
