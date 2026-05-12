@@ -175,13 +175,9 @@ export const BecomeAHustler = () => {
             : servicesCount.toString(), 
           label: "Services Listed" 
         },
-        { 
-          value: earningsThisMonth >= 1000000 
-            ? `GH₵${(earningsThisMonth / 1000000).toFixed(1)}M+` 
-            : earningsThisMonth >= 1000
-            ? `GH₵${(earningsThisMonth / 1000).toFixed(0)}K+`
-            : `GH₵${earningsThisMonth.toFixed(0)}`, 
-          label: "Earned This Month" 
+        {
+          value: `GH₵${earningsThisMonth.toFixed(2)}`,
+          label: "Earned This Month"
         },
         { 
           value: averageRating > 0 
