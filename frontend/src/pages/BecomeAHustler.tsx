@@ -114,13 +114,13 @@ export const BecomeAHustler = () => {
         (async () => {
           const now = new Date();
           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-          
+
           const { data: bookings } = await supabase
             .from('bookings')
-            .select('service_id, status, created_at')
+            .select('service_id, status, created_at, payment_amount')
             .eq('status', 'completed')
             .gte('created_at', startOfMonth);
-          
+
           return bookings || [];
         })(),
         
@@ -145,26 +145,11 @@ export const BecomeAHustler = () => {
       // Count active services
       const servicesCount = servicesResult.count || servicesResult.data?.length || 0;
 
-      // Calculate earnings this month
+      // Calculate earnings this month using payment_amount stamped on each booking
       const completedBookings = bookingsResult as any[];
-      const completedServiceIds = completedBookings.map(b => b.service_id);
-      
-      let earningsThisMonth = 0;
-      if (completedServiceIds.length > 0) {
-        const { data: completedServices } = await supabase
-          .from('services')
-          .select('id, default_price')
-          .in('id', completedServiceIds);
-        
-        const servicesMap: Record<string, number> = {};
-        completedServices?.forEach(service => {
-          servicesMap[service.id] = service.default_price || 0;
-        });
-        
-        earningsThisMonth = completedBookings.reduce((sum, booking) => {
-          return sum + (servicesMap[booking.service_id] || 0);
-        }, 0);
-      }
+      const earningsThisMonth = completedBookings.reduce((sum, booking) => {
+        return sum + (Number(booking.payment_amount) || 0);
+      }, 0);
 
       // Calculate average rating
       const reviews = reviewsResult.data || [];
