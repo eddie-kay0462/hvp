@@ -17,10 +17,12 @@ interface Service {
   title: string;
   description: string;
   category: string;
+  pricing_type: 'fixed' | 'range' | 'packages' | null;
   default_price: number | null;
+  price_min: number | null;
+  price_max: number | null;
+  service_packages: { name: string; price: number; description?: string }[] | null;
   default_delivery_time: string | null;
-  express_price: number | null;
-  express_delivery_time: string | null;
   portfolio: string | null;
   is_verified: boolean | null;
   is_active: boolean | null;
@@ -205,6 +207,15 @@ export default function AdminPendingServices() {
     });
   };
 
+  const formatPrice = (service: Service) => {
+    if (service.pricing_type === 'range') return `GH₵ ${service.price_min?.toFixed(2)} – GH₵ ${service.price_max?.toFixed(2)}`;
+    if (service.pricing_type === 'packages' && service.service_packages?.length) {
+      const min = Math.min(...service.service_packages.map(p => Number(p.price)));
+      return `From GH₵ ${min.toFixed(2)} (${service.service_packages.length} packages)`;
+    }
+    return service.default_price != null ? `GH₵ ${service.default_price.toFixed(2)}` : 'N/A';
+  };
+
   return (
     <div className="min-h-screen bg-background px-4 pt-4 md:px-6 md:pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
       <div className="max-w-7xl mx-auto">
@@ -336,9 +347,7 @@ export default function AdminPendingServices() {
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Price</p>
-                            <p className="text-sm font-medium">
-                              GH₵ {service.default_price?.toFixed(2) || 'N/A'}
-                            </p>
+                            <p className="text-sm font-medium">{formatPrice(service)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Delivery Time</p>
