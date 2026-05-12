@@ -324,7 +324,9 @@ const ServiceDetail = () => {
           id: srv.id,
           title: srv.title,
           description: srv.description,
-          price: srv.default_price || 0,
+          price: srv.pricing_type === 'packages' && srv.service_packages?.length
+            ? Math.min(...srv.service_packages.map((p: any) => Number(p.price)))
+            : srv.default_price || 0,
           pricingType: srv.pricing_type || 'fixed',
           priceMin: srv.price_min || null,
           priceMax: srv.price_max || null,
@@ -345,7 +347,9 @@ const ServiceDetail = () => {
           id: srv.id,
           title: srv.title,
           description: srv.description,
-          price: srv.default_price || 0,
+          price: srv.pricing_type === 'packages' && srv.service_packages?.length
+            ? Math.min(...srv.service_packages.map((p: any) => Number(p.price)))
+            : srv.default_price || 0,
           pricingType: srv.pricing_type || 'fixed',
           priceMin: srv.price_min || null,
           priceMax: srv.price_max || null,
