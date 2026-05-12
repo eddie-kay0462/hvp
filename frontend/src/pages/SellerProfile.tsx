@@ -294,10 +294,16 @@ const SellerProfile = () => {
                     id={service.id}
                     title={service.title}
                     description={service.description}
-                    price={service.default_price || 0}
-                    pricingType="fixed"
+                    price={
+                      service.pricing_type === 'packages' && service.service_packages?.length
+                        ? Math.min(...service.service_packages.map((p: any) => Number(p.price)))
+                        : service.default_price || 0
+                    }
+                    pricingType={service.pricing_type || 'fixed'}
+                    priceMin={service.price_min}
+                    priceMax={service.price_max}
                     imageUrls={service.image_urls || []}
-                    sellerName={seller.first_name && seller.last_name 
+                    sellerName={seller.first_name && seller.last_name
                       ? `${seller.first_name} ${seller.last_name}`
                       : seller.first_name || seller.last_name || 'User'}
                     sellerVerified={false}
