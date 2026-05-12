@@ -14,6 +14,17 @@ function getAdminEmail() {
   return email || 'admin@hustlevillage.app';
 }
 
+function formatServicePrice(service) {
+  if (service.pricing_type === 'range') {
+    return `GH₵ ${service.price_min} – GH₵ ${service.price_max}`;
+  }
+  if (service.pricing_type === 'packages' && Array.isArray(service.service_packages) && service.service_packages.length > 0) {
+    const min = Math.min(...service.service_packages.map(p => Number(p.price)));
+    return `From GH₵ ${min} (${service.service_packages.length} packages)`;
+  }
+  return service.default_price != null ? `GH₵ ${service.default_price}` : 'N/A';
+}
+
 // ---------------------------------------------------------------------------
 // Shared send helper — uses Resend (HTTP) if RESEND_API_KEY is set,
 // otherwise falls back to Zoho SMTP.
@@ -89,7 +100,7 @@ export const sendServiceApprovalEmail = async (sellerEmail, sellerName, service)
               <h3>${service.title}</h3>
               <p>${service.description}</p>
               <p><strong>Category:</strong> ${service.category}</p>
-              <p><strong>Price:</strong> GH&#8373; ${service.default_price ?? 'N/A'}</p>
+              <p><strong>Price:</strong> ${formatServicePrice(service)}</p>
             </div>
             <p>Customers can start booking your service right away.</p>
             <p style="text-align:center;">
@@ -116,7 +127,7 @@ Hi ${sellerName || 'there'},
 Your service "${service.title}" has been approved and is now live on Hustle Village!
 
 Category: ${service.category}
-Price: GH₵ ${service.default_price ?? 'N/A'}
+Price: ${formatServicePrice(service)}
 
 View your service: ${serviceUrl}
 Go to dashboard: ${dashboardUrl}
@@ -255,7 +266,7 @@ export const sendServiceSubmittedNotification = async (service, sellerEmail, sel
               <h3>${service.title}</h3>
               <p>${service.description}</p>
               <p><strong>Category:</strong> ${service.category}</p>
-              <p><strong>Price:</strong> GH&#8373; ${service.default_price ?? 'N/A'}</p>
+              <p><strong>Price:</strong> ${formatServicePrice(service)}</p>
               <p><strong>Seller:</strong> ${sellerName}</p>
               <p><strong>Email:</strong> ${sellerEmail}</p>
             </div>
@@ -274,7 +285,7 @@ New Service Submission
 
 Service: ${service.title}
 Category: ${service.category}
-Price: GH₵ ${service.default_price ?? 'N/A'}
+Price: ${formatServicePrice(service)}
 Seller: ${sellerName} (${sellerEmail})
 
 Review: ${adminDashboardUrl}
