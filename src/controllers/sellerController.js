@@ -63,11 +63,11 @@ const setupSeller = async (req) => {
         pricing_type,
         default_price,
         default_delivery_time,
-        express_price,
-        express_delivery_time,
         price_min,
         price_max,
-        portfolio
+        service_packages,
+        portfolio,
+        image_urls,
       } = req.body;
 
       // Basic validation
@@ -83,11 +83,11 @@ const setupSeller = async (req) => {
         pricing_type,
         default_price,
         default_delivery_time,
-        express_price,
-        express_delivery_time,
         price_min,
         price_max,
-        portfolio
+        service_packages,
+        portfolio,
+        image_urls,
       });
   
       // Send notification emails if service created successfully
@@ -125,29 +125,33 @@ const editService = async (req) => {
         title,
         description,
         category,
+        pricing_type,
         default_price,
         default_delivery_time,
-        express_price,
-        express_delivery_time,
+        price_min,
+        price_max,
+        service_packages,
         portfolio,
-        is_verified
+        image_urls,
       } = req.body;
-  
+
       // Basic validation
       if (!title && !description && !category && !default_price && !portfolio) {
         return { status: 400, msg: "At least one field must be provided to update", data: null };
       }
-  
+
       const result = await sellerService.editService(userId, serviceId, {
         title,
         description,
         category,
+        pricing_type,
         default_price,
         default_delivery_time,
-        express_price,
-        express_delivery_time,
+        price_min,
+        price_max,
+        service_packages,
         portfolio,
-        is_verified
+        image_urls,
       });
   
       return {
