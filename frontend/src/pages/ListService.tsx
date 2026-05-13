@@ -13,7 +13,7 @@ import { Navbar } from '@/components/landing/Navbar';
 import { useCategories } from '@/hooks/useCategories';
 import { Upload, X, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
-import { normalizeImageFile } from '@/lib/imageUtils';
+import { normalizeImageFile, isImageFile } from '@/lib/imageUtils';
 
 const ListService = () => {
   const [title, setTitle] = useState('');
@@ -53,8 +53,8 @@ const ListService = () => {
       }
 
       for (const raw of toUpload) {
-        if (!raw.type.startsWith('image/') && !/\.(heic|heif)$/i.test(raw.name)) {
-          toast.error(`${raw.name} is not an image file`);
+        if (!isImageFile(raw)) {
+          toast.error(`${raw.name} is not a supported image file`);
           continue;
         }
         if (raw.size > 5 * 1024 * 1024) {

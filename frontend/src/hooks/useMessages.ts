@@ -115,9 +115,11 @@ export const useMessages = (conversationId: string | null) => {
         },
         (payload) => {
           const newMessage = payload.new as Message;
-          setMessages((prev) => [...prev, newMessage]);
-          
-          // Mark as read if viewing conversation
+          setMessages((prev) => {
+            // Drop if already present (own optimistic message was already swapped in)
+            if (prev.some((m) => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
           if (newMessage.sender_id !== user.id) {
             markAsRead(conversationId);
           }
@@ -155,7 +157,7 @@ export const useMessages = (conversationId: string | null) => {
     };
   }, [conversationId, user, markAsRead]);
 
-  // Send message
+  // Send message with optimistic update — appears in UI instantly
   const sendMessage = useCallback(
     async (
       content: string,
@@ -166,29 +168,31 @@ export const useMessages = (conversationId: string | null) => {
         throw new Error('Missing required data');
       }
 
-      // At least content, attachments, or linkUrl must be provided
       if (!content.trim() && (!attachments || attachments.length === 0) && !linkUrl) {
         throw new Error('Message must have content, attachments, or a link');
       }
 
+      const messageData: any = {
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content: content.trim() || '',
+      };
+      if (attachments && attachments.length > 0) messageData.attachments = attachments;
+      if (linkUrl && linkUrl.trim()) messageData.link_url = linkUrl.trim();
+
+      // Optimistic: add to UI immediately with a temp id
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic: Message = {
+        ...messageData,
+        id: tempId,
+        is_read: false,
+        read_at: null,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimistic]);
       setSending(true);
+
       try {
-        const messageData: any = {
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content: content.trim() || '',
-        };
-
-        // Add attachments if provided
-        if (attachments && attachments.length > 0) {
-          messageData.attachments = attachments;
-        }
-
-        // Add link_url if provided
-        if (linkUrl && linkUrl.trim()) {
-          messageData.link_url = linkUrl.trim();
-        }
-
         const { data, error } = await supabase
           .from('messages')
           .insert(messageData)
@@ -196,8 +200,15 @@ export const useMessages = (conversationId: string | null) => {
           .single();
 
         if (error) throw error;
+
+        // Swap the optimistic row for the real DB row
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? (data as Message) : m))
+        );
         return data;
       } catch (error) {
+        // Roll back on failure
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
         console.error('Error sending message:', error);
         throw error;
       } finally {
