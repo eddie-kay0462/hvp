@@ -111,7 +111,6 @@ export const ChatWindow = ({
       }
 
       setAttachments((prev) => [...prev, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
     } catch (error: any) {
       console.error('Error uploading images:', error);
       toast.error(error.message || 'Failed to upload images');
