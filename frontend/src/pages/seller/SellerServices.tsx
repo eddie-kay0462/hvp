@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { normalizeImageFile } from "@/lib/imageUtils";
+import { normalizeImageFile, isImageFile } from "@/lib/imageUtils";
 
 interface Service {
   id: string;
@@ -149,7 +149,7 @@ export default function SellerServices() {
       const toUpload = Array.from(files).slice(0, remaining);
       if (files.length > remaining) toast.warning(`Only ${remaining} image(s) can be added.`);
       for (const raw of toUpload) {
-        if (!raw.type.startsWith('image/') && !/\.(heic|heif)$/i.test(raw.name)) { toast.error(`${raw.name} is not an image file`); continue; }
+        if (!isImageFile(raw)) { toast.error(`${raw.name} is not a supported image file`); continue; }
         if (raw.size > 5 * 1024 * 1024) { toast.error(`${raw.name} is too large. Max 5MB`); continue; }
         const { file, ext } = await normalizeImageFile(raw);
         const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
