@@ -28,14 +28,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const NavLogo = () => (
   <span className="flex items-baseline select-none leading-none">
-    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#124919' }}>
+    <span className="text-xl sm:text-2xl font-bold" style={{ color: '#124919' }}>
       Hustle&nbsp;
     </span>
-    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+    <span className="text-xl sm:text-2xl font-bold" style={{ color: '#E57E00' }}>
       V
     </span>
     {/* dotless-i (ı) + oversized branded dot */}
-    <span className="relative text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+    <span className="relative text-xl sm:text-2xl font-bold" style={{ color: '#E57E00' }}>
       ı
       <span
         aria-hidden="true"
@@ -43,7 +43,7 @@ const NavLogo = () => (
         style={{ width: 6, height: 6, background: '#E57E00', top: 1 }}
       />
     </span>
-    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+    <span className="text-xl sm:text-2xl font-bold" style={{ color: '#E57E00' }}>
       llage
     </span>
   </span>
