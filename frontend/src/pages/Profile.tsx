@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, HelpCircle, Mail, Loader2, User } from "lucide-react";
+import { Shield, HelpCircle, Mail, Loader2, User, Bell } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,7 +23,9 @@ export default function Profile() {
     last_name: '',
     email: '',
     phone: '',
+    email_notifications_enabled: true,
   });
+  const [savingNotif, setSavingNotif] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -41,7 +44,7 @@ export default function Profile() {
       // Fetch user profile
       const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone')
+        .select('first_name, last_name, phone, email_notifications_enabled')
         .eq('id', user.id)
         .single();
 
@@ -52,6 +55,7 @@ export default function Profile() {
         last_name: data?.last_name || '',
         email: user.email || '',
         phone: data?.phone || '',
+        email_notifications_enabled: data?.email_notifications_enabled ?? true,
       });
     } catch (error: any) {
       console.error('Error fetching profile:', error);
@@ -84,6 +88,25 @@ export default function Profile() {
       toast.error(error.message || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleEmailNotifications = async (enabled: boolean) => {
+    if (!user) return;
+    setSavingNotif(true);
+    setProfile((p) => ({ ...p, email_notifications_enabled: enabled }));
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ email_notifications_enabled: enabled })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast.success(enabled ? 'Email notifications turned on' : 'Email notifications turned off');
+    } catch (error: any) {
+      setProfile((p) => ({ ...p, email_notifications_enabled: !enabled }));
+      toast.error('Failed to update notification preference');
+    } finally {
+      setSavingNotif(false);
     }
   };
 
@@ -212,6 +235,31 @@ export default function Profile() {
                     <Shield className="h-3 w-3" />
                     Verified
                   </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notification Preferences */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Notification Preferences
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Email notifications for new messages</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get an email when someone replies to your conversation
+                    </p>
+                  </div>
+                  <Switch
+                    checked={profile.email_notifications_enabled}
+                    onCheckedChange={handleToggleEmailNotifications}
+                    disabled={savingNotif}
+                  />
                 </div>
               </CardContent>
             </Card>

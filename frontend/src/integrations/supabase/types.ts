@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          id: string
+          participant1_id: string
+          participant2_id: string
+          service_id: string | null
+          last_message_at: string | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          participant1_id: string
+          participant2_id: string
+          service_id?: string | null
+          last_message_at?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          participant1_id?: string
+          participant2_id?: string
+          service_id?: string | null
+          last_message_at?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      message_notifications: {
+        Row: {
+          id: string
+          conversation_id: string
+          recipient_id: string
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          recipient_id: string
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          recipient_id?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          content: string
+          is_read: boolean
+          read_at: string | null
+          created_at: string
+          attachments: string[] | null
+          link_url: string | null
+          offer_data: Json | null
+          offer_status: 'pending' | 'accepted' | 'declined' | null
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          content: string
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+          attachments?: string[] | null
+          link_url?: string | null
+          offer_data?: Json | null
+          offer_status?: 'pending' | 'accepted' | 'declined' | null
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          content?: string
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+          attachments?: string[] | null
+          link_url?: string | null
+          offer_data?: Json | null
+          offer_status?: 'pending' | 'accepted' | 'declined' | null
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           id: string
@@ -110,6 +203,7 @@ export type Database = {
           role: string | null
           profile_pic: string | null
           created_at: string | null
+          email_notifications_enabled: boolean
         }
         Insert: {
           id: string
@@ -119,6 +213,7 @@ export type Database = {
           role?: string | null
           profile_pic?: string | null
           created_at?: string | null
+          email_notifications_enabled?: boolean
         }
         Update: {
           id?: string
@@ -128,6 +223,7 @@ export type Database = {
           role?: string | null
           profile_pic?: string | null
           created_at?: string | null
+          email_notifications_enabled?: boolean
         }
         Relationships: [
           {
@@ -322,7 +418,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_conversations: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          participant1_id: string
+          participant2_id: string
+          service_id: string | null
+          last_message_at: string | null
+          created_at: string
+          updated_at: string | null
+          other_user: {
+            id: string
+            first_name: string | null
+            last_name: string | null
+            profile_pic: string | null
+          }
+          last_message: {
+            id: string
+            conversation_id: string
+            sender_id: string
+            content: string
+            is_read: boolean
+            read_at: string | null
+            created_at: string
+            attachments: string[] | null
+            link_url: string | null
+            offer_data: Json | null
+            offer_status: 'pending' | 'accepted' | 'declined' | null
+          } | null
+          unread_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

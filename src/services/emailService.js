@@ -1003,3 +1003,94 @@ The Hustle Village Team
     return { sent: false, error: error.message };
   }
 };
+
+// ---------------------------------------------------------------------------
+// New message notification → recipient
+// ---------------------------------------------------------------------------
+
+export const sendNewMessageNotification = async (
+  recipientEmail,
+  recipientName,
+  senderName,
+  conversationId,
+  messageContent
+) => {
+  try {
+    const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+    const conversationUrl = `${frontendUrl}/messages/${conversationId}`;
+    const safeSender = escapeHtml(senderName);
+    const safeRecipient = escapeHtml(recipientName);
+    const preview = messageContent
+      ? escapeHtml(messageContent.slice(0, 120)) + (messageContent.length > 120 ? '…' : '')
+      : null;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 28px 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .header h1 { margin: 0; font-size: 22px; }
+          .content { background: #f9f9f9; padding: 28px 30px; border-radius: 0 0 10px 10px; }
+          .preview-box { background: white; border-left: 4px solid #667eea; padding: 14px 16px; margin: 18px 0; border-radius: 0 4px 4px 0; font-style: italic; color: #555; }
+          .button { display: inline-block; background: #667eea; color: white !important; padding: 13px 32px; text-decoration: none; border-radius: 6px; margin: 18px 0; font-weight: bold; }
+          .footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
+          .unsubscribe { color: #aaa; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You have a new message</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${safeRecipient},</p>
+            <p><strong>${safeSender}</strong> sent you a message on Hustle Village.</p>
+            ${preview ? `<div class="preview-box">"${preview}"</div>` : ''}
+            <p style="text-align: center;">
+              <a href="${conversationUrl}" class="button">View Message</a>
+            </p>
+            <p style="color: #666; font-size: 13px;">
+              Reply quickly to keep the conversation moving — buyers and vendors close deals faster when they respond within an hour.
+            </p>
+            <p>Best,<br>The Hustle Village Team</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} Hustle Village</p>
+            <p class="unsubscribe">You can turn off these notifications in your <a href="${frontendUrl}/profile" style="color:#aaa;">account settings</a>.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hi ${recipientName},
+
+${senderName} sent you a message on Hustle Village.
+${preview ? `\n"${preview}"\n` : ''}
+View and reply here:
+${conversationUrl}
+
+Best,
+The Hustle Village Team
+
+---
+To turn off these notifications, visit your account settings: ${frontendUrl}/profile
+    `.trim();
+
+    const info = await sendMail({
+      to: recipientEmail,
+      subject: `New message from ${senderName} — Hustle Village`,
+      html,
+      text,
+    });
+
+    return { sent: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('[email] sendNewMessageNotification failed:', error.message);
+    return { sent: false, error: error.message };
+  }
+};
