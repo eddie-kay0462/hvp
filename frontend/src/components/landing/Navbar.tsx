@@ -26,6 +26,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+const NavLogo = () => (
+  <span className="flex items-baseline select-none leading-none">
+    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#124919' }}>
+      Hustle&nbsp;
+    </span>
+    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+      V
+    </span>
+    {/* dotless-i (ı) + oversized branded dot */}
+    <span className="relative text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+      ı
+      <span
+        aria-hidden="true"
+        className="absolute left-1/2 -translate-x-1/2 rounded-full"
+        style={{ width: 6, height: 6, background: '#E57E00', top: 1 }}
+      />
+    </span>
+    <span className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: '#E57E00' }}>
+      llage
+    </span>
+  </span>
+);
+
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -93,8 +116,8 @@ export const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14 md:h-16">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-            <h1 className="text-xl sm:text-2xl font-bold text-primary">Hustle Village</h1>
+          <div className="cursor-pointer" onClick={() => navigate('/')}>
+            <NavLogo />
           </div>
 
           {/* Desktop Navigation */}
