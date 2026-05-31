@@ -192,26 +192,26 @@ const Signup = () => {
               </div>
               <div className="space-y-3">
                 <Label>I want to:</Label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                <div className="space-y-1">
+                  <label className="flex items-center gap-3 min-h-[44px] cursor-pointer rounded-md px-2 -mx-2 hover:bg-muted/50 transition-colors">
                     <input
                       type="radio"
                       name="userType"
                       value="buyer"
                       checked={userType === 'buyer'}
                       onChange={(e) => setUserType(e.target.value as 'buyer' | 'seller')}
-                      className="w-4 h-4 text-primary"
+                      className="w-4 h-4 text-primary flex-shrink-0"
                     />
                     <span className="text-sm">Find services (Buyer)</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-3 min-h-[44px] cursor-pointer rounded-md px-2 -mx-2 hover:bg-muted/50 transition-colors">
                     <input
                       type="radio"
                       name="userType"
                       value="seller"
                       checked={userType === 'seller'}
                       onChange={(e) => setUserType(e.target.value as 'buyer' | 'seller')}
-                      className="w-4 h-4 text-primary"
+                      className="w-4 h-4 text-primary flex-shrink-0"
                     />
                     <span className="text-sm">Offer services (Hustler)</span>
                   </label>
@@ -222,26 +222,24 @@ const Signup = () => {
                   </p>
                 )}
               </div>
-              <div className="flex gap-3 items-start">
+              <label htmlFor="terms" className="flex gap-3 items-center min-h-[44px] cursor-pointer rounded-md px-2 -mx-2 hover:bg-muted/50 transition-colors">
                 <Checkbox
                   id="terms"
                   checked={acceptedTerms}
                   onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-                  className="mt-0.5 shrink-0"
+                  className="shrink-0 h-5 w-5"
                 />
-                <div className="min-w-0 flex-1 text-sm leading-snug text-foreground">
-                  <label htmlFor="terms" className="cursor-pointer font-normal">
-                    I agree to the{' '}
-                  </label>
+                <span className="min-w-0 flex-1 text-sm leading-snug text-foreground">
+                  I agree to the{' '}
                   <button
                     type="button"
-                    onClick={() => setTermsDialogOpen(true)}
+                    onClick={(e) => { e.preventDefault(); setTermsDialogOpen(true); }}
                     className="inline p-0 align-baseline font-normal text-sm text-primary underline underline-offset-2 hover:text-primary/80"
                   >
                     Terms and Conditions
                   </button>
-                </div>
-              </div>
+                </span>
+              </label>
               <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
@@ -370,7 +368,7 @@ const Signup = () => {
                       </div>
                     </DialogContent>
               </Dialog>
-              <Button type="submit" className="w-full" disabled={loading || !acceptedTerms}>
+              <Button type="submit" className="w-full min-h-[44px]" disabled={loading || !acceptedTerms}>
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
@@ -378,7 +376,7 @@ const Signup = () => {
               Already have an account?{' '}
               <Button
                 variant="link"
-                className="p-0 h-auto font-normal"
+                className="p-0 min-h-[44px] font-normal"
                 onClick={() => navigate('/login')}
               >
                 Log in

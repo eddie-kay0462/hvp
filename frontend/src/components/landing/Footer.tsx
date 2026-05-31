@@ -52,12 +52,12 @@ export const Footer = () => {
               <h4 className="text-sm font-semibold text-foreground mb-4">
                 {section.title}
               </h4>
-              <ul className="space-y-3">
+              <ul className="space-y-0">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      className="inline-flex items-center min-h-[44px] text-sm text-muted-foreground hover:text-primary transition-colors"
                     >
                       {link.label}
                     </a>
@@ -73,12 +73,12 @@ export const Footer = () => {
           <p className="text-xs text-muted-foreground">
             © 2026 Hustle Village. All rights reserved.
           </p>
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <ul className="flex flex-wrap items-center gap-x-5 gap-y-0">
             {legal.map((link) => (
               <li key={link.label}>
                 <a
                   href={link.href}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  className="inline-flex items-center min-h-[44px] text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                   {link.label}
                 </a>

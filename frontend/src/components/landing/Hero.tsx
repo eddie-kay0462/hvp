@@ -163,7 +163,7 @@ export const Hero = () => {
               <div className="pr-2 flex-shrink-0">
                 <Button
                   onClick={handleSearch}
-                  className="h-10 px-7 rounded-full font-semibold shadow-sm"
+                  className="h-11 px-7 rounded-full font-semibold shadow-sm"
                 >
                   Search
                 </Button>
@@ -202,7 +202,7 @@ export const Hero = () => {
                 <button
                   key={c.slug}
                   onClick={() => handleSuggestionSelect(c.name || c.slug)}
-                  className="text-sm rounded-full border border-border bg-background px-4 py-1.5 text-foreground/70 hover:border-primary/40 hover:text-primary transition-colors duration-200"
+                  className="inline-flex items-center text-sm rounded-full border border-border bg-background px-4 py-2.5 min-h-[44px] text-foreground/70 hover:border-primary/40 hover:text-primary transition-colors duration-200"
                 >
                   {c.name || c.slug}
                 </button>

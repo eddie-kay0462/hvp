@@ -96,7 +96,7 @@ const Login = () => {
                 Don't have an account?{' '}
                 <Button
                   variant="link"
-                  className="p-0 h-auto font-normal"
+                  className="p-0 min-h-[44px] font-normal"
                   onClick={() => navigate('/signup')}
                 >
                   Sign up

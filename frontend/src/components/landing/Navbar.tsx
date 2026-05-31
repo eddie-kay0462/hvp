@@ -219,8 +219,9 @@ export const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden"
+            className="md:hidden flex items-center justify-center h-11 w-11 -mr-2 rounded-md"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Open menu"
           >
             <Menu className="h-6 w-6 text-foreground" />
           </button>

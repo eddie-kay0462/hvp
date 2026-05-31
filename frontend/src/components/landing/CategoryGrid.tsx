@@ -193,7 +193,7 @@ export const CategoryGrid = () => {
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="text-xs sm:text-sm px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border"
+                  className="text-xs sm:text-sm px-3 py-2.5 min-h-[44px] data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border"
                 >
                   {tabLabelMap[tab] ||
                     tab.charAt(0).toUpperCase() + tab.slice(1)}

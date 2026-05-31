@@ -161,7 +161,7 @@ export const FeaturedServices = () => {
       </h2>
       <button
         onClick={() => navigate("/services")}
-        className="inline-flex items-center text-sm font-medium text-primary hover:text-primary-hover transition-colors group"
+        className="inline-flex items-center min-h-[44px] px-1 text-sm font-medium text-primary hover:text-primary-hover transition-colors group"
       >
         View all
         <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -288,7 +288,7 @@ export const FeaturedServices = () => {
                       e.stopPropagation();
                       navigate(`/service/${service.id}`);
                     }}
-                    className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                    className="inline-flex items-center bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg px-4 min-h-[44px] text-sm font-medium transition-colors"
                   >
                     Book now
                   </button>
