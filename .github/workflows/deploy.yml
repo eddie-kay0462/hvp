@@ -1,0 +1,43 @@
+name: Deploy backend
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'vps-deployment' || 'vps-staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync app code
+        run: |
+          rsync -az --delete \
+            --exclude '.env' \
+            src package.json package-lock.json \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/app/
+
+      - name: Install dependencies and restart
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
+            cd ~/app &&
+            npm install --omit=dev --silent &&
+            pm2 restart hvp-api
+          '
+
+      - name: Verify health check
+        run: |
+          sleep 3
+          curl -sf https://${{ secrets.API_DOMAIN }}/health
