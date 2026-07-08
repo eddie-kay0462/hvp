@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,14 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [linkInvalid, setLinkInvalid] = useState(false);
 
-  // The recovery link lands here as #access_token=...&type=recovery — establish
-  // that session before letting the user set a new password.
+  // Two link formats can land here, depending on the Supabase email template:
+  // - #access_token=...&type=recovery (Supabase's default confirmation-URL redirect)
+  // - ?token_hash=...&type=recovery (our own template, linking straight to this domain)
   useEffect(() => {
     const establishRecoverySession = async () => {
       const hash = window.location.hash;
@@ -40,8 +42,20 @@ const ResetPassword = () => {
         }
       }
 
-      // No hash tokens — maybe Supabase already established the session
-      // (e.g. page was reloaded after the hash was consumed once).
+      const tokenHash = searchParams.get('token_hash') || searchParams.get('token');
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+        if (!error) {
+          setReady(true);
+          return;
+        }
+      }
+
+      // No tokens in the URL — maybe Supabase already established the session
+      // (e.g. page was reloaded after a token was consumed once).
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setReady(true);
@@ -51,6 +65,7 @@ const ResetPassword = () => {
     };
 
     establishRecoverySession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const validatePassword = (password: string): string | null => {
