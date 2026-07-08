@@ -14,6 +14,9 @@ import SellerProfile from "./pages/SellerProfile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import AuthCallback from "./pages/AuthCallback";
 import ListService from "./pages/ListService";
 import NotFound from "./pages/NotFound";
 import SellerDashboard from "./pages/seller/SellerDashboard";
@@ -61,6 +64,9 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/become-a-hustler" element={<BecomeAHustler />} />
 
             {/* Protected: any authenticated user */}

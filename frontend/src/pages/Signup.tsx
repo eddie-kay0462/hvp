@@ -17,6 +17,7 @@ import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
 
 const Signup = () => {
@@ -372,6 +373,15 @@ const Signup = () => {
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
             </form>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+            <GoogleSignInButton label="Sign up with Google" />
             <div className="mt-4 text-center text-sm text-muted-foreground">
               Already have an account?{' '}
               <Button

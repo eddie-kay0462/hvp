@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
 import { PasswordChangeModal } from '@/components/PasswordChangeModal';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,9 +82,19 @@ const Login = () => {
                   className="h-12"
                   required
                 />
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto min-h-[44px] font-normal text-sm text-muted-foreground"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 text-base font-semibold"
                 disabled={loading}
               >
@@ -91,6 +102,15 @@ const Login = () => {
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+            <GoogleSignInButton label="Continue with Google" />
             <div className="space-y-4 mt-6">
               <div className="text-center text-sm text-muted-foreground">
                 Don't have an account?{' '}
