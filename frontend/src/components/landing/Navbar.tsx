@@ -36,7 +36,7 @@ const NavLogo = () => (
     </span>
     {/* dotless-i (ı) + oversized branded dot */}
     <span className="relative text-xl sm:text-2xl font-bold" style={{ color: '#E57E00' }}>
-      ı
+      i
       <span
         aria-hidden="true"
         className="absolute left-1/2 -translate-x-1/2 rounded-full"
