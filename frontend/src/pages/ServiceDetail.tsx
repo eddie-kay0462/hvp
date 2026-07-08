@@ -137,10 +137,11 @@ const ServiceDetail = () => {
         sellerServicesResult,
         bookingCheckResult
       ] = await Promise.all([
-        // Fetch seller details
+        // Fetch seller details (public-safe columns only — email and phone are
+        // not exposed to anon; see enable_rls_policies.sql)
         supabase
           .from('profiles')
-          .select('*')
+          .select('id, first_name, last_name, profile_pic, role, created_at')
           .eq('id', serviceData.user_id)
           .single(),
         

@@ -63,10 +63,11 @@ const SellerProfile = () => {
     try {
       setLoading(true);
 
-      // Fetch seller details from profiles
+      // Fetch seller details from profiles (public-safe columns only — email
+      // and phone are not exposed to anon; see enable_rls_policies.sql)
       const { data: sellerData, error: sellerError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, profile_pic, role, created_at')
         .eq('id', id)
         .single();
 

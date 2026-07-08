@@ -2,7 +2,7 @@
 -- Streetwear / marketplace services seed (companion to scripts/seed-services.mjs)
 -- =============================================================================
 -- Prereqs:
---   • public.categories contains slugs referenced below (design_creative, tech_dev, …).
+--   • Categories seeded first: database_migrations/seed_categories.sql
 --   • At least one row in public.profiles (seed user).
 --   • Apply truncate_services RPC first: database_migrations/truncate_services_rpc.sql
 --
@@ -14,15 +14,11 @@
 --   NODE_ENV=development node scripts/seed-services.mjs
 -- =============================================================================
 
+-- Dev-only extra categories referenced by the demo services below. These are
+-- NOT part of the real platform set (seed_categories.sql) — do not run on
+-- staging/prod.
 INSERT INTO public.categories (slug, name, description, display_order, is_active)
 VALUES
-  (
-    'design_creative',
-    'Design & creative',
-    'Logos, lookbooks, pattern-making, photography, and brand identity for streetwear labels.',
-    10,
-    true
-  ),
   (
     'printing_merch',
     'Printing & merch',
@@ -35,13 +31,6 @@ VALUES
     'Shipping & logistics',
     'Domestic Ghana shipping, courier, and Accra pickup / locker handoffs.',
     16,
-    true
-  ),
-  (
-    'tech_dev',
-    'Tech & dev',
-    'NFC authentication, e-commerce builds, and digital product tooling for Ghana brands.',
-    20,
     true
   )
 ON CONFLICT (slug) DO UPDATE SET

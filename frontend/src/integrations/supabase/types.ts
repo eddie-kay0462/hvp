@@ -286,6 +286,61 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          id: string
+          reviewer_id: string
+          reviewee_id: string
+          service_id: string | null
+          rating: number
+          review_text: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          reviewer_id: string
+          reviewee_id: string
+          service_id?: string | null
+          rating: number
+          review_text?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          reviewer_id?: string
+          reviewee_id?: string
+          service_id?: string | null
+          rating?: number
+          review_text?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sellers: {
         Row: {
           id: string
