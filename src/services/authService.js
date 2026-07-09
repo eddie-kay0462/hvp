@@ -2,8 +2,19 @@ import { supabase } from "../config/supabase.js";
 
 import { supabaseAdmin } from "../config/supabase.js";
 
-/** Base URL for Supabase emailRedirectTo (signup confirm, resend). Prefer AUTH_SITE_URL when FRONTEND_URL is a different domain. */
-function getAuthEmailRedirectOrigin() {
+/** Origins we trust for auth email links. Must stay in sync with the Supabase redirect-URL allowlist. */
+const ALLOWED_EMAIL_REDIRECT_ORIGINS = [
+  /^http:\/\/localhost:\d+$/,
+  /^https:\/\/(www\.|staging\.)?hustlevillage\.app$/,
+];
+
+/** Base URL for Supabase emailRedirectTo (signup confirm, resend). Uses the browser's Origin when
+ * it's on the trusted list (so localhost dev against a deployed backend gets localhost links),
+ * otherwise falls back to AUTH_SITE_URL/FRONTEND_URL. */
+function getAuthEmailRedirectOrigin(requestOrigin) {
+  if (requestOrigin && ALLOWED_EMAIL_REDIRECT_ORIGINS.some((re) => re.test(requestOrigin))) {
+    return requestOrigin;
+  }
   const raw =
     process.env.AUTH_SITE_URL ||
     process.env.FRONTEND_URL ||
@@ -12,7 +23,7 @@ function getAuthEmailRedirectOrigin() {
   return withProtocol.replace(/\/+$/, "");
 }
 
-export const signup = async ({ email, password, firstName, lastName, phoneNumber, profilePic, role }) => {
+export const signup = async ({ email, password, firstName, lastName, phoneNumber, profilePic, role, requestOrigin }) => {
   try {
     if (!supabaseAdmin) {
       return {
@@ -32,7 +43,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
       password_updated_after_requirements_change: true  // Set to true since password already validated during signup
     };
 
-    const redirectUrl = `${getAuthEmailRedirectOrigin()}/verify-email`;
+    const redirectUrl = `${getAuthEmailRedirectOrigin(requestOrigin)}/verify-email`;
 
     // Step 1: Create auth user (anon client — GoTrue sends confirmation email.
     // signUp with the service role skips that flow, so custom SMTP never gets used.)
@@ -162,9 +173,9 @@ export const login = async (email, password) => {
 
 
 
-export const resendVerification = async (email) => {
+export const resendVerification = async (email, requestOrigin) => {
   try {
-    const redirectUrl = `${getAuthEmailRedirectOrigin()}/verify-email`;
+    const redirectUrl = `${getAuthEmailRedirectOrigin(requestOrigin)}/verify-email`;
 
     const { error } = await supabase.auth.resend({ 
       email, 

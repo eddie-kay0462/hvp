@@ -32,7 +32,8 @@ export const signup = async (req) => {
       lastName,
       phoneNumber,
       profilePic,
-      role
+      role,
+      requestOrigin: req.headers?.origin
     });
 
     return {
@@ -78,7 +79,7 @@ export const resendVerification = async (req) => {
       return { status: 400, msg: "Email is required", data: null };
     }
 
-    const result = await authService.resendVerification(email);
+    const result = await authService.resendVerification(email, req.headers?.origin);
 
     return {
       status: result.status,
