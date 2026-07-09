@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Booking {
   id: string;
@@ -178,16 +179,14 @@ export default function BookingDetail() {
 
   useEffect(() => {
     if (user?.id) {
-      import("@/integrations/supabase/client").then(({ supabase }) => {
-        supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single()
-          .then(({ data }) => {
-            if (data?.role) setUserRole(data.role);
-          });
-      });
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.role) setUserRole(data.role);
+        });
     }
   }, [user?.id]);
 
@@ -263,7 +262,6 @@ export default function BookingDetail() {
   const fetchAdditionalDetails = async (bookingData: any) => {
     try {
       // Fetch buyer info
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data: buyerData } = await supabase
         .from("profiles")
         .select("id, first_name, last_name, profile_pic")

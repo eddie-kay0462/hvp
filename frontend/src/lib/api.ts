@@ -2,6 +2,8 @@
  * API Configuration for connecting to the backend
  */
 
+import { supabase } from '@/integrations/supabase/client';
+
 // Backend API Base URL
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/+$/, '');
 
@@ -120,10 +122,8 @@ async function apiFetch<T>(
 
   // Get auth token from Supabase session if available
   try {
-    // Import supabase client dynamically to avoid circular dependencies
-    const { supabase } = await import('@/integrations/supabase/client');
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError) {
       console.error('Session error:', sessionError);
     }
@@ -211,7 +211,6 @@ async function apiFetchFormData(endpoint: string, formData: FormData): Promise<a
 
   const headers: Record<string, string> = {};
   try {
-    const { supabase } = await import('@/integrations/supabase/client');
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       console.error('Session error:', sessionError);
