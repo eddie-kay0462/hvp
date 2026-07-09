@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,9 +83,8 @@ export const PasswordChangeModal = ({ open, onClose, onSuccess }: PasswordChange
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="newPassword">New Password *</Label>
-            <Input
+            <PasswordInput
               id="newPassword"
-              type="password"
               placeholder="Enter your new password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -95,9 +94,8 @@ export const PasswordChangeModal = ({ open, onClose, onSuccess }: PasswordChange
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm New Password *</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
               placeholder="Confirm your new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -510,8 +511,7 @@ export const ConversationalSignup = ({ initialData = {}, onComplete, onCancel }:
 
       case 'password':
         return (
-          <Input
-            type="password"
+          <PasswordInput
             placeholder={currentQuestion.placeholder}
             value={value}
             onChange={(e) => handleInputChange(e.target.value)}
