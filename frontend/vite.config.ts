@@ -15,6 +15,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Strip noisy console.log/info/debug from production builds so app internals
+  // and user data don't leak into the browser console. console.error/warn are
+  // kept for now as the only production error visibility (until an error
+  // reporting SDK is wired up — OPS-02).
+  esbuild: {
+    pure: mode === "production" ? ["console.log", "console.info", "console.debug"] : [],
+  },
   build: {
     rollupOptions: {
       output: {
