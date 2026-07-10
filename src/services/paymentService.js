@@ -53,25 +53,12 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
       return { status: 404, msg: 'Booking not found', data: null };
     }
 
-    // Validate ownership: support projects where buyer_id might be profile.id or auth.users.id
-    let ownsBooking = booking.buyer_id === userId;
-    if (!ownsBooking) {
-      // Try resolve user's profile id and compare
-      try {
-        const { data: profile } = await db
-          .from('profiles')
-          .select('id, user_id')
-          .or(`id.eq.${userId},user_id.eq.${userId}`)
-          .limit(1)
-          .single();
-        if (profile?.id && booking.buyer_id === profile.id) {
-          ownsBooking = true;
-        }
-      } catch {
-        // ignore, fallback to previous
-      }
-    }
-    if (!ownsBooking) {
+    // Ownership: bookings.buyer_id references profiles.id, and profiles.id IS the
+    // auth user id (profiles.id FK -> auth.users.id; bookingService sets buyer_id
+    // to the profile row whose id equals the auth user id). So the buyer is always
+    // the authenticated user — a direct comparison is correct. (The former fallback
+    // queried a non-existent profiles.user_id column and always failed.)
+    if (booking.buyer_id !== userId) {
       return { status: 403, msg: 'You do not have permission to pay for this booking', data: null };
     }
 
