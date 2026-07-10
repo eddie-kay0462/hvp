@@ -114,11 +114,12 @@ interface ApiError extends Error {
 }
 
 /** The backend's JSON envelope for responses and errors: { status, msg, data }. */
-interface BackendEnvelope {
+export interface BackendEnvelope<T = unknown> {
   status?: number;
   msg?: string;
   message?: string;
   error?: string;
+  data?: T;
 }
 
 async function apiFetch<T>(

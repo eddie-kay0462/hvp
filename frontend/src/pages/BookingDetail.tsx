@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, type BackendEnvelope } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -76,6 +77,7 @@ interface Booking {
   payout_transaction_id?: string | null;
   payout_proof_url?: string | null;
   payout_confirmed_at?: string | null;
+  has_dispute?: boolean;
   service?: {
     id: string;
     user_id: string;
@@ -126,7 +128,7 @@ function bookingAllowsBuyerPayment(status: Booking["status"]): boolean {
 }
 
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, any> = {
+  const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
     pending: "default",
     accepted: "secondary",
     in_progress: "secondary",
@@ -220,11 +222,11 @@ export default function BookingDetail() {
       const checkReview = async () => {
         try {
           setCheckingReview(true);
-          const result = await api.reviews.checkExisting(id) as any;
+          const result = await api.reviews.checkExisting(id) as BackendEnvelope<{ hasReview?: boolean }>;
           if (result.status === 200) {
             setHasReview(result.data?.hasReview || false);
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error("Error checking for existing review:", error);
         } finally {
           setCheckingReview(false);
@@ -239,27 +241,27 @@ export default function BookingDetail() {
 
     try {
       setLoading(true);
-      const result = await api.bookings.getById(id) as any;
+      const result = await api.bookings.getById(id) as BackendEnvelope<Booking>;
 
-      if (result.status === 200) {
+      if (result.status === 200 && result.data) {
         setBooking(result.data);
-        
+
         // Fetch additional details (buyer and seller info)
         await fetchAdditionalDetails(result.data);
       } else {
         toast.error(result.msg || "Failed to load booking details");
         navigate("/bookings");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error fetching booking details:", error);
-      toast.error(error.message || "Failed to load booking details");
+      toast.error(getErrorMessage(error, "Failed to load booking details"));
       navigate("/bookings");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAdditionalDetails = async (bookingData: any) => {
+  const fetchAdditionalDetails = async (bookingData: Booking) => {
     try {
       // Fetch buyer info
       const { data: buyerData } = await supabase
@@ -284,8 +286,9 @@ export default function BookingDetail() {
             .eq("id", serviceData.user_id)
             .single();
           sellerData = seller;
-          if ((seller as any)?.phone) {
-            setSellerPhone((seller as any).phone);
+          const sellerPhone = (seller as { phone?: string | null } | null)?.phone;
+          if (sellerPhone) {
+            setSellerPhone(sellerPhone);
           }
         }
       }
@@ -305,7 +308,7 @@ export default function BookingDetail() {
 
     try {
       setUpdating(true);
-      const result = await api.bookings.accept(id) as any;
+      const result = (await api.bookings.accept(id)) as BackendEnvelope;
 
       if (result.status === 200) {
         toast.success("Booking accepted!");
@@ -313,8 +316,8 @@ export default function BookingDetail() {
       } else {
         toast.error(result.msg || "Failed to accept booking");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept booking");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to accept booking"));
     } finally {
       setUpdating(false);
     }
@@ -325,12 +328,12 @@ export default function BookingDetail() {
 
     try {
       setUpdating(true);
-      const result = await (api.bookings as any).updateStatus?.(id, newStatus) as any;
+      const result = (await api.bookings.updateStatus?.(id, newStatus)) as BackendEnvelope | undefined;
 
       if (!result) {
         // Fallback: if updateStatus doesn't exist, use accept or cancel
         if (newStatus === "cancelled") {
-          const cancelResult = await (api.bookings as any).cancel?.(id) as any;
+          const cancelResult = (await api.bookings.cancel?.(id)) as BackendEnvelope | undefined;
           if (cancelResult?.status === 200) {
             toast.success("Booking cancelled");
             fetchBookingDetails();
@@ -347,8 +350,8 @@ export default function BookingDetail() {
       } else {
         toast.error(result.msg || "Failed to update booking status");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update booking status");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to update booking status"));
     } finally {
       setUpdating(false);
     }
@@ -358,15 +361,15 @@ export default function BookingDetail() {
     if (!booking || !id) return;
     try {
       setUpdating(true);
-      const result = await (api.bookings as any).respondToQuote(id, accepted) as any;
+      const result = (await api.bookings.respondToQuote(id, accepted)) as BackendEnvelope;
       if (result.status === 200) {
         toast.success(accepted ? "Quote accepted! You can now proceed to payment." : "Quote declined.");
         fetchBookingDetails();
       } else {
         toast.error(result.msg || "Failed to respond to quote");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to respond to quote");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to respond to quote"));
     } finally {
       setUpdating(false);
     }
@@ -377,12 +380,12 @@ export default function BookingDetail() {
 
     try {
       setCheckingReview(true);
-      const result = await api.reviews.checkExisting(id) as any;
+      const result = await api.reviews.checkExisting(id) as BackendEnvelope<{ hasReview?: boolean }>;
 
       if (result.status === 200) {
         setHasReview(result.data?.hasReview || false);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking for existing review:", error);
     } finally {
       setCheckingReview(false);
@@ -394,7 +397,7 @@ export default function BookingDetail() {
 
     try {
       setUpdating(true);
-      const result = await (api.bookings as any).confirm?.(id) as any;
+      const result = (await api.bookings.confirm?.(id)) as BackendEnvelope | undefined;
 
       if (!result) {
         toast.error("Confirmation endpoint not available");
@@ -409,8 +412,8 @@ export default function BookingDetail() {
       } else {
         toast.error(result.msg || "Failed to confirm booking completion");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to confirm booking completion");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to confirm booking completion"));
     } finally {
       setUpdating(false);
     }
@@ -427,7 +430,7 @@ export default function BookingDetail() {
 
     try {
       setUpdating(true);
-      const result = await (api.bookings as any).cancel?.(id) as any;
+      const result = (await api.bookings.cancel?.(id)) as BackendEnvelope | undefined;
 
       if (!result) {
         // Fallback: use status update
@@ -441,8 +444,8 @@ export default function BookingDetail() {
       } else {
         toast.error(result.msg || "Failed to cancel booking");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to cancel booking");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to cancel booking"));
     } finally {
       setUpdating(false);
     }
@@ -452,7 +455,7 @@ export default function BookingDetail() {
     if (!booking || !id || !disputeReason) return;
     try {
       setSubmittingDispute(true);
-      const result = await (api as any).disputes.raise(id, disputeReason, disputeDetails || undefined) as any;
+      const result = (await api.disputes.raise(id, disputeReason, disputeDetails || undefined)) as BackendEnvelope;
       if (result.status === 201) {
         toast.success('Dispute raised. Our team will review it shortly.');
         setDisputeDialogOpen(false);
@@ -462,8 +465,8 @@ export default function BookingDetail() {
       } else {
         toast.error(result.msg || 'Failed to raise dispute');
       }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to raise dispute');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Failed to raise dispute'));
     } finally {
       setSubmittingDispute(false);
     }
@@ -893,9 +896,9 @@ export default function BookingDetail() {
                               return;
                             }
                             toast.error("Unexpected payment response");
-                          } catch (err: any) {
+                          } catch (err) {
                             setPaying(false);
-                            toast.error(err?.message || "Failed to start payment");
+                            toast.error(getErrorMessage(err, "Failed to start payment"));
                           }
                         }}
                         disabled={paying}
@@ -1041,8 +1044,8 @@ export default function BookingDetail() {
                               } else {
                                 toast.error(res.msg || "Submission failed");
                               }
-                            } catch (e: any) {
-                              toast.error(e?.message || "Submission failed");
+                            } catch (e) {
+                              toast.error(getErrorMessage(e, "Submission failed"));
                             } finally {
                               setSubmittingMomo(false);
                             }
@@ -1232,7 +1235,7 @@ export default function BookingDetail() {
                   {/* Dispute button — buyer or seller, when delivered or completed */}
                   {(isBuyer || isSeller) &&
                     (booking.status === "delivered" || booking.status === "completed") &&
-                    !(booking as any).has_dispute && (
+                    !booking.has_dispute && (
                       <Button
                         variant="ghost"
                         className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border border-destructive/30"
@@ -1242,7 +1245,7 @@ export default function BookingDetail() {
                       </Button>
                     )}
 
-                  {(booking as any).has_dispute && (
+                  {booking.has_dispute && (
                     <div className="p-3 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-sm text-amber-800 dark:text-amber-200">
                       A dispute is open on this booking. Our team is reviewing it.
                     </div>
@@ -1441,7 +1444,7 @@ export default function BookingDetail() {
                                       const fd = new FormData();
                                       fd.append("payoutTransactionId", tid);
                                       fd.append("proof", payoutFile);
-                                      const res = (await (api.admin as any).confirmPayout(booking.id, fd)) as {
+                                      const res = (await api.admin.confirmPayout(booking.id, fd)) as {
                                         status?: number;
                                         msg?: string;
                                       };
@@ -1452,8 +1455,8 @@ export default function BookingDetail() {
                                       } else {
                                         toast.error(res.msg || "Failed to confirm payout");
                                       }
-                                    } catch (e: any) {
-                                      toast.error(e?.message || "Failed to confirm payout");
+                                    } catch (e) {
+                                      toast.error(getErrorMessage(e, "Failed to confirm payout"));
                                     } finally {
                                       setSubmittingPayout(false);
                                     }
