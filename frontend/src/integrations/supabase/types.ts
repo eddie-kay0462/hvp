@@ -404,7 +404,7 @@ export type Database = {
           title: string
           description: string
           category: string
-          pricing_type: "fixed" | "range"
+          pricing_type: "fixed" | "range" | "packages"
           price_min: number | null
           price_max: number | null
           default_price: number | null
@@ -417,6 +417,7 @@ export type Database = {
           updated_at: string | null
           is_active: boolean | null
           image_urls: string[] | null
+          service_packages: Json | null
         }
         Insert: {
           id?: string
@@ -424,7 +425,7 @@ export type Database = {
           title: string
           description: string
           category: string
-          pricing_type?: "fixed" | "range"
+          pricing_type?: "fixed" | "range" | "packages"
           price_min?: number | null
           price_max?: number | null
           default_price?: number | null
@@ -437,6 +438,7 @@ export type Database = {
           updated_at?: string | null
           is_active?: boolean | null
           image_urls?: string[] | null
+          service_packages?: Json | null
         }
         Update: {
           id?: string
@@ -444,7 +446,7 @@ export type Database = {
           title?: string
           description?: string
           category?: string
-          pricing_type?: "fixed" | "range"
+          pricing_type?: "fixed" | "range" | "packages"
           price_min?: number | null
           price_max?: number | null
           default_price?: number | null
@@ -457,6 +459,7 @@ export type Database = {
           updated_at?: string | null
           is_active?: boolean | null
           image_urls?: string[] | null
+          service_packages?: Json | null
         }
         Relationships: [
           {

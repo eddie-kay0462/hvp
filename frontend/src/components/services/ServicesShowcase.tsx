@@ -85,12 +85,13 @@ export function ServicesShowcase({
             `${p?.first_name || ""} ${p?.last_name || ""}`.trim() || "Seller";
           const categoryLabel =
             categories.find((c) => c.slug === s.category)?.name || s.category;
+          const packages = Array.isArray(s.service_packages) ? s.service_packages : [];
           return {
             id: s.id,
             title: s.title,
             description: s.description,
-            price: s.pricing_type === 'packages' && Array.isArray((s as any).service_packages) && (s as any).service_packages.length
-              ? Math.min(...(s as any).service_packages.map((p: any) => Number(p.price)))
+            price: s.pricing_type === 'packages' && packages.length
+              ? Math.min(...packages.map((pkg) => Number((pkg as { price: number }).price)))
               : s.default_price ?? null,
             pricingType: (s.pricing_type as 'fixed' | 'range' | 'packages') || 'fixed',
             priceMin: s.price_min ?? null,
