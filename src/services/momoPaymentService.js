@@ -21,24 +21,13 @@ async function getUserEmailById(userId) {
   }
 }
 
-async function resolveBuyerOwnsBooking(db, userId, booking) {
-  let ownsBooking = booking.buyer_id === userId;
-  if (!ownsBooking) {
-    try {
-      const { data: profile } = await db
-        .from('profiles')
-        .select('id, user_id')
-        .or(`id.eq.${userId},user_id.eq.${userId}`)
-        .limit(1)
-        .single();
-      if (profile?.id && booking.buyer_id === profile.id) {
-        ownsBooking = true;
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  return ownsBooking;
+// bookings.buyer_id references profiles.id, and profiles.id IS the auth user id
+// (profiles.id FK -> auth.users.id). So the buyer is always the authenticated
+// user; a direct comparison is correct. (The former fallback queried a
+// non-existent profiles.user_id column and always failed into its catch.)
+// `db` is retained for signature compatibility with callers but unused.
+export function resolveBuyerOwnsBooking(db, userId, booking) {
+  return Boolean(userId) && booking?.buyer_id === userId;
 }
 
 function narrationForBooking(bookingId) {

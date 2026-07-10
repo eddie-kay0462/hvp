@@ -12,7 +12,7 @@ const ALLOWED_EMAIL_REDIRECT_ORIGINS = [
 /** Base URL for Supabase emailRedirectTo (signup confirm, resend). Uses the browser's Origin when
  * it's on the trusted list (so localhost dev against a deployed backend gets localhost links),
  * otherwise falls back to AUTH_SITE_URL/FRONTEND_URL. */
-function getAuthEmailRedirectOrigin(requestOrigin) {
+export function getAuthEmailRedirectOrigin(requestOrigin) {
   if (requestOrigin && ALLOWED_EMAIL_REDIRECT_ORIGINS.some((re) => re.test(requestOrigin))) {
     return requestOrigin;
   }
