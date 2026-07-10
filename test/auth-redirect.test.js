@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 process.env.SUPABASE_URL ||= 'http://localhost:54321';
 process.env.SUPABASE_ANON_KEY ||= 'test-anon-key';
 
-const { getAuthEmailRedirectOrigin } = await import('../src/services/authService.js');
+const { getAuthEmailRedirectOrigin, isExistingEmailSignup } = await import(
+  '../src/services/authService.js'
+);
 
 beforeEach(() => {
   // Make the fallback deterministic (default = https://hustlevillage.app).
@@ -56,4 +58,15 @@ test('fallback prefers AUTH_SITE_URL, then FRONTEND_URL, and adds https:// when 
 
   process.env.AUTH_SITE_URL = 'https://app.example.com';
   assert.equal(getAuthEmailRedirectOrigin(undefined), 'https://app.example.com');
+});
+
+test('isExistingEmailSignup detects the empty-identities duplicate-email response', () => {
+  // Supabase returns an obfuscated user with identities: [] for an existing email.
+  assert.equal(isExistingEmailSignup({ id: 'fabricated', identities: [] }), true);
+  // A genuinely new signup has a populated identities array.
+  assert.equal(isExistingEmailSignup({ id: 'real', identities: [{ provider: 'email' }] }), false);
+  // Missing / malformed identities must not be treated as a duplicate.
+  assert.equal(isExistingEmailSignup({ id: 'real' }), false);
+  assert.equal(isExistingEmailSignup(null), false);
+  assert.equal(isExistingEmailSignup(undefined), false);
 });

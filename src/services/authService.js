@@ -12,6 +12,17 @@ const ALLOWED_EMAIL_REDIRECT_ORIGINS = [
 /** Base URL for Supabase emailRedirectTo (signup confirm, resend). Uses the browser's Origin when
  * it's on the trusted list (so localhost dev against a deployed backend gets localhost links),
  * otherwise falls back to AUTH_SITE_URL/FRONTEND_URL. */
+/**
+ * Supabase does not error when signing up with an email that already belongs to
+ * a confirmed account (to avoid leaking which emails are registered). It returns
+ * an obfuscated user with a fabricated id and an EMPTY identities array. This
+ * detects that case so we don't try to insert a profile with the fabricated id.
+ * @param {{ identities?: unknown[] } | null | undefined} user
+ */
+export function isExistingEmailSignup(user) {
+  return Array.isArray(user?.identities) && user.identities.length === 0;
+}
+
 export function getAuthEmailRedirectOrigin(requestOrigin) {
   if (requestOrigin && ALLOWED_EMAIL_REDIRECT_ORIGINS.some((re) => re.test(requestOrigin))) {
     return requestOrigin;
@@ -66,6 +77,18 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
       return {
         status: 400,
         msg: "Could not create account. If this email is already registered, sign in or reset your password.",
+        data: null,
+      };
+    }
+
+    // Detect the already-registered case (obfuscated response with empty
+    // identities) — otherwise we would insert a profile with the fabricated id,
+    // hit the profiles.id -> auth.users FK (23503), and surface a misleading
+    // "run a migration" 500 to the user. See isExistingEmailSignup.
+    if (isExistingEmailSignup(data.user)) {
+      return {
+        status: 409,
+        msg: "An account with this email already exists. Please sign in or reset your password.",
         data: null,
       };
     }
