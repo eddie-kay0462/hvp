@@ -53,7 +53,7 @@ export default function SellerPayments() {
 
     let availableToWithdraw = 0;
     let heldSecurely = 0;
-    let earnedThisMonth = metrics.earningsThisMonth;
+    const earnedThisMonth = metrics.earningsThisMonth;
 
     const earnings: EarningsRow[] = [];
     const hold: SecureHoldRow[] = [];

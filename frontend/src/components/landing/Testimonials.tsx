@@ -68,7 +68,7 @@ export const Testimonials = () => {
         .map((r) => r.service_id)
         .filter((id) => id !== null) as string[];
 
-      let servicesMap: Record<string, any> = {};
+      const servicesMap: Record<string, any> = {};
       if (serviceIds.length > 0) {
         const { data: servicesData } = await supabase
           .from("services")

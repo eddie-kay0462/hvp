@@ -60,7 +60,7 @@ export const FeaturedServices = () => {
       const userIds = [
         ...new Set(servicesData.map((s: any) => s.user_id).filter(Boolean)),
       ];
-      let profilesMap: Record<
+      const profilesMap: Record<
         string,
         { first_name: string | null; last_name: string | null }
       > = {};
@@ -83,7 +83,7 @@ export const FeaturedServices = () => {
         }
       }
 
-      let reviewsMap: Record<string, { rating: number; count: number }> = {};
+      const reviewsMap: Record<string, { rating: number; count: number }> = {};
 
       try {
         const { data: reviewsData } = await supabase

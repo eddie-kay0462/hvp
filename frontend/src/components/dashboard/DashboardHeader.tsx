@@ -12,7 +12,10 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader = ({ title, subtitle, mockUser }: DashboardHeaderProps) => {
-  const { user } = mockUser ? { user: mockUser } : useAuth();
+  // useAuth must be called unconditionally (rules of hooks); mockUser (dev
+  // preview only) overrides the real auth user when provided.
+  const auth = useAuth();
+  const { user } = mockUser ? { user: mockUser } : auth;
   const [userProfile, setUserProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null);
 
   useEffect(() => {

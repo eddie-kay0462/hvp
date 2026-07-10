@@ -107,6 +107,20 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
 /**
  * Generic API fetch wrapper with error handling
  */
+/** Error thrown by the API layer, carrying the HTTP status and backend payload. */
+interface ApiError extends Error {
+  status?: number;
+  originalError?: unknown;
+}
+
+/** The backend's JSON envelope for responses and errors: { status, msg, data }. */
+interface BackendEnvelope {
+  status?: number;
+  msg?: string;
+  message?: string;
+  error?: string;
+}
+
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -116,7 +130,7 @@ async function apiFetch<T>(
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${path}`;
   
-  const defaultHeaders = {
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
@@ -129,7 +143,7 @@ async function apiFetch<T>(
     }
     
     if (session?.access_token) {
-      (defaultHeaders as any)['Authorization'] = `Bearer ${session.access_token}`;
+      defaultHeaders['Authorization'] = `Bearer ${session.access_token}`;
     }
   } catch (error) {
     console.error('Error getting auth token:', error);
@@ -151,7 +165,7 @@ async function apiFetch<T>(
     
     if (!response.ok) {
       // Try to parse error response from backend
-      let errorData: any;
+      let errorData: BackendEnvelope;
       try {
         errorData = await response.json();
       } catch {
@@ -168,9 +182,9 @@ async function apiFetch<T>(
       
       // For 401 errors, include the original error data for debugging
       if (response.status === 401) {
-        const error = new Error(friendlyMessage);
-        (error as any).status = 401;
-        (error as any).originalError = errorData;
+        const error: ApiError = new Error(friendlyMessage);
+        error.status = 401;
+        error.originalError = errorData;
         throw error;
       }
       
@@ -179,32 +193,34 @@ async function apiFetch<T>(
 
     clearTimeout(timeoutId);
     return await response.json();
-  } catch (error: any) {
+  } catch (error) {
     clearTimeout(timeoutId);
 
-    if (error.name === 'AbortError') {
+    const err = error as ApiError & { name?: string };
+
+    if (err.name === 'AbortError') {
       throw new Error('Request timed out. The server took too long to respond — your action may have already been saved. Please refresh before trying again.');
     }
 
     // If it's already our formatted error, re-throw it
-    if (error.message && !error.message.includes('API request failed')) {
+    if (err.message && !err.message.includes('API request failed')) {
       throw error;
     }
 
     // Handle network errors and other edge cases
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+    if (err.name === 'TypeError' && err.message?.includes('fetch')) {
       throw new Error('Unable to connect to the server. Please check your internet connection.');
     }
 
     console.error('API Error:', error);
-    throw new Error(error.message || 'Something went wrong. Please try again.');
+    throw new Error(err.message || 'Something went wrong. Please try again.');
   }
 }
 
 /**
  * Multipart upload (no JSON Content-Type — browser sets boundary).
  */
-async function apiFetchFormData(endpoint: string, formData: FormData): Promise<any> {
+async function apiFetchFormData(endpoint: string, formData: FormData): Promise<unknown> {
   const baseUrl = API_BASE_URL.replace(/\/+$/, '');
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${path}`;
@@ -228,7 +244,7 @@ async function apiFetchFormData(endpoint: string, formData: FormData): Promise<a
     body: formData,
   });
 
-  let json: any;
+  let json: BackendEnvelope;
   try {
     json = await response.json();
   } catch {
@@ -305,12 +321,12 @@ export const api = {
 
   // Seller endpoints
   sellers: {
-    createService: (data: any) =>
+    createService: (data: Record<string, unknown>) =>
       apiFetch('/sellers/create-service', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    updateService: (serviceId: string, data: any) =>
+    updateService: (serviceId: string, data: Record<string, unknown>) =>
       apiFetch(`/sellers/edit-service/${serviceId}`, {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -319,7 +335,7 @@ export const api = {
       apiFetch(`/sellers/toggleServiceStatus/${serviceId}`, {
         method: 'PUT',
       }),
-    setupSeller: (data: any) =>
+    setupSeller: (data: Record<string, unknown>) =>
       apiFetch('/sellers/setup', {
         method: 'POST',
         body: JSON.stringify(data),

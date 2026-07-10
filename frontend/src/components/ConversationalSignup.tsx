@@ -116,7 +116,7 @@ export const ConversationalSignup = ({ initialData = {}, onComplete, onCancel }:
         if (!/\d/.test(value)) {
           return 'Password must contain at least one digit';
         }
-        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value)) {
+        if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value)) {
           return 'Password must contain at least one symbol';
         }
         return null;

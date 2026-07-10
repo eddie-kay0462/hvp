@@ -11,7 +11,7 @@ export const PasswordRequirements = ({ password, className }: PasswordRequiremen
     { label: 'Contains lowercase letter', test: (p: string) => /[a-z]/.test(p) },
     { label: 'Contains uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
     { label: 'Contains a digit', test: (p: string) => /\d/.test(p) },
-    { label: 'Contains a symbol', test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+    { label: 'Contains a symbol', test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p) },
   ];
 
   return (

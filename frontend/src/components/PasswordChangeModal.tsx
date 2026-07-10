@@ -29,7 +29,7 @@ export const PasswordChangeModal = ({ open, onClose, onSuccess }: PasswordChange
     if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
     if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
     if (!/\d/.test(password)) return 'Password must contain at least one digit';
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) return 'Password must contain at least one symbol';
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) return 'Password must contain at least one symbol';
     return null;
   };
 

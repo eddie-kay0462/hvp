@@ -48,7 +48,7 @@ const Signup = () => {
     if (!/\d/.test(password)) {
       return 'Password must contain at least one digit';
     }
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       return 'Password must contain at least one symbol';
     }
     return null;
