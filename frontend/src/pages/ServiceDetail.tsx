@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Star, CheckCircle2, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, CheckCircle2, MessageSquare, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { ServiceCard } from "@/components/services/ServiceCard";
@@ -77,6 +78,7 @@ const ServiceDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [canReview, setCanReview] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
+  const [sellerStats, setSellerStats] = useState<{ completedJobs: number; memberSince: string | null } | null>(null);
 
   useEffect(() => {
     setListingUnavailable(false);
@@ -372,6 +374,26 @@ const ServiceDetail = () => {
       setLoading(false);
     }
   };
+
+  // Public seller trust stats (completed jobs, member since). Non-critical:
+  // fail silently so a stats hiccup never blocks the page.
+  useEffect(() => {
+    const sellerId = service?.user_id;
+    if (!sellerId) return;
+    let cancelled = false;
+    api.sellers
+      .getPublicStats(sellerId)
+      .then((res) => {
+        const r = res as { status?: number; data?: { completedJobs: number; memberSince: string | null } };
+        if (!cancelled && r?.status === 200 && r.data) setSellerStats(r.data);
+      })
+      .catch(() => {
+        /* trust signals are best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [service?.user_id]);
 
   const formatPrice = (price: number | null) => {
     if (!price) return 'Price on request';
@@ -747,6 +769,23 @@ const ServiceDetail = () => {
                             <span className="text-sm text-muted-foreground">
                               ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
                             </span>
+                          </div>
+                        )}
+                        {/* Trust signals */}
+                        {(sellerStats?.completedJobs || sellerStats?.memberSince) && (
+                          <div className="mt-1.5 flex flex-col gap-1">
+                            {sellerStats?.completedJobs ? (
+                              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                                {sellerStats.completedJobs} {sellerStats.completedJobs === 1 ? 'job' : 'jobs'} completed
+                              </span>
+                            ) : null}
+                            {sellerStats?.memberSince ? (
+                              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <CalendarDays className="w-4 h-4 shrink-0" />
+                                Member since {new Date(sellerStats.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                              </span>
+                            ) : null}
                           </div>
                         )}
                       </div>

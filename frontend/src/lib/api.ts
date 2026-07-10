@@ -336,6 +336,8 @@ export const api = {
       apiFetch(`/sellers/toggleServiceStatus/${serviceId}`, {
         method: 'PUT',
       }),
+    getPublicStats: (sellerId: string) =>
+      apiFetch(`/sellers/${sellerId}/stats`),
     setupSeller: (data: Record<string, unknown>) =>
       apiFetch('/sellers/setup', {
         method: 'POST',

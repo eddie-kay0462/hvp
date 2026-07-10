@@ -196,9 +196,15 @@ const toggleService = async (req) => {
   }
 };
 
+const getPublicSellerStats = async (req) => {
+  const { sellerId } = req.params;
+  return sellerService.getPublicSellerStats(sellerId);
+};
+
 export default {
   setupSeller,
   createService,
   editService,
-  toggleService
+  toggleService,
+  getPublicSellerStats
 };

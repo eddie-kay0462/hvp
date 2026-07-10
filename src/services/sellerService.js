@@ -295,3 +295,55 @@ export const toggleService = async (userId, serviceId) => {
     return { status: 500, msg: "Failed to toggle service status", data: null };
   }
 };
+
+/**
+ * Public seller trust stats for the service/seller page (no auth).
+ * Uses the service role to count completed bookings across the seller's
+ * services — the browser can't (bookings RLS is participant-scoped).
+ */
+export const getPublicSellerStats = async (sellerId) => {
+  try {
+    if (!sellerId) {
+      return { status: 400, msg: "Seller id is required", data: null };
+    }
+
+    // The seller's service ids.
+    const { data: services, error: svcErr } = await db
+      .from("services")
+      .select("id")
+      .eq("user_id", sellerId);
+    if (svcErr) throw svcErr;
+    const serviceIds = (services || []).map((s) => s.id);
+
+    // Completed jobs = completed bookings across those services.
+    let completedJobs = 0;
+    if (serviceIds.length > 0) {
+      const { count, error: cntErr } = await db
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .in("service_id", serviceIds)
+        .eq("status", "completed");
+      if (cntErr) throw cntErr;
+      completedJobs = count || 0;
+    }
+
+    // Member since.
+    const { data: profile } = await db
+      .from("profiles")
+      .select("created_at")
+      .eq("id", sellerId)
+      .single();
+
+    return {
+      status: 200,
+      msg: "Seller stats retrieved",
+      data: {
+        completedJobs,
+        memberSince: profile?.created_at || null,
+      },
+    };
+  } catch (e) {
+    logger.error("getPublicSellerStats error:", e);
+    return { status: 500, msg: "Failed to load seller stats", data: null };
+  }
+};

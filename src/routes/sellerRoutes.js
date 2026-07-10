@@ -10,6 +10,9 @@ const router = express.Router();
  * @desc    Complete seller setup with business info
  * @access  Private
  */
+// Public: trust stats for the seller/service page (no auth).
+router.get('/:sellerId/stats', responseHandler(sellerController.getPublicSellerStats));
+
 router.post('/setup', verifyToken, responseHandler(sellerController.setupSeller));
 router.post('/create-service', verifyToken, responseHandler(sellerController.createService));
 router.put("/edit-service/:serviceId" , verifyToken,responseHandler(sellerController.editService));
