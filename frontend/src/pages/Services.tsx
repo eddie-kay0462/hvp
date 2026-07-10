@@ -32,11 +32,12 @@ interface Service {
   user_id: string;
   image_urls?: string[] | null;
   seller?: {
-    id: string;
-    title: string;
-    description: string;
-    category: string;
+    id?: string;
+    title?: string;
+    description?: string;
+    category?: string;
     user_id: string;
+    display_name?: string;
   } | null;
   seller_name?: string;
   seller_verified: boolean;
@@ -67,95 +68,43 @@ const Services = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      // Call the correct backend endpoint with filters
+      const itemsPerPage = 12;
+      // The backend applies category/search/price/rating filters, sorting, and
+      // pagination across the whole catalogue, so the page renders exactly what
+      // it returns — no client-side re-sorting or re-filtering.
       const response = await api.services.getAll({
         category: selectedCategory || undefined,
         search: searchQuery || undefined,
-        limit: 100, // Get more services for client-side filtering/pagination
-        offset: 0,
-        sortBy: sortBy === 'newest' ? 'created_at' : 'created_at',
-        order: sortBy === 'price_low' ? 'asc' : 'desc'
-      }) as any;
+        sortBy,
+        limit: itemsPerPage,
+        offset: (page - 1) * itemsPerPage,
+        priceMin: priceRange[0],
+        priceMax: priceRange[1],
+        minRating: minRating ?? undefined,
+      }) as {
+        status: number;
+        msg?: string;
+        data?: { services: Service[]; total?: number };
+      };
 
-      // Backend returns { status, msg, data: { services, count } }
       if (response.status !== 200) {
         throw new Error(response.msg || 'Failed to load services');
       }
 
-      let allServices: Service[] = response.data?.services || [];
-
-      // Map services to include price for backward compatibility
-      // Use display_name (profile name) instead of seller.title to avoid showing first service name
-      allServices = allServices.map(service => ({
+      const pageServices = (response.data?.services || []).map((service) => ({
         ...service,
-        price: service.default_price || 0, // Map default_price to price for filtering
+        price: service.default_price || 0,
         seller_name: service.seller?.display_name || service.seller?.title || 'Unknown Seller',
-        seller_verified: true, // Assume verified if service is verified
+        seller_verified: true,
       }));
 
-      // Client-side filtering
-      let filteredServices = allServices;
+      const total = response.data?.total ?? pageServices.length;
 
-      // Filter by category (already done by backend, but keep for client-side filtering)
-      if (selectedCategory) {
-        filteredServices = filteredServices.filter(s => s.category === selectedCategory);
-      }
-
-      // Filter by price range
-      filteredServices = filteredServices.filter(
-        s => (s.default_price || 0) >= priceRange[0] && (s.default_price || 0) <= priceRange[1]
-      );
-
-      // Filter by search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filteredServices = filteredServices.filter(
-          s => s.title.toLowerCase().includes(query) || 
-               s.description.toLowerCase().includes(query)
-        );
-      }
-
-      // Filter by rating (if we had ratings)
-      if (minRating !== null && filteredServices[0]?.average_rating !== undefined) {
-        filteredServices = filteredServices.filter(
-          s => s.average_rating && s.average_rating >= minRating
-        );
-      }
-
-      // Sorting
-      switch (sortBy) {
-        case 'recommended':
-        case 'popular':
-          // Keep default order for now
-          break;
-        case 'rating':
-          filteredServices.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
-          break;
-        case 'newest':
-          // Keep default order (already sorted by created_at desc from backend)
-          break;
-        case 'price_low':
-          filteredServices.sort((a, b) => (a.default_price || 0) - (b.default_price || 0));
-          break;
-        case 'price_high':
-          filteredServices.sort((a, b) => (b.default_price || 0) - (a.default_price || 0));
-          break;
-      }
-
-      // Pagination
-      const itemsPerPage = 12;
-      const startIndex = (page - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedServices = filteredServices.slice(startIndex, endIndex);
-
-      // Services are already mapped with seller data from backend
-      const mappedServices = paginatedServices;
-
-      setServices(mappedServices);
-      setTotalPages(Math.ceil(filteredServices.length / itemsPerPage));
-    } catch (error: any) {
+      setServices(pageServices);
+      setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)));
+    } catch (error: unknown) {
       console.error('Error fetching services:', error);
-      toast.error(error.message || 'Failed to load services');
+      toast.error(error instanceof Error ? error.message : 'Failed to load services');
     } finally {
       setLoading(false);
     }
@@ -253,7 +202,7 @@ const Services = () => {
           max={5000}
           step={50}
           value={priceRange}
-          onValueChange={setPriceRange}
+          onValueChange={(v) => { setPriceRange(v); setPage(1); }}
           className="w-full"
         />
       </div>
@@ -269,6 +218,7 @@ const Services = () => {
                 checked={minRating === rating}
                 onCheckedChange={(checked) => {
                   setMinRating(checked ? rating : null);
+                  setPage(1);
                 }}
               />
               <label
@@ -335,7 +285,7 @@ const Services = () => {
                       </div>
                     </SheetContent>
                   </Sheet>
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -463,7 +413,7 @@ const Services = () => {
                       </Button>
                       
                       {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                        let pageNum;
+                        let pageNum: number;
                         if (totalPages <= 5) {
                           pageNum = i + 1;
                         } else if (page <= 3) {

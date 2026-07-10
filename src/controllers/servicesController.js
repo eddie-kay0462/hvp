@@ -7,15 +7,17 @@ import { logger } from '../config/logger.js';
  */
 const getAllServices = async (req) => {
   try {
-    const { category, search, limit, offset, sortBy, order } = req.query;
-    
+    const { category, search, limit, offset, sortBy, priceMin, priceMax, minRating } = req.query;
+
     const filters = {
       category: category || null,
       search: search || null,
-      limit: limit ? parseInt(limit) : 50,
+      limit: limit ? parseInt(limit) : 12,
       offset: offset ? parseInt(offset) : 0,
-      sortBy: sortBy || 'created_at',
-      order: order || 'desc'
+      sortBy: sortBy || 'recommended',
+      priceMin: priceMin != null && priceMin !== '' ? Number(priceMin) : undefined,
+      priceMax: priceMax != null && priceMax !== '' ? Number(priceMax) : undefined,
+      minRating: minRating != null && minRating !== '' ? Number(minRating) : undefined,
     };
 
     // Validate limit and offset

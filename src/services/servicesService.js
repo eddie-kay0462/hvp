@@ -4,24 +4,44 @@ import { logger } from '../config/logger.js';
 /**
  * Get all services with optional filters
  */
+// Effective price used for price sort/filter: packages -> cheapest package,
+// range/fixed -> default_price (null treated as 0, matching prior UI behaviour).
+const effectivePrice = (s) => {
+  if (s.pricing_type === 'packages' && Array.isArray(s.service_packages) && s.service_packages.length) {
+    return Math.min(...s.service_packages.map((p) => Number(p.price) || 0));
+  }
+  return Number(s.default_price) || 0;
+};
+
 export const getAllServices = async (filters = {}) => {
   try {
-    const { category, search, limit = 50, offset = 0, sortBy = 'created_at', order = 'desc' } = filters;
+    const {
+      category,
+      search,
+      limit = 12,
+      offset = 0,
+      sortBy = 'recommended',
+      priceMin,
+      priceMax,
+      minRating,
+    } = filters;
 
+    // Base fetch: all verified + active services matching category/search, newest
+    // first. Sorting, price/rating filtering, and pagination are applied below so
+    // they operate across the whole result set (not just the current page). A
+    // generous safety cap avoids unbounded loads; denormalize ratings/price onto
+    // services for DB-level pagination if the catalogue outgrows this.
     let query = supabase
       .from('services')
       .select('*')
       .eq('is_active', true)
-      .eq('is_verified', true) // Only show verified services
-      .order(sortBy, { ascending: order === 'asc' })
-      .range(offset, offset + limit - 1);
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .range(0, 999);
 
-    // Apply category filter if provided
     if (category) {
       query = query.eq('category', category);
     }
-
-    // Apply search filter if provided
     if (search) {
       const searchPattern = `%${search}%`;
       query = query.or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`);
@@ -66,6 +86,26 @@ export const getAllServices = async (filters = {}) => {
       }
     }
 
+    // Per-seller ratings (reviews are keyed by reviewee_id = seller). Attached to
+    // each service so rating sort/filter and card display work.
+    const ratingsMap = {};
+    if (userIds.length > 0) {
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('reviewee_id, rating')
+        .in('reviewee_id', userIds);
+      const acc = {};
+      (reviews || []).forEach((r) => {
+        (acc[r.reviewee_id] ||= []).push(Number(r.rating) || 0);
+      });
+      for (const [sellerId, ratings] of Object.entries(acc)) {
+        ratingsMap[sellerId] = {
+          average_rating: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+          review_count: ratings.length,
+        };
+      }
+    }
+
     // Merge seller data with services, using profile name as fallback
     const servicesWithSellers = (services || []).map(service => {
       const seller = sellersMap[service.user_id] || null;
@@ -82,9 +122,13 @@ export const getAllServices = async (filters = {}) => {
         displayName = seller.title;
       }
       
+      const rating = ratingsMap[service.user_id] || null;
+
       // Always include seller object with display_name, even if seller entry doesn't exist
       return {
         ...service,
+        average_rating: rating?.average_rating ?? null,
+        review_count: rating?.review_count ?? 0,
         seller: seller ? {
           ...seller,
           display_name: displayName
@@ -95,15 +139,54 @@ export const getAllServices = async (filters = {}) => {
       };
     });
 
+    // Filter + sort + paginate across the whole result set.
+    let result = servicesWithSellers;
+
+    if (priceMin != null || priceMax != null) {
+      const lo = priceMin != null ? Number(priceMin) : 0;
+      const hi = priceMax != null ? Number(priceMax) : Infinity;
+      result = result.filter((s) => {
+        const p = effectivePrice(s);
+        return p >= lo && p <= hi;
+      });
+    }
+    if (minRating != null) {
+      result = result.filter((s) => (s.average_rating ?? 0) >= Number(minRating));
+    }
+
+    switch (sortBy) {
+      case 'price_low':
+        result.sort((a, b) => effectivePrice(a) - effectivePrice(b));
+        break;
+      case 'price_high':
+        result.sort((a, b) => effectivePrice(b) - effectivePrice(a));
+        break;
+      case 'rating':
+      case 'popular':
+        result.sort(
+          (a, b) =>
+            (b.average_rating ?? 0) - (a.average_rating ?? 0) ||
+            (b.review_count ?? 0) - (a.review_count ?? 0)
+        );
+        break;
+      // 'newest' | 'recommended' | default: keep created_at desc from the base query.
+      default:
+        break;
+    }
+
+    const total = result.length;
+    const page = result.slice(offset, offset + limit);
+
     return {
       status: 200,
       msg: 'Services retrieved successfully',
       data: {
-        services: servicesWithSellers || [],
-        count: servicesWithSellers?.length || 0,
+        services: page,
+        count: page.length,
+        total,
         limit,
-        offset
-      }
+        offset,
+      },
     };
   } catch (e) {
     logger.error('getAllServices error:', e);

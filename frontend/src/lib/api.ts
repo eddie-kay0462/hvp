@@ -306,7 +306,7 @@ export const api = {
 
   // Services endpoints (public)
   services: {
-    getAll: (params?: { category?: string; search?: string; limit?: number; offset?: number; sortBy?: string; order?: string }) => {
+    getAll: (params?: { category?: string; search?: string; limit?: number; offset?: number; sortBy?: string; order?: string; priceMin?: number; priceMax?: number; minRating?: number }) => {
       const queryParams = new URLSearchParams();
       if (params?.category) queryParams.append('category', params.category);
       if (params?.search) queryParams.append('search', params.search);
@@ -314,6 +314,9 @@ export const api = {
       if (params?.offset) queryParams.append('offset', params.offset.toString());
       if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params?.order) queryParams.append('order', params.order);
+      if (params?.priceMin != null) queryParams.append('priceMin', params.priceMin.toString());
+      if (params?.priceMax != null) queryParams.append('priceMax', params.priceMax.toString());
+      if (params?.minRating != null) queryParams.append('minRating', params.minRating.toString());
       const query = queryParams.toString();
       return apiFetch(`/services${query ? `?${query}` : ''}`, { method: 'GET' });
     },
