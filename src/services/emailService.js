@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 const FROM_NAME = 'Hustle Village';
 const FROM_ADDRESS = process.env.ZOHO_SMTP_USER || process.env.FROM_EMAIL || 'noreply@hustlevillage.app';
@@ -9,7 +10,7 @@ const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://hustlevillage.
 function getAdminEmail() {
   const email = process.env.ADMIN_EMAIL;
   if (!email) {
-    console.warn('[email] ADMIN_EMAIL env var is not set — admin notifications will not be delivered.');
+    logger.warn('[email] ADMIN_EMAIL env var is not set — admin notifications will not be delivered.');
   }
   return email || 'admin@hustlevillage.app';
 }
@@ -145,7 +146,7 @@ The Hustle Village Team
 
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Failed to send approval email:', error.message);
+    logger.error('Failed to send approval email:', error.message);
     throw error;
   }
 };
@@ -228,7 +229,7 @@ The Hustle Village Team
 
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Failed to send rejection email:', error.message);
+    logger.error('Failed to send rejection email:', error.message);
     throw error;
   }
 };
@@ -300,7 +301,7 @@ Review: ${adminDashboardUrl}
 
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Failed to send admin notification:', error.message);
+    logger.error('Failed to send admin notification:', error.message);
     throw error;
   }
 };
@@ -335,7 +336,7 @@ export const sendNewBookingToSeller = async (sellerAuthUserId, { bookingId, serv
   try {
     const { email, name: sellerName } = await resolveSellerContact(sellerAuthUserId);
     if (!email) {
-      console.warn('[email] sendNewBookingToSeller: no email for seller', sellerAuthUserId);
+      logger.warn('[email] sendNewBookingToSeller: no email for seller', sellerAuthUserId);
       return { sent: false, reason: 'no_email' };
     }
 
@@ -403,7 +404,7 @@ The Hustle Village Team
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendNewBookingToSeller failed:', error.message);
+    logger.error('[email] sendNewBookingToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -424,7 +425,7 @@ export const sendBookingAcceptedToBuyer = async (buyerProfileId, sellerAuthUserI
     const info = await sendMail({ to: email, subject: `Your booking has been accepted — Hustle Village`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendBookingAcceptedToBuyer failed:', error.message);
+    logger.error('[email] sendBookingAcceptedToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -444,7 +445,7 @@ export const sendBookingDeliveredToBuyer = async (buyerProfileId, { bookingId, s
     const info = await sendMail({ to: email, subject: `Your service has been delivered — please confirm`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendBookingDeliveredToBuyer failed:', error.message);
+    logger.error('[email] sendBookingDeliveredToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -465,7 +466,7 @@ export const sendPaymentReleasedToSeller = async (sellerAuthUserId, { bookingId,
     const info = await sendMail({ to: email, subject: `Payment released — GH₵ ${amt}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendPaymentReleasedToSeller failed:', error.message);
+    logger.error('[email] sendPaymentReleasedToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -486,7 +487,7 @@ export const sendMomoApprovedToSeller = async (sellerAuthUserId, { bookingId, se
     const info = await sendMail({ to: email, subject: `Booking paid — proceed with "${serviceTitle || 'your booking'}"`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendMomoApprovedToSeller failed:', error.message);
+    logger.error('[email] sendMomoApprovedToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -578,7 +579,7 @@ Send the payment via MoMo to the provider's number above.
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendPayoutRequiredToAdmin failed:', error.message);
+    logger.error('[email] sendPayoutRequiredToAdmin failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -599,7 +600,7 @@ export const sendPayoutSentToProvider = async (sellerAuthUserId, { bookingId, se
     const info = await sendMail({ to: email, subject: `Your payment has been sent — GH₵ ${amt}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendPayoutSentToProvider failed:', error.message);
+    logger.error('[email] sendPayoutSentToProvider failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -619,7 +620,7 @@ export const sendBookingCancelledToSeller = async (sellerAuthUserId, { serviceTi
     const info = await sendMail({ to: email, subject: `Booking cancelled — ${serviceTitle || 'Hustle Village'}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendBookingCancelledToSeller failed:', error.message);
+    logger.error('[email] sendBookingCancelledToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -635,7 +636,7 @@ export const sendBookingCancelledToBuyer = async (buyerProfileId, { serviceTitle
     const info = await sendMail({ to: email, subject: `Your booking was cancelled — Hustle Village`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendBookingCancelledToBuyer failed:', error.message);
+    logger.error('[email] sendBookingCancelledToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -655,7 +656,7 @@ export const sendQuoteRequestToSeller = async (sellerAuthUserId, { serviceTitle,
     const info = await sendMail({ to: email, subject: `New quote request for ${serviceTitle}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendQuoteRequestToSeller failed:', error.message);
+    logger.error('[email] sendQuoteRequestToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -674,7 +675,7 @@ export const sendQuoteSentToBuyer = async (buyerProfileId, { serviceTitle, quote
     const info = await sendMail({ to: email, subject: `Quote received for ${serviceTitle} — ${formattedPrice}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendQuoteSentToBuyer failed:', error.message);
+    logger.error('[email] sendQuoteSentToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -691,7 +692,7 @@ export const sendQuoteAcceptedToSeller = async (sellerAuthUserId, { serviceTitle
     const info = await sendMail({ to: email, subject: `Quote accepted — ${serviceTitle}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendQuoteAcceptedToSeller failed:', error.message);
+    logger.error('[email] sendQuoteAcceptedToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -707,7 +708,7 @@ export const sendQuoteDeclinedToSeller = async (sellerAuthUserId, { serviceTitle
     const info = await sendMail({ to: email, subject: `Quote declined — ${serviceTitle}`, html, text });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendQuoteDeclinedToSeller failed:', error.message);
+    logger.error('[email] sendQuoteDeclinedToSeller failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -747,12 +748,12 @@ async function resolveBuyerContact(profileId) {
     if (!authErr && authData?.user?.email) {
       email = authData.user.email;
     } else if (authErr) {
-      console.error('[email] resolveBuyerContact getUserById failed:', authErr.message, '| profileId:', profileId);
+      logger.error('[email] resolveBuyerContact getUserById failed:', authErr.message, '| profileId:', profileId);
     }
   }
 
   if (!email) {
-    console.warn('[email] resolveBuyerContact: no email found for profileId', profileId);
+    logger.warn('[email] resolveBuyerContact: no email found for profileId', profileId);
   }
 
   return { email, name };
@@ -833,7 +834,7 @@ Booking: ${bookingUrl}
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendMomoProofSubmittedToAdmin failed:', error.message);
+    logger.error('[email] sendMomoProofSubmittedToAdmin failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -848,7 +849,7 @@ export const sendMomoPaymentApprovedToBuyer = async (
   try {
     const { email, name } = await resolveBuyerContact(buyerProfileId);
     if (!email) {
-      console.warn('[email] MoMo approved: no buyer email for profile', buyerProfileId);
+      logger.warn('[email] MoMo approved: no buyer email for profile', buyerProfileId);
       return { sent: false, reason: 'no_email' };
     }
 
@@ -915,7 +916,7 @@ The Hustle Village Team
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendMomoPaymentApprovedToBuyer failed:', error.message);
+    logger.error('[email] sendMomoPaymentApprovedToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -930,7 +931,7 @@ export const sendMomoPaymentRejectedToBuyer = async (
   try {
     const { email, name } = await resolveBuyerContact(buyerProfileId);
     if (!email) {
-      console.warn('[email] MoMo rejected: no buyer email for profile', buyerProfileId);
+      logger.warn('[email] MoMo rejected: no buyer email for profile', buyerProfileId);
       return { sent: false, reason: 'no_email' };
     }
 
@@ -999,7 +1000,7 @@ The Hustle Village Team
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendMomoPaymentRejectedToBuyer failed:', error.message);
+    logger.error('[email] sendMomoPaymentRejectedToBuyer failed:', error.message);
     return { sent: false, error: error.message };
   }
 };
@@ -1090,7 +1091,7 @@ To turn off these notifications, visit your account settings: ${frontendUrl}/pro
 
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error('[email] sendNewMessageNotification failed:', error.message);
+    logger.error('[email] sendNewMessageNotification failed:', error.message);
     return { sent: false, error: error.message };
   }
 };

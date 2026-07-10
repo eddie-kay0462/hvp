@@ -1,4 +1,5 @@
 import * as servicesService from '../services/servicesService.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Get all services
@@ -32,7 +33,7 @@ const getAllServices = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error('getAllServices error:', error);
+    logger.error('getAllServices error:', error);
     return { status: 500, msg: 'Failed to retrieve services', data: null };
   }
 };
@@ -54,7 +55,7 @@ const getServiceById = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error('getServiceById error:', error);
+    logger.error('getServiceById error:', error);
     return { status: 500, msg: 'Failed to retrieve service', data: null };
   }
 };

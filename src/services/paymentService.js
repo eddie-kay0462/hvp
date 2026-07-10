@@ -10,6 +10,7 @@ import { initializeTransaction, verifyTransaction } from '../config/paystack.js'
 import { isMomoManualMode } from '../config/paymentMode.js';
 import { assertBuyerCanPayBooking, initiateMomoManualCheckout } from './momoPaymentService.js';
 import { generateInvoiceNumber } from './invoiceNumberUtils.js';
+import { logger } from '../config/logger.js';
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://hustlevillage.app';
 const CURRENCY = process.env.PAYSTACK_CURRENCY || 'GHS';
@@ -19,12 +20,12 @@ async function getUserEmailById(userId) {
     if (!supabaseAdmin) return null;
     const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (error) {
-      console.error('Error fetching user by id:', error);
+      logger.error('Error fetching user by id:', error);
       return null;
     }
     return data?.user?.email || null;
   } catch (e) {
-    console.error('getUserEmailById exception:', e);
+    logger.error('getUserEmailById exception:', e);
     return null;
   }
 }
@@ -140,7 +141,7 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
       .eq('id', bookingId);
 
     if (updateError) {
-      console.error('Failed to update booking with reference:', updateError);
+      logger.error('Failed to update booking with reference:', updateError);
       // Do not fail the whole process; still return auth URL so user can pay
     }
 
@@ -150,7 +151,7 @@ export const initiatePaymentForBooking = async (userId, bookingId) => {
       data: { authorization_url, reference }
     };
   } catch (e) {
-    console.error('initiatePaymentForBooking error:', e);
+    logger.error('initiatePaymentForBooking error:', e);
     return { status: 500, msg: 'Failed to initiate payment', data: null };
   }
 };
@@ -231,7 +232,7 @@ export const verifyPaymentReference = async (reference, requestingUserId = null)
       .eq('id', bookingId);
 
     if (updateError) {
-      console.error('Failed to update booking payment status:', updateError);
+      logger.error('Failed to update booking payment status:', updateError);
       return { status: 500, msg: 'Payment verified but failed to update booking', data: null };
     }
 
@@ -253,7 +254,7 @@ export const verifyPaymentReference = async (reference, requestingUserId = null)
       .single();
 
     if (invoiceError) {
-      console.error('Failed to create invoice:', invoiceError);
+      logger.error('Failed to create invoice:', invoiceError);
       return {
         status: 200,
         msg: 'Payment verified. Invoice creation failed.',
@@ -267,7 +268,7 @@ export const verifyPaymentReference = async (reference, requestingUserId = null)
       data: { success: true, booking_id: booking.id, invoice_id: invoice.id }
     };
   } catch (e) {
-    console.error('verifyPaymentReference error:', e);
+    logger.error('verifyPaymentReference error:', e);
     return { status: 500, msg: 'Failed to verify payment', data: null };
   }
 };
@@ -350,7 +351,7 @@ export const getPaymentStatus = async (bookingId) => {
       }
     };
   } catch (e) {
-    console.error("getPaymentStatus error:", e);
+    logger.error("getPaymentStatus error:", e);
     return { status: 500, msg: "Failed to get payment status", data: null };
   }
 };

@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 export async function generateInvoiceNumber() {
   const year = new Date().getFullYear();
@@ -11,7 +12,7 @@ export async function generateInvoiceNumber() {
     .limit(1);
 
   if (error) {
-    console.error('Error fetching latest invoice number:', error);
+    logger.error('Error fetching latest invoice number:', error);
   }
 
   let nextSeq = 1;

@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { sendNewMessageNotification } from '../services/emailService.js';
+import { logger } from '../config/logger.js';
 
 const NOTIFY_COOLDOWN_MINUTES = 60;
 
@@ -66,7 +67,7 @@ export const notify = async (req, res) => {
     }
 
     if (!recipientEmail) {
-      console.warn('[messages/notify] no email for recipient', recipientId);
+      logger.warn('[messages/notify] no email for recipient', recipientId);
       return res.status(200).json({ status: 200, msg: 'no recipient email', data: null });
     }
 
@@ -109,14 +110,14 @@ export const notify = async (req, res) => {
         conversation_id: message.conversation_id,
         recipient_id: recipientId,
       });
-      console.log('[messages/notify] sent to', recipientEmail, '| conversation', message.conversation_id);
+      logger.info('[messages/notify] sent to', recipientEmail, '| conversation', message.conversation_id);
     } else {
-      console.warn('[messages/notify] email failed:', result.error);
+      logger.warn('[messages/notify] email failed:', result.error);
     }
 
     return res.status(200).json({ status: 200, msg: result.sent ? 'sent' : 'email_failed', data: null });
   } catch (error) {
-    console.error('[messages/notify] unexpected error:', error.message);
+    logger.error('[messages/notify] unexpected error:', error.message);
     return res.status(500).json({ status: 500, msg: 'Internal error', data: null });
   }
 };

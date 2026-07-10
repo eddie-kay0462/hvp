@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 export const getInvoiceById = async (userId, invoiceId) => {
   try {
@@ -84,7 +85,7 @@ export const getInvoiceById = async (userId, invoiceId) => {
       data: { ...invoice, buyer_profile: buyerProfile }
     };
   } catch (e) {
-    console.error('getInvoiceById error:', e);
+    logger.error('getInvoiceById error:', e);
     return { status: 500, msg: 'Failed to retrieve invoice', data: null };
   }
 };

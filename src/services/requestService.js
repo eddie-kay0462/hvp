@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 export const createRequest = async (userId, requestData) => {
     try {
       const { data, error } = await supabase
@@ -13,13 +14,13 @@ export const createRequest = async (userId, requestData) => {
         .single();
   
       if (error) {
-        console.error("Supabase error:", error);
+        logger.error("Supabase error:", error);
         return { status: 400, msg: error.message, data: null };
       }
   
       return { status: 201, msg: "Request created successfully", data };
     } catch (error) {
-      console.error("createRequest error:", error);
+      logger.error("createRequest error:", error);
       return { status: 500, msg: "Failed to create request", data: null };
     }
   };
@@ -50,7 +51,7 @@ export const createRequest = async (userId, requestData) => {
       if (updateError) return { status: 400, msg: updateError.message, data: null };
       return { status: 200, msg: "Request accepted successfully", data };
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       return { status: 500, msg: "Failed to accept request", data: null };
     }
   };

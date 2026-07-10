@@ -1,4 +1,5 @@
 import * as adminService from '../services/adminService.js';
+import { logger } from '../config/logger.js';
 import {
   listPendingMomoPaymentsAdmin,
   listMomoPaymentHistoryAdmin,
@@ -11,7 +12,7 @@ export const getPendingServices = async (_req) => {
     const result = await adminService.getPendingServices();
     return result;
   } catch (error) {
-    console.error("Get pending services error:", error);
+    logger.error("Get pending services error:", error);
     return { status: 500, msg: "Failed to retrieve pending services", data: null };
   }
 };
@@ -26,7 +27,7 @@ export const getAllServices = async (req) => {
     const result = await adminService.getAllServices(filters);
     return result;
   } catch (error) {
-    console.error("Get all services error:", error);
+    logger.error("Get all services error:", error);
     return { status: 500, msg: "Failed to retrieve services", data: null };
   }
 };
@@ -57,12 +58,12 @@ export const approveService = async (req) => {
           emailSent = true;
         } catch (err) {
           emailError = err.message || String(err);
-          console.error("Failed to send approval email:", err);
+          logger.error("Failed to send approval email:", err);
         }
       } else {
         emailError =
           "Seller email could not be loaded. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.";
-        console.error("approveService: missing sellerEmail — notification not sent.");
+        logger.error("approveService: missing sellerEmail — notification not sent.");
       }
 
       return {
@@ -77,7 +78,7 @@ export const approveService = async (req) => {
 
     return result;
   } catch (error) {
-    console.error("Approve service error:", error);
+    logger.error("Approve service error:", error);
     return { status: 500, msg: "Failed to approve service", data: null };
   }
 };
@@ -114,7 +115,7 @@ export const rejectService = async (req) => {
           emailSent = true;
         } catch (err) {
           emailError = err.message || String(err);
-          console.error("Failed to send rejection email:", err);
+          logger.error("Failed to send rejection email:", err);
         }
       } else {
         emailError =
@@ -133,7 +134,7 @@ export const rejectService = async (req) => {
 
     return result;
   } catch (error) {
-    console.error("Reject service error:", error);
+    logger.error("Reject service error:", error);
     return { status: 500, msg: "Failed to reject service", data: null };
   }
 };
@@ -143,7 +144,7 @@ export const getServiceStats = async (_req) => {
     const result = await adminService.getServiceStats();
     return result;
   } catch (error) {
-    console.error("Get service stats error:", error);
+    logger.error("Get service stats error:", error);
     return { status: 500, msg: "Failed to retrieve service statistics", data: null };
   }
 };
@@ -152,7 +153,7 @@ export const getPendingMomoPayments = async (_req) => {
   try {
     return await listPendingMomoPaymentsAdmin();
   } catch (error) {
-    console.error("Get pending MoMo payments error:", error);
+    logger.error("Get pending MoMo payments error:", error);
     return { status: 500, msg: "Failed to retrieve pending MoMo payments", data: null };
   }
 };
@@ -166,7 +167,7 @@ export const getMomoPaymentHistory = async (req) => {
     };
     return await listMomoPaymentHistoryAdmin(q);
   } catch (error) {
-    console.error("Get MoMo payment history error:", error);
+    logger.error("Get MoMo payment history error:", error);
     return { status: 500, msg: "Failed to retrieve payment history", data: null };
   }
 };
@@ -180,7 +181,7 @@ export const getServiceModerationHistory = async (req) => {
     };
     return await adminService.getServiceModerationHistory(q);
   } catch (error) {
-    console.error("Get service moderation history error:", error);
+    logger.error("Get service moderation history error:", error);
     return { status: 500, msg: "Failed to retrieve moderation history", data: null };
   }
 };
@@ -198,7 +199,7 @@ export const verifyMomoPayment = async (req) => {
     }
     return await adminVerifyMomoPayment(bookingId, adminId, approve, rejectionReason);
   } catch (error) {
-    console.error("Verify MoMo payment error:", error);
+    logger.error("Verify MoMo payment error:", error);
     return { status: 500, msg: "Failed to verify payment", data: null };
   }
 };
@@ -243,7 +244,7 @@ export const getPendingPayouts = async (_req) => {
 
     return { status: 200, msg: 'Pending payouts retrieved', data: enriched };
   } catch (error) {
-    console.error('getPendingPayouts error:', error);
+    logger.error('getPendingPayouts error:', error);
     return { status: 500, msg: 'Failed to retrieve pending payouts', data: null };
   }
 };
@@ -258,7 +259,7 @@ export const confirmPayout = async (req) => {
     }
     return await adminConfirmPayout(bookingId, payoutTransactionId, file);
   } catch (error) {
-    console.error("Confirm payout error:", error);
+    logger.error("Confirm payout error:", error);
     return { status: 500, msg: "Failed to confirm payout", data: null };
   }
 };

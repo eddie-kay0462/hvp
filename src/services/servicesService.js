@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Get all services with optional filters
@@ -105,7 +106,7 @@ export const getAllServices = async (filters = {}) => {
       }
     };
   } catch (e) {
-    console.error('getAllServices error:', e);
+    logger.error('getAllServices error:', e);
     return { status: 500, msg: 'Failed to retrieve services', data: null };
   }
 };
@@ -181,7 +182,7 @@ export const getServiceById = async (serviceId) => {
       data: serviceWithSeller
     };
   } catch (e) {
-    console.error('getServiceById error:', e);
+    logger.error('getServiceById error:', e);
     return { status: 500, msg: 'Failed to retrieve service', data: null };
   }
 };

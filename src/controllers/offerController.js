@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 const db = supabaseAdmin ?? supabase;
 
@@ -63,7 +64,7 @@ const sendOffer = async (req) => {
         .single();
 
       if (msgErr) {
-        console.error('sendOffer insert error:', msgErr);
+        logger.error('sendOffer insert error:', msgErr);
         return { status: 500, msg: 'Failed to send offer', data: null };
       }
 
@@ -72,7 +73,7 @@ const sendOffer = async (req) => {
 
     return { status: 400, msg: 'This conversation has no linked service', data: null };
   } catch (err) {
-    console.error('sendOffer error:', err);
+    logger.error('sendOffer error:', err);
     return { status: 500, msg: 'Failed to send offer', data: null };
   }
 };
@@ -114,7 +115,7 @@ const respondToOffer = async (req) => {
       .eq('id', messageId);
 
     if (updateErr) {
-      console.error('respondToOffer update error:', updateErr);
+      logger.error('respondToOffer update error:', updateErr);
       return { status: 500, msg: 'Failed to update offer status', data: null };
     }
 
@@ -163,7 +164,7 @@ const respondToOffer = async (req) => {
       .single();
 
     if (bookErr) {
-      console.error('respondToOffer booking error:', bookErr);
+      logger.error('respondToOffer booking error:', bookErr);
       return { status: 500, msg: 'Failed to create booking from offer', data: null };
     }
 
@@ -173,7 +174,7 @@ const respondToOffer = async (req) => {
       data: { offer_status: 'accepted', booking },
     };
   } catch (err) {
-    console.error('respondToOffer error:', err);
+    logger.error('respondToOffer error:', err);
     return { status: 500, msg: 'Failed to respond to offer', data: null };
   }
 };

@@ -1,4 +1,5 @@
 import * as sellerService from '../services/sellerService.js';
+import { logger } from '../config/logger.js';
 
 const setupSeller = async (req) => {
   try {
@@ -96,7 +97,7 @@ const setupSeller = async (req) => {
           const { sendServiceSubmittedNotification } = await import('../services/emailService.js');
           await sendServiceSubmittedNotification(result.data, userEmail, userName);
         } catch (emailError) {
-          console.error("Failed to send service submission notification:", emailError);
+          logger.error("Failed to send service submission notification:", emailError);
           // Don't fail the service creation if email fails
         }
       }
@@ -108,7 +109,7 @@ const setupSeller = async (req) => {
       };
   
     } catch (error) {
-      console.error("CreateService Error:", error);
+      logger.error("CreateService Error:", error);
       return { status: 500, msg: "Service creation failed", data: null };
     }
   };
@@ -161,7 +162,7 @@ const editService = async (req) => {
       };
   
     } catch (error) {
-      console.error("Edit service error:", error);
+      logger.error("Edit service error:", error);
       return { status: 500, msg: "Service update failed", data: null };
     }
   };
@@ -190,7 +191,7 @@ const toggleService = async (req) => {
     };
 
   } catch (err) {
-    console.error("Toggle service error:", err);
+    logger.error("Toggle service error:", err);
     return { status: 500, msg: "Could not toggle service status", data: null };
   }
 };

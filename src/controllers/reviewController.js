@@ -1,4 +1,5 @@
 import * as reviewService from '../services/reviewService.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Create a review for a completed booking
@@ -34,7 +35,7 @@ const createReview = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Create review error:", error);
+    logger.error("Create review error:", error);
     return { status: 500, msg: "Failed to create review", data: null };
   }
 };
@@ -58,7 +59,7 @@ const getSellerReviews = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Get seller reviews error:", error);
+    logger.error("Get seller reviews error:", error);
     return { status: 500, msg: "Failed to retrieve reviews", data: null };
   }
 };
@@ -87,7 +88,7 @@ const checkExistingReview = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Check existing review error:", error);
+    logger.error("Check existing review error:", error);
     return { status: 500, msg: "Failed to check for existing review", data: null };
   }
 };

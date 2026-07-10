@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import pinoHttp from 'pino-http';
+import { logger } from './config/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
 import serviceRoutes from './routes/servicesRoutes.js';
@@ -55,7 +57,7 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.error(`CORS blocked origin: ${origin}`);
+      logger.warn({ origin }, 'CORS blocked origin');
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -69,6 +71,9 @@ app.set('trust proxy', 1);
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Structured per-request logging. Skip /health so deploy/uptime checks don't spam.
+app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }));
 
 // Tight limit on auth endpoints to block brute force
 const authLimiter = rateLimit({
@@ -122,10 +127,14 @@ setInterval(runAutoRelease, 60 * 60 * 1000); // check every hour
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+  logger.info(
+    {
+      port: PORT,
+      env: process.env.NODE_ENV || 'development',
+      allowedOrigins,
+    },
+    `Server running on port ${PORT}`,
+  );
 });
 
 export default app;

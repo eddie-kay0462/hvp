@@ -6,6 +6,7 @@
 import { randomBytes } from 'crypto';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { generateInvoiceNumber } from './invoiceNumberUtils.js';
+import { logger } from '../config/logger.js';
 
 const CURRENCY = process.env.PAYSTACK_CURRENCY || 'GHS';
 
@@ -165,7 +166,7 @@ export async function initiateMomoManualCheckout(userId, bookingId) {
       },
     };
   } catch (e) {
-    console.error('initiateMomoManualCheckout error:', e);
+    logger.error('initiateMomoManualCheckout error:', e);
     return { status: 500, msg: 'Failed to start Mobile Money checkout', data: null };
   }
 }
@@ -191,9 +192,9 @@ async function insertPaymentVerificationEvent(bookingId, eventType, actorId, met
       actor_id: actorId || null,
       metadata,
     });
-    if (error) console.error('[momo] payment_verification_events:', error.message);
+    if (error) logger.error('[momo] payment_verification_events:', error.message);
   } catch (e) {
-    console.error('[momo] payment_verification_events:', e?.message || e);
+    logger.error('[momo] payment_verification_events:', e?.message || e);
   }
 }
 
@@ -309,7 +310,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       });
 
     if (upErr) {
-      console.error('Storage upload error:', upErr);
+      logger.error('Storage upload error:', upErr);
       return {
         status: 502,
         msg: `Could not upload screenshot: ${upErr.message}. Ensure the "${bucket}" bucket exists in Supabase Storage.`,
@@ -323,7 +324,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       .createSignedUrl(objectPath, 60 * 60 * 24 * 365);
 
     if (signErr || !signedData?.signedUrl) {
-      console.error('Signed URL error:', signErr);
+      logger.error('Signed URL error:', signErr);
       return { status: 502, msg: 'File uploaded but could not generate view URL.', data: null };
     }
 
@@ -342,7 +343,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       .eq('id', bookingId);
 
     if (updErr) {
-      console.error('Booking update after proof upload:', updErr);
+      logger.error('Booking update after proof upload:', updErr);
       return { status: 500, msg: 'Failed to save payment proof', data: null };
     }
 
@@ -375,7 +376,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
         buyerName,
       });
     } catch (emailErr) {
-      console.error('[momo] Admin notify email failed:', emailErr?.message || emailErr);
+      logger.error('[momo] Admin notify email failed:', emailErr?.message || emailErr);
     }
 
     return {
@@ -387,7 +388,7 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       },
     };
   } catch (e) {
-    console.error('submitMomoPaymentProof error:', e);
+    logger.error('submitMomoPaymentProof error:', e);
     return { status: 500, msg: 'Failed to submit payment proof', data: null };
   }
 }
@@ -417,7 +418,7 @@ export async function listPendingMomoPaymentsAdmin() {
       .order('momo_submitted_at', { ascending: true });
 
     if (error) {
-      console.error('listPendingMomoPaymentsAdmin:', error);
+      logger.error('listPendingMomoPaymentsAdmin:', error);
       return { status: 500, msg: 'Failed to load pending payments', data: null };
     }
 
@@ -443,7 +444,7 @@ export async function listPendingMomoPaymentsAdmin() {
       data: enriched,
     };
   } catch (e) {
-    console.error('listPendingMomoPaymentsAdmin error:', e);
+    logger.error('listPendingMomoPaymentsAdmin error:', e);
     return { status: 500, msg: 'Failed to load pending payments', data: null };
   }
 }
@@ -503,7 +504,7 @@ export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
       .upload(objectPath, file.buffer, { contentType: file.mimetype, upsert: false });
 
     if (upErr) {
-      console.error('Payout proof upload error:', upErr);
+      logger.error('Payout proof upload error:', upErr);
       return { status: 502, msg: `Could not upload payout screenshot: ${upErr.message}`, data: null };
     }
 
@@ -512,7 +513,7 @@ export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
       .createSignedUrl(objectPath, 60 * 60 * 24 * 365);
 
     if (signErr || !signedData?.signedUrl) {
-      console.error('Payout signed URL error:', signErr);
+      logger.error('Payout signed URL error:', signErr);
       return { status: 502, msg: 'File uploaded but could not generate view URL.', data: null };
     }
 
@@ -527,7 +528,7 @@ export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
       .eq('id', bookingId);
 
     if (updErr) {
-      console.error('Booking payout update error:', updErr);
+      logger.error('Booking payout update error:', updErr);
       return { status: 500, msg: 'Failed to record payout', data: null };
     }
 
@@ -541,9 +542,9 @@ export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
         serviceTitle,
         amountGhs: booking.payment_amount,
         payoutTxnId: normalizedTxn,
-      }).catch((e) => console.error('[email] payout sent notify failed:', e.message));
+      }).catch((e) => logger.error('[email] payout sent notify failed:', e.message));
     } catch (emailErr) {
-      console.error('[momo] payout email import failed:', emailErr?.message);
+      logger.error('[momo] payout email import failed:', emailErr?.message);
     }
 
     return {
@@ -552,7 +553,7 @@ export async function adminConfirmPayout(bookingId, payoutTransactionId, file) {
       data: { booking_id: bookingId, payout_status: 'sent' },
     };
   } catch (e) {
-    console.error('adminConfirmPayout error:', e);
+    logger.error('adminConfirmPayout error:', e);
     return { status: 500, msg: 'Failed to confirm payout', data: null };
   }
 }
@@ -607,7 +608,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
         .eq('id', bookingId);
 
       if (rejErr) {
-        console.error('Reject momo payment:', rejErr);
+        logger.error('Reject momo payment:', rejErr);
         return { status: 500, msg: 'Failed to reject payment', data: null };
       }
 
@@ -618,13 +619,13 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
           .eq('id', booking.service_id)
           .maybeSingle();
         const { sendMomoPaymentRejectedToBuyer } = await import('./emailService.js');
-        console.log('[email] sending rejection email | buyer_id:', booking.buyer_id);
+        logger.info('[email] sending rejection email | buyer_id:', booking.buyer_id);
         const emailResult = await sendMomoPaymentRejectedToBuyer(booking.buyer_id, {
           bookingId,
           serviceTitle: svc?.title || booking.service?.title || 'Service',
           rejectionReason: note,
         });
-        console.log('[email] rejection result:', JSON.stringify(emailResult));
+        logger.info('[email] rejection result:', JSON.stringify(emailResult));
         return {
           status: 200,
           msg: 'Payment marked as not verified; buyer can submit again',
@@ -638,7 +639,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
           },
         };
       } catch (emailErr) {
-        console.error('[momo] Buyer rejection email failed:', emailErr?.message || emailErr);
+        logger.error('[momo] Buyer rejection email failed:', emailErr?.message || emailErr);
         return {
           status: 200,
           msg: 'Payment marked as not verified; buyer can submit again',
@@ -665,7 +666,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
       .eq('id', bookingId);
 
     if (payErr) {
-      console.error('Approve momo payment:', payErr);
+      logger.error('Approve momo payment:', payErr);
       return { status: 500, msg: 'Failed to confirm payment', data: null };
     }
 
@@ -700,7 +701,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
     const notifyApproval = async (invoiceId) => {
       try {
         const { sendMomoPaymentApprovedToBuyer, sendMomoApprovedToSeller } = await import('./emailService.js');
-        console.log('[email] sending approval emails | buyer_id:', booking.buyer_id, '| sellerAuthUserId:', sellerAuthUserId);
+        logger.info('[email] sending approval emails | buyer_id:', booking.buyer_id, '| sellerAuthUserId:', sellerAuthUserId);
         const [buyerResult, sellerResult] = await Promise.allSettled([
           sendMomoPaymentApprovedToBuyer(booking.buyer_id, {
             bookingId,
@@ -716,17 +717,17 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
               })
             : Promise.resolve({ sent: false }),
         ]);
-        console.log('[email] approval buyer result:', JSON.stringify(buyerResult));
-        console.log('[email] approval seller result:', JSON.stringify(sellerResult));
+        logger.info('[email] approval buyer result:', JSON.stringify(buyerResult));
+        logger.info('[email] approval seller result:', JSON.stringify(sellerResult));
         return buyerResult.status === 'fulfilled' && buyerResult.value?.sent === true;
       } catch (e) {
-        console.error('[momo] approval emails failed:', e?.message);
+        logger.error('[momo] approval emails failed:', e?.message);
         return false;
       }
     };
 
     if (invErr) {
-      console.error('Invoice create after momo approve:', invErr);
+      logger.error('Invoice create after momo approve:', invErr);
       const buyerEmailSent = await notifyApproval(null);
       return {
         status: 200,
@@ -743,7 +744,7 @@ export async function adminVerifyMomoPayment(bookingId, _adminUserId, approve, r
       data: { booking_id: bookingId, invoice_id: invoice.id, approved: true, buyerEmailSent },
     };
   } catch (e) {
-    console.error('adminVerifyMomoPayment error:', e);
+    logger.error('adminVerifyMomoPayment error:', e);
     return { status: 500, msg: 'Failed to verify payment', data: null };
   }
 }
@@ -799,7 +800,7 @@ export async function listMomoPaymentHistoryAdmin(query = {}) {
           },
         };
       }
-      console.error('listMomoPaymentHistoryAdmin:', error);
+      logger.error('listMomoPaymentHistoryAdmin:', error);
       return { status: 500, msg: error.message || 'Failed to load history', data: null };
     }
 
@@ -855,7 +856,7 @@ export async function listMomoPaymentHistoryAdmin(query = {}) {
       data: { events: enriched, limit, offset },
     };
   } catch (e) {
-    console.error('listMomoPaymentHistoryAdmin error:', e);
+    logger.error('listMomoPaymentHistoryAdmin error:', e);
     return { status: 500, msg: 'Failed to load payment history', data: null };
   }
 }

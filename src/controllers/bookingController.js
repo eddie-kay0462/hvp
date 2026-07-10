@@ -1,4 +1,5 @@
 import * as bookingService from '../services/bookingService.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Book a service now
@@ -56,7 +57,7 @@ const bookNow = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Book now error:", error);
+    logger.error("Book now error:", error);
     return { status: 500, msg: "Failed to create booking", data: null };
   }
 };
@@ -85,7 +86,7 @@ const getBookingById = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Get booking error:", error);
+    logger.error("Get booking error:", error);
     return { status: 500, msg: "Failed to retrieve booking", data: null };
   }
 };
@@ -120,7 +121,7 @@ const getUserBookings = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Get user bookings error:", error);
+    logger.error("Get user bookings error:", error);
     return { status: 500, msg: "Failed to retrieve bookings", data: null };
   }
 };
@@ -143,7 +144,7 @@ const acceptBooking = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Accept booking error:", error);
+    logger.error("Accept booking error:", error);
     return { status: 500, msg: "Failed to accept booking", data: null };
   }
 };
@@ -177,7 +178,7 @@ const updateBookingStatus = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Update booking status error:", error);
+    logger.error("Update booking status error:", error);
     return { status: 500, msg: "Failed to update booking status", data: null };
   }
 };
@@ -205,7 +206,7 @@ const confirmBookingCompletion = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Confirm booking completion error:", error);
+    logger.error("Confirm booking completion error:", error);
     return { status: 500, msg: "Failed to confirm booking completion", data: null };
   }
 };
@@ -232,7 +233,7 @@ const cancelBooking = async (req) => {
       data: result.data
     };
   } catch (error) {
-    console.error("Cancel booking error:", error);
+    logger.error("Cancel booking error:", error);
     return { status: 500, msg: "Failed to cancel booking", data: null };
   }
 };
@@ -249,7 +250,7 @@ const submitQuote = async (req) => {
     const result = await bookingService.submitQuote(userId, bookingId, quotedPrice, quoteNote);
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (error) {
-    console.error("Submit quote error:", error);
+    logger.error("Submit quote error:", error);
     return { status: 500, msg: "Failed to submit quote", data: null };
   }
 };
@@ -265,7 +266,7 @@ const respondToQuote = async (req) => {
     const result = await bookingService.respondToQuote(userId, bookingId, Boolean(accepted));
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (error) {
-    console.error("Respond to quote error:", error);
+    logger.error("Respond to quote error:", error);
     return { status: 500, msg: "Failed to process quote response", data: null };
   }
 };

@@ -1,5 +1,6 @@
 import { initiatePaymentForBooking, verifyPaymentReference } from '../services/paymentService.js';
 import { submitMomoPaymentProof } from '../services/momoPaymentService.js';
+import { logger } from '../config/logger.js';
 
 /**
  * POST /api/payments/initiate
@@ -18,7 +19,7 @@ const initiate = async (req) => {
     const result = await initiatePaymentForBooking(userId, bookingId);
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (e) {
-    console.error('initiate payment controller error:', e);
+    logger.error('initiate payment controller error:', e);
     return { status: 500, msg: 'Failed to initiate payment', data: null };
   }
 };
@@ -39,7 +40,7 @@ const verify = async (req) => {
     const result = await verifyPaymentReference(reference, userId);
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (e) {
-    console.error('verify payment controller error:', e);
+    logger.error('verify payment controller error:', e);
     return { status: 500, msg: 'Failed to verify payment', data: null };
   }
 };
@@ -59,7 +60,7 @@ const submitMomo = async (req) => {
     const result = await submitMomoPaymentProof(userId, bookingId, momoTransactionId, file);
     return { status: result.status, msg: result.msg, data: result.data };
   } catch (e) {
-    console.error('submitMomo payment controller error:', e);
+    logger.error('submitMomo payment controller error:', e);
     return { status: 500, msg: 'Failed to submit payment proof', data: null };
   }
 };

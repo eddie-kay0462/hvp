@@ -1,6 +1,7 @@
 import { supabase } from "../config/supabase.js";
 
 import { supabaseAdmin } from "../config/supabase.js";
+import { logger } from '../config/logger.js';
 
 /** Origins we trust for auth email links. Must stay in sync with the Supabase redirect-URL allowlist. */
 const ALLOWED_EMAIL_REDIRECT_ORIGINS = [
@@ -57,7 +58,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
     });
 
     if (error) {
-      console.error("Supabase signUp error:", error.message, error);
+      logger.error("Supabase signUp error:", error.message, error);
       return { status: 400, msg: error.message, data: null };
     }
 
@@ -81,7 +82,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
     });
 
     if (profileError) {
-      console.error("Profile creation failed:", profileError);
+      logger.error("Profile creation failed:", profileError);
       const hint =
         profileError.code === "23503"
           ? " Database profiles.id must reference auth.users (run database_migrations/fix_profiles_fkey_auth_users.sql in Supabase SQL editor)."
@@ -103,7 +104,7 @@ export const signup = async ({ email, password, firstName, lastName, phoneNumber
     };
 
   } catch (e) {
-    console.error("Signup error:", e);
+    logger.error("Signup error:", e);
     return { status: 500, msg: "Signup failed", data: null };
   }
 };
@@ -146,7 +147,7 @@ export const login = async (email, password) => {
           };
         }
       } catch (lookupErr) {
-        console.error("Email lookup failed:", lookupErr);
+        logger.error("Email lookup failed:", lookupErr);
         // Fall through to the generic wrong-password message below
       }
 

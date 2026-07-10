@@ -1,5 +1,7 @@
-export const errorHandler = (err, _req, res, _next) => {
-  console.error('Unhandled error:', err);
+import { logger } from '../config/logger.js';
+
+export const errorHandler = (err, req, res, _next) => {
+  logger.error({ err, method: req.method, url: req.originalUrl }, 'Unhandled error');
 
   const statusCode = err.statusCode || err.status || 500;
   const isDev = process.env.NODE_ENV === 'development';

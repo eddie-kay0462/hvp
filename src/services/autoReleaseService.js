@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 const db = supabaseAdmin ?? supabase;
 
@@ -21,18 +22,18 @@ export const runAutoRelease = async () => {
       .lt('delivered_at', cutoff);
 
     if (error) {
-      console.error('[auto-release] query error:', error.message);
+      logger.error('[auto-release] query error:', error.message);
       return;
     }
 
     if (!bookings || bookings.length === 0) return;
 
-    console.log(`[auto-release] found ${bookings.length} booking(s) to auto-release`);
+    logger.info(`[auto-release] found ${bookings.length} booking(s) to auto-release`);
 
     for (const booking of bookings) {
       try {
         if (booking.payment_status !== 'paid') {
-          console.warn(`[auto-release] skipping booking ${booking.id} — payment_status is ${booking.payment_status}, not 'paid'`);
+          logger.warn(`[auto-release] skipping booking ${booking.id} — payment_status is ${booking.payment_status}, not 'paid'`);
           continue;
         }
 
@@ -40,7 +41,7 @@ export const runAutoRelease = async () => {
         const releaseResult = await releasePayment(booking.id);
 
         if (releaseResult.status !== 200) {
-          console.error(`[auto-release] payment release failed for booking ${booking.id}:`, releaseResult.msg);
+          logger.error(`[auto-release] payment release failed for booking ${booking.id}:`, releaseResult.msg);
           continue;
         }
 
@@ -53,7 +54,7 @@ export const runAutoRelease = async () => {
           })
           .eq('id', booking.id);
 
-        console.log(`[auto-release] completed booking ${booking.id}`);
+        logger.info(`[auto-release] completed booking ${booking.id}`);
 
         // Notify both parties (fire-and-forget)
         try {
@@ -66,29 +67,29 @@ export const runAutoRelease = async () => {
             bookingId: booking.id,
             serviceTitle,
             amountGhs: booking.payment_amount,
-          }).catch((e) => console.error('[auto-release] seller email failed:', e.message));
+          }).catch((e) => logger.error('[auto-release] seller email failed:', e.message));
 
           sendPayoutRequiredToAdmin(sellerAuthUserId, {
             bookingId: booking.id,
             serviceTitle,
             amountGhs: booking.payment_amount,
-          }).catch((e) => console.error('[auto-release] admin email failed:', e.message));
+          }).catch((e) => logger.error('[auto-release] admin email failed:', e.message));
 
           // Notify buyer the payment was auto-released
           if (typeof sendAutoReleasedToBuyer === 'function') {
             sendAutoReleasedToBuyer(booking.buyer_id, {
               bookingId: booking.id,
               serviceTitle,
-            }).catch((e) => console.error('[auto-release] buyer email failed:', e.message));
+            }).catch((e) => logger.error('[auto-release] buyer email failed:', e.message));
           }
         } catch (e) {
-          console.error('[auto-release] email import failed:', e.message);
+          logger.error('[auto-release] email import failed:', e.message);
         }
       } catch (bookingErr) {
-        console.error(`[auto-release] error processing booking ${booking.id}:`, bookingErr.message);
+        logger.error(`[auto-release] error processing booking ${booking.id}:`, bookingErr.message);
       }
     }
   } catch (err) {
-    console.error('[auto-release] unexpected error:', err.message);
+    logger.error('[auto-release] unexpected error:', err.message);
   }
 };

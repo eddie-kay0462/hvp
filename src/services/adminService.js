@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 /** Services RLS requires service role for admin listing/approval (anon has no cross-tenant access). */
 function serviceDbOrError() {
@@ -36,7 +37,7 @@ async function getSellerContact(userId) {
 
   // Fallback: look up email via admin auth API (requires SUPABASE_SERVICE_ROLE_KEY)
   if (!supabaseAdmin) {
-    console.error(
+    logger.error(
       '[admin] No email in profiles and SUPABASE_SERVICE_ROLE_KEY is not set; cannot look up seller email.'
     );
     return {
@@ -47,7 +48,7 @@ async function getSellerContact(userId) {
 
   const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
   if (userErr) {
-    console.error('[admin] getUserById failed:', userErr.message);
+    logger.error('[admin] getUserById failed:', userErr.message);
     return {
       sellerEmail: null,
       sellerName: fromProfile || 'Seller',
@@ -71,9 +72,9 @@ async function recordServiceModerationEvent(db, { serviceId, eventType, adminId,
       admin_notes: adminNotes ?? null,
       service_title: serviceTitle ?? null,
     });
-    if (error) console.error('[admin] service_moderation_events:', error.message);
+    if (error) logger.error('[admin] service_moderation_events:', error.message);
   } catch (e) {
-    console.error('[admin] service_moderation_events:', e?.message || e);
+    logger.error('[admin] service_moderation_events:', e?.message || e);
   }
 }
 
@@ -132,7 +133,7 @@ export const getPendingServices = async () => {
 
     return { status: 200, msg: "Pending services retrieved", data: servicesWithDetails };
   } catch (e) {
-    console.error("Get pending services error:", e);
+    logger.error("Get pending services error:", e);
     return { status: 500, msg: "Failed to retrieve pending services", data: null };
   }
 };
@@ -181,7 +182,7 @@ export const getAllServices = async (filters = {}) => {
 
     return { status: 200, msg: "Services retrieved", data: servicesWithProfiles };
   } catch (e) {
-    console.error("Get all services error:", e);
+    logger.error("Get all services error:", e);
     return { status: 500, msg: "Failed to retrieve services", data: null };
   }
 };
@@ -243,7 +244,7 @@ export const approveService = async (serviceId, adminId) => {
       },
     };
   } catch (e) {
-    console.error("Approve service error:", e);
+    logger.error("Approve service error:", e);
     return { status: 500, msg: "Failed to approve service", data: null };
   }
 };
@@ -308,7 +309,7 @@ export const rejectService = async (serviceId, adminId, rejectionReason, adminNo
       },
     };
   } catch (e) {
-    console.error("Reject service error:", e);
+    logger.error("Reject service error:", e);
     return { status: 500, msg: "Failed to reject service", data: null };
   }
 };
@@ -399,7 +400,7 @@ export const getServiceModerationHistory = async (query = {}) => {
       data: { events, limit, offset },
     };
   } catch (e) {
-    console.error('getServiceModerationHistory error:', e);
+    logger.error('getServiceModerationHistory error:', e);
     return { status: 500, msg: 'Failed to load moderation history', data: null };
   }
 };
@@ -431,7 +432,7 @@ export const getServiceStats = async () => {
       },
     };
   } catch (e) {
-    console.error("Get service stats error:", e);
+    logger.error("Get service stats error:", e);
     return { status: 500, msg: "Failed to retrieve service statistics", data: null };
   }
 };

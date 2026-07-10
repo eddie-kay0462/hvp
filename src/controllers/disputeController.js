@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 const db = supabaseAdmin ?? supabase;
 
@@ -73,7 +74,7 @@ export const raiseDispute = async (req) => {
 
     return { status: 201, msg: 'Dispute raised successfully', data: dispute };
   } catch (error) {
-    console.error('raiseDispute error:', error);
+    logger.error('raiseDispute error:', error);
     return { status: 500, msg: 'Failed to raise dispute', data: null };
   }
 };
@@ -105,7 +106,7 @@ export const getAdminDisputes = async (req) => {
 
     return { status: 200, msg: 'Disputes retrieved', data: data || [] };
   } catch (error) {
-    console.error('getAdminDisputes error:', error);
+    logger.error('getAdminDisputes error:', error);
     return { status: 500, msg: 'Failed to retrieve disputes', data: null };
   }
 };
@@ -139,7 +140,7 @@ export const resolveDispute = async (req) => {
 
     return { status: 200, msg: 'Dispute resolved', data };
   } catch (error) {
-    console.error('resolveDispute error:', error);
+    logger.error('resolveDispute error:', error);
     return { status: 500, msg: 'Failed to resolve dispute', data: null };
   }
 };

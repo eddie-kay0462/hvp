@@ -1,4 +1,5 @@
 import * as requestService from '../services/requestService.js';
+import { logger } from '../config/logger.js';
 
 const createRequest = async (req) => {
   try {
@@ -17,7 +18,7 @@ const createRequest = async (req) => {
     return { status: result.status, msg: result.msg, data: result.data };
     
   } catch (error) { // Add catch block
-    console.error('Error in createRequest controller:', error);
+    logger.error('Error in createRequest controller:', error);
     return { status: 500, msg: "Internal server error", data: null };
   }
 };
@@ -32,7 +33,7 @@ const acceptRequest = async (req) => {
     const result = await requestService.acceptRequest(sellerId, requestId);
     return result;
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return { status: 500, msg: "Failed to accept request", data: null };
   }
 };

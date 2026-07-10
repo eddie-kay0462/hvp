@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 /**
  * Create a review for a completed booking
@@ -61,7 +62,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
 
     if (checkError && checkError.code !== 'PGRST116') {
       // PGRST116 means no rows found, which is what we want
-      console.error("Error checking for existing review:", checkError);
+      logger.error("Error checking for existing review:", checkError);
       return { status: 500, msg: "Failed to check for existing review", data: null };
     }
 
@@ -85,7 +86,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
       .single();
 
     if (reviewError) {
-      console.error("Review creation error:", reviewError);
+      logger.error("Review creation error:", reviewError);
       return { status: 400, msg: reviewError.message || "Failed to create review", data: null };
     }
 
@@ -95,7 +96,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
       data: review
     };
   } catch (e) {
-    console.error("createReview error:", e);
+    logger.error("createReview error:", e);
     return { status: 500, msg: "Failed to create review", data: null };
   }
 };
@@ -140,7 +141,7 @@ export const getSellerReviews = async (sellerId) => {
       data: { reviews: reviews || [] }
     };
   } catch (e) {
-    console.error("getSellerReviews error:", e);
+    logger.error("getSellerReviews error:", e);
     return { status: 500, msg: "Failed to retrieve reviews", data: null };
   }
 };
@@ -194,7 +195,7 @@ export const checkExistingReview = async (userId, bookingId) => {
       data: { hasReview: true, review }
     };
   } catch (e) {
-    console.error("checkExistingReview error:", e);
+    logger.error("checkExistingReview error:", e);
     return { status: 500, msg: "Failed to check for existing review", data: null };
   }
 };

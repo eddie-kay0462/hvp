@@ -1,3 +1,4 @@
+import { logger } from '../config/logger.js';
 /**
  * Response handler middleware
  * Wraps async controller functions to handle errors and responses
@@ -12,7 +13,7 @@ export const responseHandler = (fn) => {
         // fallback if controller returns nothing
         return res.status(500).json({ status: 500, msg: "No response from controller", data: null });
       } catch (error) {
-        console.error("Unhandled error in responseHandler:", error);
+        logger.error("Unhandled error in responseHandler:", error);
         return res.status(500).json({ status: 500, msg: "Internal Server Error", data: null });
       }
     };

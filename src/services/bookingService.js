@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 /** Bypasses services RLS for trusted API logic (JWT verified in routes). */
 const db = supabaseAdmin ?? supabase;
@@ -92,7 +93,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       .limit(1);
 
     if (sellerAvailabilityError) {
-      console.error("Error checking seller availability:", sellerAvailabilityError);
+      logger.error("Error checking seller availability:", sellerAvailabilityError);
       return { status: 500, msg: "Failed to validate seller availability", data: null };
     }
 
@@ -115,7 +116,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       .in('status', ['pending', 'accepted', 'in_progress']);
 
     if (checkError) {
-      console.error("Error checking for existing bookings:", checkError);
+      logger.error("Error checking for existing bookings:", checkError);
       return { status: 500, msg: "Failed to validate booking availability", data: null };
     }
 
@@ -172,7 +173,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       .single();
 
     if (bookingError) {
-      console.error("Booking creation error:", bookingError);
+      logger.error("Booking creation error:", bookingError);
       return { status: 400, msg: bookingError.message || "Failed to create booking", data: null };
     }
 
@@ -185,17 +186,17 @@ export const bookNow = async (userId, serviceId, bookingData) => {
           serviceTitle: service.title,
           buyerName,
           buyerRequirements: booking.buyer_requirements,
-        }).catch((err) => console.error('[email] quote request notification failed:', err.message));
+        }).catch((err) => logger.error('[email] quote request notification failed:', err.message));
       } else {
         const { sendNewBookingToSeller } = await import('./emailService.js');
         sendNewBookingToSeller(service.user_id, {
           bookingId: booking.id,
           serviceTitle: service.title,
           buyerName,
-        }).catch((err) => console.error('[email] new booking notification failed:', err.message));
+        }).catch((err) => logger.error('[email] new booking notification failed:', err.message));
       }
     } catch (emailErr) {
-      console.error('[email] failed to import emailService for new booking:', emailErr.message);
+      logger.error('[email] failed to import emailService for new booking:', emailErr.message);
     }
 
     return {
@@ -204,7 +205,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
       data: booking
     };
   } catch (e) {
-    console.error("bookNow error:", e);
+    logger.error("bookNow error:", e);
     return { status: 500, msg: "Failed to create booking", data: null };
   }
 };
@@ -276,7 +277,7 @@ export const getBookingById = async (userId, bookingId, userRole = 'buyer') => {
       data: booking
     };
   } catch (e) {
-    console.error("getBookingById error:", e);
+    logger.error("getBookingById error:", e);
     return { status: 500, msg: "Failed to retrieve booking", data: null };
   }
 };
@@ -350,7 +351,7 @@ export const getUserBookings = async (userId, role = 'buyer', { limit = 50, offs
 
     return { status: 400, msg: "Invalid role. Must be 'buyer' or 'seller'", data: null };
   } catch (e) {
-    console.error("getUserBookings error:", e);
+    logger.error("getUserBookings error:", e);
     return { status: 500, msg: "Failed to retrieve bookings", data: null };
   }
 };
@@ -401,12 +402,12 @@ export const acceptBooking = async (userId, bookingId) => {
       sendBookingAcceptedToBuyer(booking.buyer_id, userId, {
         bookingId,
         serviceTitle: booking.service.title,
-      }).catch((err) => console.error('[email] booking accepted notify failed:', err.message));
-    } catch (e) { console.error('[email] import failed:', e.message); }
+      }).catch((err) => logger.error('[email] booking accepted notify failed:', err.message));
+    } catch (e) { logger.error('[email] import failed:', e.message); }
 
     return { status: 200, msg: "Booking accepted successfully", data };
   } catch (e) {
-    console.error("acceptBooking error:", e);
+    logger.error("acceptBooking error:", e);
     return { status: 500, msg: "Failed to accept booking", data: null };
   }
 };
@@ -518,26 +519,26 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
     // Email notifications per status transition (fire-and-forget)
     const serviceTitle = booking.service?.title;
     const sellerAuthUserId = booking.service?.user_id;
-    console.log(`[email] status changed to ${newStatus} | buyer_id=${booking.buyer_id} | sellerAuthUserId=${sellerAuthUserId} | isBuyer=${isBuyer} | isSeller=${isSeller}`);
+    logger.info(`[email] status changed to ${newStatus} | buyer_id=${booking.buyer_id} | sellerAuthUserId=${sellerAuthUserId} | isBuyer=${isBuyer} | isSeller=${isSeller}`);
     try {
       if (newStatus === 'delivered' && isSeller) {
         const { sendBookingDeliveredToBuyer } = await import('./emailService.js');
         sendBookingDeliveredToBuyer(booking.buyer_id, { bookingId, serviceTitle })
-          .then((r) => console.log('[email] delivered→buyer result:', JSON.stringify(r)))
-          .catch((e) => console.error('[email] delivered notify failed:', e.message));
+          .then((r) => logger.info('[email] delivered→buyer result:', JSON.stringify(r)))
+          .catch((e) => logger.error('[email] delivered notify failed:', e.message));
       } else if (newStatus === 'cancelled') {
         const { sendBookingCancelledToSeller, sendBookingCancelledToBuyer } = await import('./emailService.js');
         if (isBuyer) {
           sendBookingCancelledToSeller(sellerAuthUserId, { serviceTitle, buyerName: null })
-            .then((r) => console.log('[email] cancelled→seller result:', JSON.stringify(r)))
-            .catch((e) => console.error('[email] cancelled→seller failed:', e.message));
+            .then((r) => logger.info('[email] cancelled→seller result:', JSON.stringify(r)))
+            .catch((e) => logger.error('[email] cancelled→seller failed:', e.message));
         } else if (isSeller) {
           sendBookingCancelledToBuyer(booking.buyer_id, { serviceTitle })
-            .then((r) => console.log('[email] cancelled→buyer result:', JSON.stringify(r)))
-            .catch((e) => console.error('[email] cancelled→buyer failed:', e.message));
+            .then((r) => logger.info('[email] cancelled→buyer result:', JSON.stringify(r)))
+            .catch((e) => logger.error('[email] cancelled→buyer failed:', e.message));
         }
       }
-    } catch (e) { console.error('[email] import failed in updateBookingStatus:', e.message); }
+    } catch (e) { logger.error('[email] import failed in updateBookingStatus:', e.message); }
 
     // If buyer is confirming completion (delivered → completed), release payment
     if (newStatus === 'completed' && currentStatus === 'delivered' && isBuyer) {
@@ -573,16 +574,16 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
             serviceTitle,
             amountGhs: payoutAmount,
           })
-            .then((r) => console.log('[email] payment released→seller result:', JSON.stringify(r)))
-            .catch((e) => console.error('[email] payment released notify failed:', e.message));
+            .then((r) => logger.info('[email] payment released→seller result:', JSON.stringify(r)))
+            .catch((e) => logger.error('[email] payment released notify failed:', e.message));
           sendPayoutRequiredToAdmin(sellerAuthUserId, {
             bookingId,
             serviceTitle,
             amountGhs: payoutAmount,
           })
-            .then((r) => console.log('[email] payout required→admin result:', JSON.stringify(r)))
-            .catch((e) => console.error('[email] payout admin notify failed:', e.message));
-        } catch (e) { console.error('[email] import failed for payment release:', e.message); }
+            .then((r) => logger.info('[email] payout required→admin result:', JSON.stringify(r)))
+            .catch((e) => logger.error('[email] payout admin notify failed:', e.message));
+        } catch (e) { logger.error('[email] import failed for payment release:', e.message); }
       } else {
         // If release failed, return error
         return { 
@@ -595,7 +596,7 @@ export const updateBookingStatus = async (userId, bookingId, newStatus) => {
 
     return { status: 200, msg: `Booking status updated to ${newStatus}`, data };
   } catch (e) {
-    console.error("updateBookingStatus error:", e);
+    logger.error("updateBookingStatus error:", e);
     return { status: 500, msg: "Failed to update booking status", data: null };
   }
 };
@@ -650,7 +651,7 @@ export const confirmBookingCompletion = async (userId, bookingId) => {
     // Update to completed status (this will trigger payment release in updateBookingStatus)
     return await updateBookingStatus(userId, bookingId, 'completed');
   } catch (e) {
-    console.error("confirmBookingCompletion error:", e);
+    logger.error("confirmBookingCompletion error:", e);
     return { status: 500, msg: "Failed to confirm booking completion", data: null };
   }
 };
@@ -721,12 +722,12 @@ export const submitQuote = async (userId, bookingId, quotedPrice, quoteNote) => 
         serviceTitle: booking.service.title,
         quotedPrice: Number(quotedPrice),
         quoteNote: quoteNote?.trim() || null,
-      }).catch((e) => console.error('[email] quote sent notify failed:', e.message));
-    } catch (e) { console.error('[email] import failed for submitQuote:', e.message); }
+      }).catch((e) => logger.error('[email] quote sent notify failed:', e.message));
+    } catch (e) { logger.error('[email] import failed for submitQuote:', e.message); }
 
     return { status: 200, msg: "Quote sent to buyer", data };
   } catch (e) {
-    console.error("submitQuote error:", e);
+    logger.error("submitQuote error:", e);
     return { status: 500, msg: "Failed to submit quote", data: null };
   }
 };
@@ -777,8 +778,8 @@ export const respondToQuote = async (userId, bookingId, accepted) => {
         sendQuoteAcceptedToSeller(booking.service.user_id, {
           serviceTitle: booking.service.title,
           quotedPrice: booking.quoted_price,
-        }).catch((e) => console.error('[email] quote accepted notify failed:', e.message));
-      } catch (e) { console.error('[email] import failed for respondToQuote accept:', e.message); }
+        }).catch((e) => logger.error('[email] quote accepted notify failed:', e.message));
+      } catch (e) { logger.error('[email] import failed for respondToQuote accept:', e.message); }
 
       return { status: 200, msg: "Quote accepted. You can now proceed to payment.", data };
     } else {
@@ -796,13 +797,13 @@ export const respondToQuote = async (userId, bookingId, accepted) => {
         const { sendQuoteDeclinedToSeller } = await import('./emailService.js');
         sendQuoteDeclinedToSeller(booking.service.user_id, {
           serviceTitle: booking.service.title,
-        }).catch((e) => console.error('[email] quote declined notify failed:', e.message));
-      } catch (e) { console.error('[email] import failed for respondToQuote decline:', e.message); }
+        }).catch((e) => logger.error('[email] quote declined notify failed:', e.message));
+      } catch (e) { logger.error('[email] import failed for respondToQuote decline:', e.message); }
 
       return { status: 200, msg: "Quote declined. Booking has been cancelled.", data };
     }
   } catch (e) {
-    console.error("respondToQuote error:", e);
+    logger.error("respondToQuote error:", e);
     return { status: 500, msg: "Failed to process quote response", data: null };
   }
 };

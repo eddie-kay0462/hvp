@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 const db = supabaseAdmin ?? supabase;
 
@@ -61,7 +62,7 @@ export const createService = async (userId, serviceData) => {
         .upsert(sellerData, { onConflict: 'user_id' });
 
       if (sellerCreateError) {
-        console.warn('Failed to auto-create seller entry:', sellerCreateError);
+        logger.warn('Failed to auto-create seller entry:', sellerCreateError);
         // Continue anyway - service can still be created
       }
     }
@@ -99,7 +100,7 @@ export const createService = async (userId, serviceData) => {
       .ilike('title', title.trim());
 
     if (titleCheckError) {
-      console.error("Error checking for title duplicates:", titleCheckError);
+      logger.error("Error checking for title duplicates:", titleCheckError);
       return { status: 500, msg: "Failed to validate service", data: null };
     }
 
@@ -145,10 +146,10 @@ export const createService = async (userId, serviceData) => {
       if (sellerEmail) {
         const { sendServiceSubmittedNotification } = await import('./emailService.js');
         sendServiceSubmittedNotification(data, sellerEmail, sellerName)
-          .catch((e) => console.error('[email] service submitted notify failed:', e.message));
+          .catch((e) => logger.error('[email] service submitted notify failed:', e.message));
       }
     } catch (e) {
-      console.error('[email] failed to notify admin of new service:', e.message);
+      logger.error('[email] failed to notify admin of new service:', e.message);
     }
 
     return {
@@ -157,7 +158,7 @@ export const createService = async (userId, serviceData) => {
       data
     };
   } catch (e) {
-    console.error("Supabase insert error:", e);
+    logger.error("Supabase insert error:", e);
     return { status: 500, msg: "Failed to create service", data: null };
   }
 };
@@ -231,7 +232,7 @@ export const editService = async (userId, serviceId, updates) => {
       .single();
 
     if (error) {
-      console.error("Update service error:", error);
+      logger.error("Update service error:", error);
       return { status: 400, msg: error.message || "Failed to update service", data: null };
     }
 
@@ -241,7 +242,7 @@ export const editService = async (userId, serviceId, updates) => {
 
     return { status: 200, msg: "Service updated successfully", data };
   } catch (e) {
-    console.error("editService error:", e);
+    logger.error("editService error:", e);
     return { status: 500, msg: "Failed to update service", data: null };
   }
 };
@@ -290,7 +291,7 @@ export const toggleService = async (userId, serviceId) => {
       data: updatedService
     };
   } catch (e) {
-    console.error("Toggle service error:", e);
+    logger.error("Toggle service error:", e);
     return { status: 500, msg: "Failed to toggle service status", data: null };
   }
 };
