@@ -24,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2, ArrowLeft, Copy, CheckCircle2, Banknote } from 'lucide-react';
+import { prepareProofFile } from '@/lib/imageUtils';
 
 interface PendingPayout {
   id: string;
@@ -100,8 +101,11 @@ export default function AdminPayoutQueue() {
     }
   };
 
-  const getSellerName = (p: PendingPayout) => {
-    if (!p.seller) return 'Unknown';
+  // Accepts null: the confirm dialog's children are built on every render of
+  // this page, including before a row is selected, so this is called with null
+  // whenever the dialog is closed.
+  const getSellerName = (p: PendingPayout | null) => {
+    if (!p?.seller) return 'Unknown';
     return [p.seller.first_name, p.seller.last_name].filter(Boolean).join(' ') || 'Unknown';
   };
 
@@ -255,7 +259,7 @@ export default function AdminPayoutQueue() {
             <DialogTitle>Confirm Payout</DialogTitle>
             <DialogDescription>
               Send GH₵ {Number(selectedPayout?.payment_amount ?? 0).toFixed(2)} to{' '}
-              {getSellerName(selectedPayout!)} at{' '}
+              {getSellerName(selectedPayout)} at{' '}
               <span className="font-mono">{selectedPayout?.seller?.phone || 'unknown number'}</span>,
               then record the transaction below.
             </DialogDescription>
@@ -292,7 +296,22 @@ export default function AdminPayoutQueue() {
                 id="proof-file"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                onChange={async (e) => {
+                  const input = e.target;
+                  const raw = input.files?.[0];
+                  if (!raw) {
+                    setProofFile(null);
+                    return;
+                  }
+                  const result = await prepareProofFile(raw);
+                  if (result.error) {
+                    toast.error(result.error);
+                    input.value = '';
+                    setProofFile(null);
+                    return;
+                  }
+                  setProofFile(result.file);
+                }}
               />
               <p className="text-xs text-muted-foreground">JPG, PNG, or WebP · max 5 MB</p>
             </div>

@@ -217,11 +217,14 @@ export const getPendingPayouts = async (_req) => {
         payment_released_at,
         payout_status,
         delivered_at,
-        service:services(title, user_id),
-        seller_profile:profiles!bookings_buyer_id_fkey(first_name, last_name, phone)
+        service:services(title, user_id)
       `)
       .eq('payment_status', 'released')
-      .neq('payout_status', 'sent')
+      // payout_status is NULL until a payout is confirmed, and `neq` compiles to
+      // `<> 'sent'`, which is NULL — not true — for a NULL column. Filtering on
+      // neq alone therefore dropped every booking actually awaiting payout and
+      // left this queue permanently empty.
+      .or('payout_status.is.null,payout_status.neq.sent')
       .order('payment_released_at', { ascending: true });
 
     if (error) return { status: 400, msg: error.message, data: null };
