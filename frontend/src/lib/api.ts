@@ -82,13 +82,17 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
   }
 
   // Duplicate/conflict errors (409)
-  if (statusCode === 409 || lowerMessage.includes('already have') || lowerMessage.includes('duplicate')) {
-    // If the message is already user-friendly (from backend), return as-is
-    // Otherwise provide a generic friendly message
-    if (errorMessage.includes('already have') || errorMessage.includes('duplicate')) {
-      return errorMessage; // Backend already provides friendly message
+  // The backend writes every 409 message for end users ("This seller is currently
+  // working on another booking", "You have already left a review for this booking",
+  // …), so pass it through and let it explain the actual conflict. Only raw
+  // database constraint errors, which leak table and column names, get replaced.
+  if (statusCode === 409 || lowerMessage.includes('duplicate')) {
+    if (lowerMessage.includes('violates unique constraint') ||
+        lowerMessage.includes('duplicate key value') ||
+        lowerMessage.includes('23505')) {
+      return 'This item already exists. Please check your existing items or try a different name.';
     }
-    return 'This item already exists. Please check your existing items or try a different name.';
+    return errorMessage;
   }
 
   if (statusCode === 500 || lowerMessage.includes('internal server error')) {
