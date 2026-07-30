@@ -179,7 +179,7 @@ export const Navbar = () => {
                       Profile
                     </DropdownMenuItem>
                     {isAdmin && (
-                      <DropdownMenuItem onClick={() => navigate('/admin/services/pending')}>
+                      <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Dashboard
                       </DropdownMenuItem>
@@ -287,7 +287,7 @@ export const Navbar = () => {
                       Profile
                     </Button>
                     {isAdmin && (
-                      <Button variant="ghost" className="w-full" onClick={() => navigate('/admin/services/pending')}>
+                      <Button variant="ghost" className="w-full" onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Dashboard
                       </Button>

@@ -7,6 +7,7 @@ import { useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SellerDashboardLayout } from "@/layouts/SellerDashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
 // Landing page is eager so first paint on the most common entry has no fallback flash.
 import Index from "./pages/Index";
 
@@ -35,6 +36,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Messages = lazy(() => import("./pages/Messages"));
 const PaymentCallback = lazy(() => import("./pages/PaymentCallback"));
 const InvoicePage = lazy(() => import("./pages/invoicePage"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminPendingServices = lazy(() => import("./pages/admin/AdminPendingServices"));
 const AdminMomoPayments = lazy(() => import("./pages/admin/AdminMomoPayments"));
 const AdminPayoutQueue = lazy(() => import("./pages/admin/AdminPayoutQueue"));
@@ -68,6 +70,7 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <AuthProvider>
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}
@@ -111,6 +114,14 @@ const App = () => (
 
             {/* Protected: admin only */}
             <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/services/pending"
               element={
                 <ProtectedRoute requiredRole="admin">
@@ -146,6 +157,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

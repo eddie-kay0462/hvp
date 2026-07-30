@@ -86,7 +86,7 @@ export const SellerSidebar = () => {
       ? [
           {
             name: "Admin dashboard",
-            href: "/admin/services/pending",
+            href: "/admin",
             icon: ShieldCheck,
           },
         ]
