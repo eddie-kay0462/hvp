@@ -1,5 +1,16 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+
+/**
+ * Bypasses RLS for trusted API logic (JWT verified in routes), matching every
+ * other service. The anon client has no user session server-side, so it acts as
+ * role `anon` — which matches no policy on `bookings` (SELECT is granted to
+ * `authenticated` only) and cannot satisfy `reviews_insert_own`'s
+ * auth.uid() = reviewer_id check. Using it here made every review fail: the
+ * booking lookup came back empty and was reported as "Booking not found".
+ * Ownership is enforced in application code below.
+ */
+const db = supabaseAdmin ?? supabase;
 
 /**
  * Create a review for a completed booking
@@ -22,7 +33,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
     }
 
     // Get the booking to verify it exists and is completed
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(`
         id,
@@ -52,7 +63,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
     }
 
     // Check if user has already reviewed this booking
-    const { data: existingReview, error: checkError } = await supabase
+    const { data: existingReview, error: checkError } = await db
       .from('reviews')
       .select('id')
       .eq('reviewer_id', userId)
@@ -79,7 +90,7 @@ export const createReview = async (userId, bookingId, reviewData) => {
       review_text: review_text || null,
     };
 
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await db
       .from('reviews')
       .insert(reviewDataToInsert)
       .select()
@@ -112,7 +123,7 @@ export const getSellerReviews = async (sellerId) => {
       return { status: 400, msg: "Seller ID is required", data: null };
     }
 
-    const { data: reviews, error } = await supabase
+    const { data: reviews, error } = await db
       .from('reviews')
       .select(`
         id,
@@ -159,7 +170,7 @@ export const checkExistingReview = async (userId, bookingId) => {
     }
 
     // Get booking to find service and seller
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('bookings')
       .select(`
         service_id,
@@ -173,7 +184,7 @@ export const checkExistingReview = async (userId, bookingId) => {
     }
 
     // Check if review exists
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await db
       .from('reviews')
       .select('id, rating, review_text, created_at')
       .eq('reviewer_id', userId)
