@@ -3,6 +3,21 @@ import { logger } from '../config/logger.js';
 export const errorHandler = (err, req, res, _next) => {
   logger.error({ err, method: req.method, url: req.originalUrl }, 'Unhandled error');
 
+  // Multer rejections carry no status, so they'd otherwise surface as an opaque
+  // 500. Map them to the real cause — the client sends the file, so it can act
+  // on the message.
+  if (err.name === 'MulterError') {
+    const msg =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'That file is too large. Please upload an image under 5MB.'
+        : `Upload rejected: ${err.message}`;
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      status: err.code === 'LIMIT_FILE_SIZE' ? 413 : 400,
+      msg,
+      data: null,
+    });
+  }
+
   const statusCode = err.statusCode || err.status || 500;
   const isDev = process.env.NODE_ENV === 'development';
 

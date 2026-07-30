@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, type BackendEnvelope } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
+import { normalizeImageFile } from "@/lib/imageUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -172,6 +173,37 @@ export default function BookingDetail() {
   const [payoutFile, setPayoutFile] = useState<File | null>(null);
   const [submittingPayout, setSubmittingPayout] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
+
+  // Receipt screenshots come straight off a phone and are routinely several MB.
+  // Compress before upload and reject anything still oversized here, so the user
+  // gets a clear message instead of a failed request at the network layer.
+  const pickProofFile = async (
+    input: HTMLInputElement,
+    setFile: (f: File | null) => void
+  ) => {
+    const raw = input.files?.[0];
+    if (!raw) {
+      setFile(null);
+      return;
+    }
+
+    let file = raw;
+    try {
+      ({ file } = await normalizeImageFile(raw));
+    } catch {
+      file = raw; // compression is best-effort; fall back to the original
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("That screenshot is too large. Please use an image under 5MB.");
+      input.value = "";
+      setFile(null);
+      return;
+    }
+
+    setFile(file);
+  };
+
   const [userRole, setUserRole] = useState<string | null>(null);
   const [autoReleaseCountdown, setAutoReleaseCountdown] = useState<string>('');
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
@@ -994,7 +1026,7 @@ export default function BookingDetail() {
                                   id="momo-proof"
                                   type="file"
                                   accept="image/jpeg,image/png,image/webp"
-                                  onChange={(e) => setMomoFile(e.target.files?.[0] || null)}
+                                  onChange={(e) => pickProofFile(e.target, setMomoFile)}
                                 />
                                 <p className="text-[11px] text-muted-foreground">JPG, PNG, or WebP · max 5MB</p>
                               </div>
@@ -1411,7 +1443,7 @@ export default function BookingDetail() {
                                     id="payout-proof"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp"
-                                    onChange={(e) => setPayoutFile(e.target.files?.[0] || null)}
+                                    onChange={(e) => pickProofFile(e.target, setPayoutFile)}
                                   />
                                   <p className="text-[11px] text-muted-foreground">JPG, PNG, or WebP · max 5MB</p>
                                 </div>
