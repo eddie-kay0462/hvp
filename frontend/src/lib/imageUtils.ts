@@ -85,3 +85,32 @@ export async function normalizeImageFile(file: File): Promise<{ file: File; ext:
   const ext = compressed.name.split('.').pop()?.toLowerCase() || 'jpg';
   return { file: compressed, ext };
 }
+
+export const MAX_PROOF_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Prepares a payment/payout receipt screenshot for upload.
+ *
+ * Phone screenshots routinely run to several MB, which the reverse proxy
+ * rejects before the request reaches the API — the browser surfaces that as an
+ * opaque "Failed to fetch". Compressing first keeps uploads well under the
+ * limit; anything still oversized is reported here rather than at the network
+ * layer. Compression is best-effort: an image the canvas cannot decode falls
+ * back to the original and is size-checked as normal.
+ */
+export async function prepareProofFile(
+  raw: File
+): Promise<{ file: File; error?: never } | { file?: never; error: string }> {
+  let file = raw;
+  try {
+    ({ file } = await normalizeImageFile(raw));
+  } catch {
+    file = raw;
+  }
+
+  if (file.size > MAX_PROOF_BYTES) {
+    return { error: 'That screenshot is too large. Please use an image under 5MB.' };
+  }
+
+  return { file };
+}

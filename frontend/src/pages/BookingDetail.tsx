@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, type BackendEnvelope } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
-import { normalizeImageFile } from "@/lib/imageUtils";
+import { prepareProofFile } from "@/lib/imageUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -174,9 +174,6 @@ export default function BookingDetail() {
   const [submittingPayout, setSubmittingPayout] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
 
-  // Receipt screenshots come straight off a phone and are routinely several MB.
-  // Compress before upload and reject anything still oversized here, so the user
-  // gets a clear message instead of a failed request at the network layer.
   const pickProofFile = async (
     input: HTMLInputElement,
     setFile: (f: File | null) => void
@@ -187,21 +184,15 @@ export default function BookingDetail() {
       return;
     }
 
-    let file = raw;
-    try {
-      ({ file } = await normalizeImageFile(raw));
-    } catch {
-      file = raw; // compression is best-effort; fall back to the original
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("That screenshot is too large. Please use an image under 5MB.");
+    const result = await prepareProofFile(raw);
+    if (result.error) {
+      toast.error(result.error);
       input.value = "";
       setFile(null);
       return;
     }
 
-    setFile(file);
+    setFile(result.file);
   };
 
   const [userRole, setUserRole] = useState<string | null>(null);
