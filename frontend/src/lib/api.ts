@@ -74,11 +74,16 @@ function getFriendlyErrorMessage(errorMessage: string, statusCode?: number): str
   }
 
   if (statusCode === 403 || lowerMessage.includes('forbidden')) {
-    return 'You do not have permission to perform this action.';
+    // Backend 403s name the actual rule ("Only the buyer can leave a review for
+    // this booking"), which is far more useful than a blanket denial.
+    return errorMessage || 'You do not have permission to perform this action.';
   }
 
   if (statusCode === 404 || lowerMessage.includes('not found')) {
-    return 'The requested resource was not found.';
+    // Same reasoning as 403/409: "Booking not found" or "User profile not found.
+    // Please complete your profile setup." tells the user what to do next;
+    // "The requested resource was not found." tells them nothing.
+    return errorMessage || 'The requested resource was not found.';
   }
 
   // Duplicate/conflict errors (409)
