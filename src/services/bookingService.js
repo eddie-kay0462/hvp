@@ -5,6 +5,20 @@ import { logger } from '../config/logger.js';
 const db = supabaseAdmin ?? supabase;
 
 /**
+ * Booking statuses that make a seller unavailable to new buyers.
+ *
+ * Must only ever contain statuses the buyer can actually advance — see
+ * BUYER_PAYMENT_ALLOWED_STATUSES in momoPaymentService.js, enforced by
+ * test/booking-availability.test.js. 'pending' is excluded deliberately: a buyer
+ * cannot pay until the seller accepts, so counting it here let one unanswered
+ * request take a service off the market for every other buyer indefinitely
+ * (those requests are cleaned up by pendingExpiryService). 'delivered' is
+ * excluded too — that job is done bar the buyer's confirmation, which can take
+ * up to the 72h auto-release window.
+ */
+export const SELLER_BUSY_STATUSES = ['accepted', 'in_progress'];
+
+/**
  * Book a service now
  * @param {string} userId - Buyer's user ID
  * @param {string} serviceId - Service ID to book
@@ -84,7 +98,7 @@ export const bookNow = async (userId, serviceId, bookingData) => {
     }
 
     // Prevent sellers from being double-booked
-    const activeStatuses = ['pending', 'accepted', 'in_progress', 'delivered'];
+    const activeStatuses = SELLER_BUSY_STATUSES;
     const { data: activeSellerBookings, error: sellerAvailabilityError } = await db
       .from('bookings')
       .select('id')

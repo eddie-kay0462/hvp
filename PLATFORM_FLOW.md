@@ -128,6 +128,8 @@ Either party can cancel a booking while it is still **Pending** or **Accepted**.
 
 Once work is **In Progress** or **Delivered**, only the provider can cancel. The buyer must either confirm or contact support to dispute.
 
+**Unanswered requests expire.** A booking left in **Pending** for 48 hours is cancelled automatically and both parties are emailed. A pending request never makes a provider look unavailable to other buyers — only **Accepted** and **In Progress** work does that — so an ignored request costs the provider the job, not their listing.
+
 ---
 
 ## Summary — Email Notifications at a Glance

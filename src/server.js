@@ -18,6 +18,7 @@ import disputeRoutes from './routes/disputeRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import { runAutoRelease } from './services/autoReleaseService.js';
+import { runPendingExpiry } from './services/pendingExpiryService.js';
 
 // Load environment variables
 dotenv.config();
@@ -124,6 +125,10 @@ app.use(errorHandler);
 // Auto-release delivered bookings after 72h if buyer hasn't confirmed
 runAutoRelease();
 setInterval(runAutoRelease, 60 * 60 * 1000); // check every hour
+
+// Cancel bookings the seller never answered, so buyers aren't left waiting
+runPendingExpiry();
+setInterval(runPendingExpiry, 60 * 60 * 1000); // check every hour
 
 // Start server
 app.listen(PORT, () => {
