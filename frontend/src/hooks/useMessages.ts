@@ -140,6 +140,29 @@ export const useMessages = (conversationId: string | null) => {
           );
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          // Deliberately unfiltered. Under the default replica identity a DELETE
+          // payload carries only the primary key, so `old` has no
+          // conversation_id and a filter on it would match nothing — the
+          // handler would silently never fire. Scoping is done below instead:
+          // we only hold this conversation's messages, so an id we don't have
+          // is a no-op.
+        },
+        (payload) => {
+          const deletedId = (payload.old as Partial<Message>)?.id;
+          if (!deletedId) return;
+          setMessages((prev) =>
+            prev.some((msg) => msg.id === deletedId)
+              ? prev.filter((msg) => msg.id !== deletedId)
+              : prev
+          );
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           // Successfully subscribed

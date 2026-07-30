@@ -106,6 +106,20 @@ export const useUnreadCount = () => {
         },
         fetchCount
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          // No filter: a DELETE payload carries only the primary key under the
+          // default replica identity, so filtering on conversation_id would
+          // never match. Deletes are rare, and fetchCount re-reads the true
+          // count, so the occasional refetch for an unrelated conversation is
+          // cheaper than leaving a badge counting a message that is gone.
+        },
+        fetchCount
+      )
       .subscribe();
 
     return () => {
