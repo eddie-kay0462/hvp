@@ -1,8 +1,17 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+
+/**
+ * Bypasses RLS for trusted API logic (JWT verified in routes). `requests` is
+ * RLS-enabled with no policy at all — a server-only table — so the anon client
+ * used here previously was denied every read and write, breaking request
+ * creation and acceptance outright. Ownership is enforced in application code:
+ * user_id comes from the verified token, never the request body.
+ */
+const db = supabaseAdmin ?? supabase;
 export const createRequest = async (userId, requestData) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('requests')
         .insert([{ 
           user_id: userId, 
@@ -27,7 +36,7 @@ export const createRequest = async (userId, requestData) => {
 
   export const acceptRequest = async (sellerId, requestId) => {
     try {
-      const { data: request, error: fetchError } = await supabase
+      const { data: request, error: fetchError } = await db
         .from('requests')
         .select('*')
         .eq('id', requestId)
@@ -41,7 +50,7 @@ export const createRequest = async (userId, requestData) => {
         return { status: 403, msg: "You cannot accept your own request", data: null };
       }
 
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = await db
         .from('requests')
         .update({ status: 'accepted', accepted_by: sellerId, updated_at: new Date().toISOString() })
         .eq('id', requestId)
