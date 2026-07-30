@@ -19,6 +19,7 @@ import offerRoutes from './routes/offerRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import { runAutoRelease } from './services/autoReleaseService.js';
 import { runPendingExpiry } from './services/pendingExpiryService.js';
+import { assertPaymentProviderConfigured } from './config/paymentMode.js';
 
 // Load environment variables
 dotenv.config();
@@ -121,6 +122,15 @@ app.use('/api/messages', messageRoutes);
 // Error handling middleware (must be last)
 app.use(notFound);
 app.use(errorHandler);
+
+// Refuse to start on a misconfigured payment provider — better to fail the
+// deploy than to discover it when a buyer tries to confirm a booking.
+try {
+  assertPaymentProviderConfigured(logger);
+} catch (err) {
+  logger.error(`[payments] ${err.message}`);
+  process.exit(1);
+}
 
 // Auto-release delivered bookings after 72h if buyer hasn't confirmed
 runAutoRelease();
