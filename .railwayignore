@@ -1,0 +1,19 @@
+# The API is the root package; the Vite app deploys separately on Vercel.
+frontend/
+
+# Schema/SQL is applied against Supabase, not shipped with the API.
+database_migrations/
+database_triggers/
+*.sql
+
+# Tests run in CI (npm test) before deploy — they don't need to ship.
+test/
+test-*.sh
+test-*.js
+test-*.md
+
+# Docs
+*.md
+!README.md
+.vscode/
+.github/
