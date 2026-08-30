@@ -33,4 +33,5 @@ WHERE id IN (
 ALTER TABLE public.invoices
   ADD CONSTRAINT invoices_paystack_reference_unique UNIQUE (paystack_reference);
 
+
 COMMIT;
