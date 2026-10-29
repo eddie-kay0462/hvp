@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
 import { isValidCommunitySlug } from './vendorProfileValidation.js';
+import { getCampusSiteUrl } from '../config/campusSites.js';
 
 // community_members has no browser RLS policy, so these reads and writes need
 // the service role.
@@ -96,6 +97,22 @@ export const getUserCommunities = async (userId) => {
     logger.error({ err: e }, 'getUserCommunities error');
     return { status: 500, msg: 'Failed to load communities', data: null };
   }
+};
+
+/**
+ * Base URL of the campus site a user belongs to (per CAMPUS_SITE_URLS), or
+ * null for main-marketplace users. Never throws — email links fall back to
+ * the main site.
+ */
+export const getCampusSiteUrlForUser = async (userId) => {
+  if (!userId) return null;
+  const result = await getUserCommunities(userId);
+  if (result.status !== 200) return null;
+  for (const { slug } of result.data) {
+    const url = getCampusSiteUrl(slug);
+    if (url) return url;
+  }
+  return null;
 };
 
 /** User ids of everyone in a community; used to filter the service catalog. */

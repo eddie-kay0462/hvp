@@ -1,11 +1,26 @@
 import nodemailer from 'nodemailer';
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import { getCampusSiteUrlForUser } from './communityService.js';
 
 const FROM_NAME = 'Hustle Village';
 const FROM_ADDRESS = process.env.ZOHO_SMTP_USER || process.env.FROM_EMAIL || 'noreply@hustlevillage.app';
 
 const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://hustlevillage.app';
+
+/**
+ * Where a vendor manages their listings. Campus vendors (e.g. Ashesi) use
+ * their campus site, whose dashboard lives at /dashboard/services; everyone
+ * else uses the main marketplace.
+ */
+const getVendorSiteLinks = async (sellerUserId) => {
+  const campusUrl = await getCampusSiteUrlForUser(sellerUserId);
+  if (campusUrl) {
+    return { siteUrl: campusUrl, manageServicesUrl: `${campusUrl}/dashboard/services` };
+  }
+  const frontendUrl = getFrontendUrl().replace(/\/+$/, '');
+  return { siteUrl: frontendUrl, manageServicesUrl: `${frontendUrl}/seller/services` };
+};
 
 function getAdminEmail() {
   const email = process.env.ADMIN_EMAIL;
@@ -73,9 +88,9 @@ async function sendMail({ to, subject, html, text }) {
 
 export const sendServiceApprovalEmail = async (sellerEmail, sellerName, service) => {
   try {
-    const frontendUrl = getFrontendUrl();
-    const serviceUrl   = `${frontendUrl}/service/${service.id}`;
-    const dashboardUrl = `${frontendUrl}/seller/services`;
+    const { siteUrl, manageServicesUrl } = await getVendorSiteLinks(service.user_id);
+    const serviceUrl   = `${siteUrl}/service/${service.id}`;
+    const dashboardUrl = manageServicesUrl;
 
     const html = `
       <!DOCTYPE html>
@@ -157,8 +172,7 @@ The Hustle Village Team
 
 export const sendServiceRejectionEmail = async (sellerEmail, sellerName, service, rejectionReason) => {
   try {
-    const frontendUrl    = getFrontendUrl();
-    const editServiceUrl = `${frontendUrl}/seller/services`;
+    const { manageServicesUrl: editServiceUrl } = await getVendorSiteLinks(service.user_id);
 
     const html = `
       <!DOCTYPE html>

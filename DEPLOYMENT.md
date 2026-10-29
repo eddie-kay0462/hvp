@@ -78,6 +78,12 @@ Email — `RESEND_API_KEY` is tried first, Zoho SMTP is the fallback
 Optional: `AUTH_SITE_URL` (overrides `FRONTEND_URL` for Supabase verification
 emails only), `WEBHOOK_SECRET`, `LOG_LEVEL`.
 
+`CAMPUS_SITE_URLS` (optional) — campus sites per environment, e.g.
+`ashesi=https://ashesi.hustlevillage.app` (staging:
+`ashesi=https://ashesi-staging.hustlevillage.app`). Service approval/rejection
+emails link campus vendors back to their campus site; unset, every email links
+to `FRONTEND_URL`.
+
 ## Frontend environment variables
 
 Set per-environment in the Vercel project:
