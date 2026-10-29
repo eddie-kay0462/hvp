@@ -269,6 +269,72 @@ async function apiFetchFormData(endpoint: string, formData: FormData): Promise<u
   return json;
 }
 
+export interface Community {
+  id: string;
+  slug: string;
+  name: string;
+  short_name: string | null;
+  tagline: string | null;
+  member_count?: number;
+}
+
+export interface VendorContact {
+  bio: string | null;
+  /** International digits only, e.g. 233241234567 — ready for wa.me links. */
+  whatsapp_number: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  /** Without the @. */
+  instagram_handle: string | null;
+  website_url: string | null;
+}
+
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string | null;
+  image_urls: string[];
+  link_url: string | null;
+  completed_on: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PortfolioItemInput = Partial<
+  Pick<PortfolioItem, 'description' | 'image_urls' | 'link_url' | 'completed_on' | 'position'>
+> & { title: string };
+
+export interface VendorCommunity {
+  slug: string;
+  name: string;
+  short_name: string | null;
+  joined_at: string;
+}
+
+export interface MyVendorProfile extends VendorContact {
+  portfolio: PortfolioItem[];
+  communities: VendorCommunity[];
+}
+
+export interface PublicVendorProfile extends MyVendorProfile {
+  user_id: string;
+  display_name: string;
+  profile_pic: string | null;
+  member_since: string | null;
+  services: Array<{
+    id: string;
+    title: string;
+    category: string;
+    image_urls: string[] | null;
+    pricing_type: string | null;
+    default_price: number | null;
+    price_min: number | null;
+    price_max: number | null;
+    created_at: string;
+  }>;
+}
+
 /**
  * API Methods
  */
@@ -315,8 +381,9 @@ export const api = {
 
   // Services endpoints (public)
   services: {
-    getAll: (params?: { category?: string; search?: string; limit?: number; offset?: number; sortBy?: string; order?: string; priceMin?: number; priceMax?: number; minRating?: number }) => {
+    getAll: (params?: { category?: string; search?: string; limit?: number; offset?: number; sortBy?: string; order?: string; priceMin?: number; priceMax?: number; minRating?: number; community?: string }) => {
       const queryParams = new URLSearchParams();
+      if (params?.community) queryParams.append('community', params.community);
       if (params?.category) queryParams.append('category', params.category);
       if (params?.search) queryParams.append('search', params.search);
       if (params?.limit) queryParams.append('limit', params.limit.toString());
@@ -354,6 +421,40 @@ export const api = {
       apiFetch('/sellers/setup', {
         method: 'POST',
         body: JSON.stringify(data),
+      }),
+    // Vendor page: bio, contacts, portfolio, communities, live services.
+    getPublicProfile: (sellerId: string) =>
+      apiFetch<BackendEnvelope<PublicVendorProfile>>(`/sellers/${sellerId}/public`),
+    getMyProfile: () =>
+      apiFetch<BackendEnvelope<MyVendorProfile>>('/sellers/me/profile'),
+    updateMyContact: (data: Partial<VendorContact>) =>
+      apiFetch<BackendEnvelope<VendorContact>>('/sellers/me/contact', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    createPortfolioItem: (data: PortfolioItemInput) =>
+      apiFetch<BackendEnvelope<PortfolioItem>>('/sellers/me/portfolio', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updatePortfolioItem: (itemId: string, data: Partial<PortfolioItemInput>) =>
+      apiFetch<BackendEnvelope<PortfolioItem>>(`/sellers/me/portfolio/${itemId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    deletePortfolioItem: (itemId: string) =>
+      apiFetch<BackendEnvelope<{ id: string }>>(`/sellers/me/portfolio/${itemId}`, {
+        method: 'DELETE',
+      }),
+  },
+
+  // Campus communities (ashesi.hustlevillage.app etc.)
+  communities: {
+    get: (slug: string) =>
+      apiFetch<BackendEnvelope<Community>>(`/communities/${slug}`),
+    join: (slug: string) =>
+      apiFetch<BackendEnvelope<{ community: Community }>>(`/communities/${slug}/join`, {
+        method: 'POST',
       }),
   },
 

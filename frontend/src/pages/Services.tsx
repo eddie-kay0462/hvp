@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
+import { CAMPUS } from "@/config/appMode";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,8 @@ const Services = () => {
       // pagination across the whole catalogue, so the page renders exactly what
       // it returns — no client-side re-sorting or re-filtering.
       const response = await api.services.getAll({
+        // Campus sites list only vendors who joined that community.
+        community: CAMPUS?.slug,
         category: selectedCategory || undefined,
         search: searchQuery || undefined,
         sortBy,
@@ -253,7 +256,9 @@ const Services = () => {
               {/* Header */}
               <div className="mb-4 md:mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Services</h1>
-                <p className="text-sm md:text-base text-muted-foreground">Find the perfect service for your needs</p>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  {CAMPUS ? `Services offered by ${CAMPUS.name} students` : "Find the perfect service for your needs"}
+                </p>
               </div>
 
               {/* Search and Sort */}
@@ -393,7 +398,7 @@ const Services = () => {
                               className="flex-1"
                               onClick={() => navigate(`/service/${service.id}`)}
                             >
-                              {service.pricing_type === 'range' ? 'Request a Quote' : 'Book Now'}
+                              {CAMPUS ? 'Contact vendor' : service.pricing_type === 'range' ? 'Request a Quote' : 'Book Now'}
                             </Button>
                           </div>
                         </div>

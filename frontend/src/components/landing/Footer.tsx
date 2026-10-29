@@ -1,3 +1,6 @@
+import { IS_CAMPUS } from "@/config/appMode";
+import { CampusFooter } from "@/campus/components/CampusFooter";
+
 const sections = [
   {
     title: "Marketplace",
@@ -34,7 +37,7 @@ const legal = [
   { label: "Cookies", href: "#" },
 ];
 
-export const Footer = () => {
+const MainFooter = () => {
   return (
     <footer className="bg-background border-t border-border">
       <div className="container mx-auto px-4 md:px-6 pt-12 md:pt-16 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
@@ -90,3 +93,5 @@ export const Footer = () => {
     </footer>
   );
 };
+
+export const Footer = () => (IS_CAMPUS ? <CampusFooter /> : <MainFooter />);

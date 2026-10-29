@@ -20,13 +20,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { toast } from 'sonner';
+import { IS_CAMPUS } from '@/config/appMode';
 
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [userType, setUserType] = useState<'buyer' | 'seller'>('buyer');
+  // Campus sites are for vendors (buyers browse without an account), so
+  // signups there are always sellers.
+  const [userType, setUserType] = useState<'buyer' | 'seller'>(IS_CAMPUS ? 'seller' : 'buyer');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -190,6 +193,7 @@ const Signup = () => {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                 />
               </div>
+              {!IS_CAMPUS && (
               <div className="space-y-3">
                 <Label>I want to:</Label>
                 <div className="space-y-1">
@@ -222,6 +226,7 @@ const Signup = () => {
                   </p>
                 )}
               </div>
+              )}
               <label htmlFor="terms" className="flex gap-3 items-center min-h-[44px] cursor-pointer rounded-md px-2 -mx-2 hover:bg-muted/50 transition-colors">
                 <Checkbox
                   id="terms"
