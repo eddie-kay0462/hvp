@@ -357,13 +357,14 @@ export async function submitMomoPaymentProof(userId, bookingId, momoTransactionI
       const buyerName =
         `${bp?.first_name || ''} ${bp?.last_name || ''}`.trim() || 'Buyer';
       const { sendMomoProofSubmittedToAdmin } = await import('./emailService.js');
-      await sendMomoProofSubmittedToAdmin({
+      // Background send so the buyer's proof submission returns immediately.
+      sendMomoProofSubmittedToAdmin({
         bookingId,
         serviceTitle: svc?.title || 'Service',
         amountGhs: booking.payment_amount,
         momoTransactionId: normalizedTxn,
         buyerName,
-      });
+      }).catch((emailErr) => logger.error('[momo] Admin notify email failed:', emailErr?.message || emailErr));
     } catch (emailErr) {
       logger.error('[momo] Admin notify email failed:', emailErr?.message || emailErr);
     }

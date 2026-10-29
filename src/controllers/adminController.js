@@ -43,23 +43,17 @@ export const approveService = async (req) => {
 
     const result = await adminService.approveService(serviceId, adminId);
 
-    let emailSent = false;
+    let emailQueued = false;
     let emailError = null;
 
     if (result.status === 200) {
       if (result.data?.sellerEmail) {
-        try {
-          const { sendServiceApprovalEmail } = await import('../services/emailService.js');
-          await sendServiceApprovalEmail(
-            result.data.sellerEmail,
-            result.data.sellerName,
-            result.data.service
-          );
-          emailSent = true;
-        } catch (err) {
-          emailError = err.message || String(err);
-          logger.error("Failed to send approval email:", err);
-        }
+        // Sent in the background: a slow or unreachable mail server must not
+        // hold up the admin's approval. Failures are logged.
+        const { sendServiceApprovalEmail } = await import('../services/emailService.js');
+        sendServiceApprovalEmail(result.data.sellerEmail, result.data.sellerName, result.data.service)
+          .catch((err) => logger.error("Failed to send approval email:", err));
+        emailQueued = true;
       } else {
         emailError =
           "Seller email could not be loaded. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.";
@@ -70,7 +64,7 @@ export const approveService = async (req) => {
         ...result,
         data: {
           ...result.data,
-          emailSent,
+          emailQueued,
           ...(emailError ? { emailError } : {}),
         },
       };
@@ -99,24 +93,16 @@ export const rejectService = async (req) => {
 
     const result = await adminService.rejectService(serviceId, adminId, rejectionReason, adminNotes);
 
-    let emailSent = false;
+    let emailQueued = false;
     let emailError = null;
 
     if (result.status === 200) {
       if (result.data?.sellerEmail) {
-        try {
-          const { sendServiceRejectionEmail } = await import('../services/emailService.js');
-          await sendServiceRejectionEmail(
-            result.data.sellerEmail,
-            result.data.sellerName,
-            result.data.service,
-            rejectionReason
-          );
-          emailSent = true;
-        } catch (err) {
-          emailError = err.message || String(err);
-          logger.error("Failed to send rejection email:", err);
-        }
+        // Background send — see approveService.
+        const { sendServiceRejectionEmail } = await import('../services/emailService.js');
+        sendServiceRejectionEmail(result.data.sellerEmail, result.data.sellerName, result.data.service, rejectionReason)
+          .catch((err) => logger.error("Failed to send rejection email:", err));
+        emailQueued = true;
       } else {
         emailError =
           "Seller email could not be loaded. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.";
@@ -126,7 +112,7 @@ export const rejectService = async (req) => {
         ...result,
         data: {
           ...result.data,
-          emailSent,
+          emailQueued,
           ...(emailError ? { emailError } : {}),
         },
       };

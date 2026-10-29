@@ -50,8 +50,6 @@ const setupSeller = async (req) => {
  const createService = async (req) => {
     try {
       const userId = req.user?.id; // set by auth middleware
-      const userEmail = req.user?.email;
-      const userName = `${req.user?.user_metadata?.firstName || ''} ${req.user?.user_metadata?.lastName || ''}`.trim();
 
       if (!userId) {
         return { status: 401, msg: "Unauthorized: user not found", data: null };
@@ -91,16 +89,9 @@ const setupSeller = async (req) => {
         image_urls,
       });
   
-      // Send notification emails if service created successfully
-      if (result.status === 201 && result.data) {
-        try {
-          const { sendServiceSubmittedNotification } = await import('../services/emailService.js');
-          await sendServiceSubmittedNotification(result.data, userEmail, userName);
-        } catch (emailError) {
-          logger.error("Failed to send service submission notification:", emailError);
-          // Don't fail the service creation if email fails
-        }
-      }
+      // The admin "new service pending review" email is sent in the background
+      // by sellerService.createService — not awaited here, so a slow mail
+      // server never holds up the vendor's form.
 
       return {
         status: result.status,

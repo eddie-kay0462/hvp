@@ -68,6 +68,12 @@ async function sendMail({ to, subject, html, text }) {
     port: SMTP_PORT,
     secure: SMTP_PORT === 465,
     requireTLS: SMTP_PORT === 587,
+    // Nodemailer waits up to 2 minutes by default. Where outbound SMTP is
+    // blocked (Railway's lower plans) that stalled every request that sent
+    // mail; fail fast instead and let the caller log it.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
     auth: {
       user: process.env.ZOHO_SMTP_USER,
       pass: process.env.ZOHO_SMTP_PASS,
