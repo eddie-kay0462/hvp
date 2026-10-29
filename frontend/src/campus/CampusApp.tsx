@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { CAMPUS } from "@/config/appMode";
 import api from "@/lib/api";
 import CampusHome from "./pages/CampusHome";
+import "./campus.css";
 
 // Campus sites are discovery-only. Auth and listing pages are shared with the
 // main marketplace; Navbar/Footer switch to campus versions on their own.

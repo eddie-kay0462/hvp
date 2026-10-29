@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import api from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
-import { CAMPUS } from "@/config/appMode";
+import { CAMPUS, IS_CAMPUS } from "@/config/appMode";
+import { CampusServiceCard } from "@/campus/components/CampusServiceCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -255,7 +256,7 @@ const Services = () => {
             <div className="flex-1 min-w-0">
               {/* Header */}
               <div className="mb-4 md:mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Services</h1>
+                <h1 className={IS_CAMPUS ? "font-display text-3xl md:text-4xl font-semibold text-foreground mb-2" : "text-2xl md:text-3xl font-bold text-foreground mb-2"}>Services</h1>
                 <p className="text-sm md:text-base text-muted-foreground">
                   {CAMPUS ? `Services offered by ${CAMPUS.name} students` : "Find the perfect service for your needs"}
                 </p>
@@ -306,6 +307,30 @@ const Services = () => {
                 </div>
               </div>
 
+              {/* Campus sites: one-tap category chips */}
+              {IS_CAMPUS && categories.length > 0 && (
+                <div className="campus-scroll-row -mx-4 mb-6 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
+                  {[{ slug: "all", name: "All" }, ...categories].map((c) => {
+                    const active = (selectedCategory ?? "all") === c.slug;
+                    return (
+                      <button
+                        key={c.slug}
+                        type="button"
+                        onClick={() => handleCategoryChange(c.slug)}
+                        aria-pressed={active}
+                        className={`h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors ${
+                          active
+                            ? "border-accent bg-accent text-accent-foreground"
+                            : "border-border bg-white text-foreground/80 hover:border-accent/40 dark:bg-card"
+                        }`}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Results */}
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -327,7 +352,9 @@ const Services = () => {
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {services.map((service) => (
+                    {services.map((service) => IS_CAMPUS ? (
+                      <CampusServiceCard key={service.id} service={service} categoryName={getCategoryLabel(service.category)} />
+                    ) : (
                       <Card key={service.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate(`/service/${service.id}`)}>
                         <div className="relative aspect-video bg-muted overflow-hidden">
                           {service.image_urls && service.image_urls.length > 0 ? (

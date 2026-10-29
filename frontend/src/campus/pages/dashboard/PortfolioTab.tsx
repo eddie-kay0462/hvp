@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { isImageFile, normalizeImageFile } from "@/lib/imageUtils";
 import api, { type PortfolioItem } from "@/lib/api";
+import { useDashboard } from "../../lib/dashboard";
 
 const BUCKET = "portfolio-images";
 const MAX_IMAGES = 10;
@@ -55,6 +56,7 @@ const removeImages = async (urls: string[]) => {
 
 const PortfolioTab = () => {
   const { user } = useAuth();
+  const { refreshSetup } = useDashboard();
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -159,6 +161,7 @@ const PortfolioTab = () => {
       // Images the vendor removed from this item are no longer referenced.
       removeImages(originalImages.filter((u) => !draft.image_urls.includes(u)));
       toast.success(draft.id ? "Portfolio item updated" : "Added to your portfolio");
+      refreshSetup();
       setDraft(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
@@ -174,6 +177,7 @@ const PortfolioTab = () => {
       setItems((list) => list.filter((i) => i.id !== deleting.id));
       removeImages(deleting.image_urls);
       toast.success("Portfolio item deleted");
+      refreshSetup();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete");
     } finally {
@@ -206,7 +210,7 @@ const PortfolioTab = () => {
     return (
       <div className="container mx-auto px-4 py-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="h-64 w-full" />
+          <Skeleton key={i} className="h-72 w-full rounded-2xl" />
         ))}
       </div>
     );
@@ -216,33 +220,49 @@ const PortfolioTab = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Your portfolio</h2>
+          <h2 className="font-display text-xl font-medium text-foreground">Your portfolio</h2>
           <p className="text-sm text-muted-foreground">
-            Show your best past work. The first items appear first on your profile.
+            Photos of past jobs are the main thing customers look at. Your first piece is shown largest on your page.
           </p>
         </div>
-        <Button onClick={openNew} className="w-full sm:w-auto">
+        <Button onClick={openNew} className="w-full rounded-xl sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add work
         </Button>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-10 text-center">
-          <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground" />
-          <p className="mt-3 font-medium text-foreground">Your portfolio is empty</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Vendors with a portfolio get far more enquiries. Add a few examples of your work.
-          </p>
-          <Button className="mt-4" onClick={openNew}>
-            Add your first piece
-          </Button>
+        <div className="grid gap-8 rounded-2xl border border-border bg-white p-8 dark:bg-card md:grid-cols-[1fr_auto] md:items-center md:p-10">
+          <div>
+            <p className="font-display text-xl font-medium text-foreground">Show customers what you've done</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>Pick 3 to 6 of your best jobs, each with a few clear photos.</li>
+              <li>Say what the brief was and what you delivered.</li>
+              <li>Add a link if the work lives somewhere else, like Behance or Instagram.</li>
+            </ul>
+            <Button className="mt-6 rounded-xl" onClick={openNew}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add your first piece
+            </Button>
+          </div>
+          <div className="hidden grid-cols-2 gap-2 md:grid" aria-hidden>
+            {["bg-accent-light", "bg-accent/10", "bg-accent/10", "bg-accent-light/60"].map((tint, i) => (
+              <div key={i} className={`flex h-20 w-24 items-center justify-center rounded-xl ${tint}`}>
+                <ImageIcon className="h-6 w-6 text-accent/40" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (
-            <Card key={item.id} className="overflow-hidden">
-              <div className="aspect-[4/3] bg-muted">
+            <Card key={item.id} className="overflow-hidden rounded-2xl bg-white dark:bg-card">
+              <div className="relative aspect-[4/3] bg-muted">
+                {index === 0 && (
+                  <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
+                    Shown first
+                  </span>
+                )}
                 {item.image_urls[0] ? (
                   <img src={item.image_urls[0]} alt={item.title} className="h-full w-full object-cover" />
                 ) : (
@@ -253,7 +273,7 @@ const PortfolioTab = () => {
               </div>
               <div className="p-4 space-y-3">
                 <div>
-                  <p className="font-semibold text-foreground line-clamp-1">{item.title}</p>
+                  <p className="font-display font-medium text-foreground line-clamp-1">{item.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {item.image_urls.length} photo{item.image_urls.length === 1 ? "" : "s"}
                   </p>
@@ -293,11 +313,11 @@ const PortfolioTab = () => {
 
       {/* Add / edit */}
       <Dialog open={!!draft} onOpenChange={(open) => !open && !saving && closeDraft()}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-2xl">
           {draft && (
             <form onSubmit={save} className="space-y-4">
               <DialogHeader>
-                <DialogTitle>{draft.id ? "Edit portfolio item" : "Add to your portfolio"}</DialogTitle>
+                <DialogTitle className="font-display text-xl">{draft.id ? "Edit portfolio piece" : "Add to your portfolio"}</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-1.5">
@@ -314,9 +334,10 @@ const PortfolioTab = () => {
 
               <div className="space-y-1.5">
                 <Label>Photos ({draft.image_urls.length}/{MAX_IMAGES})</Label>
+                <p className="text-xs text-muted-foreground">The first photo is the cover. Up to 5MB each.</p>
                 <div className="grid grid-cols-3 gap-2">
                   {draft.image_urls.map((url) => (
-                    <div key={url} className="relative aspect-square overflow-hidden rounded-md bg-muted">
+                    <div key={url} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
                       <img src={url} alt="" className="h-full w-full object-cover" />
                       <button
                         type="button"
@@ -333,7 +354,7 @@ const PortfolioTab = () => {
                       type="button"
                       onClick={() => fileInput.current?.click()}
                       disabled={uploading}
-                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border text-xs text-muted-foreground hover:bg-muted/50"
+                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-accent/25 text-xs font-medium text-accent hover:bg-accent/5"
                     >
                       {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
                       {uploading ? "Uploading…" : "Add photos"}

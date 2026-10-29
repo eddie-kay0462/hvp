@@ -1,0 +1,14 @@
+/* Campus-only styles. Imported by CampusApp, so the main marketplace never loads them. */
+
+/* Headings use the brand's DM Sans, set tighter and lighter than body text. */
+.font-display {
+  letter-spacing: -0.025em;
+}
+
+/* Hide the scrollbar on horizontal chip rows while keeping them scrollable. */
+.campus-scroll-row {
+  scrollbar-width: none;
+}
+.campus-scroll-row::-webkit-scrollbar {
+  display: none;
+}

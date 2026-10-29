@@ -21,3 +21,15 @@ export const formatServicePrice = (s: Priced) => {
 /** "May 2026" */
 export const formatMonthYear = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : null;
+
+/** "Ama Owusu" → "AO" */
+export const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join("") || "V";
+
+/** First name for friendly copy: "Contact Ama". */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
