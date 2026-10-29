@@ -17,6 +17,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import disputeRoutes from './routes/disputeRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import communityRoutes from './routes/communityRoutes.js';
 import { runAutoRelease } from './services/autoReleaseService.js';
 import { runPendingExpiry } from './services/pendingExpiryService.js';
 import { assertPaymentProviderConfigured } from './config/paymentMode.js';
@@ -31,6 +32,9 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   'https://hustlevillage.app',
   'https://www.hustlevillage.app',
+  // Campus discovery sites (same frontend, VITE_APP_MODE=ashesi)
+  'https://ashesi.hustlevillage.app',
+  'https://ashesi-staging.hustlevillage.app',
   'https://hustlesvillage.com',
   'https://www.hustlesvillage.com',
   'http://localhost:8080',
@@ -118,6 +122,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/communities', communityRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);

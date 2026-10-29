@@ -6,7 +6,7 @@ import { logger } from '../config/logger.js';
 /** Origins we trust for auth email links. Must stay in sync with the Supabase redirect-URL allowlist. */
 const ALLOWED_EMAIL_REDIRECT_ORIGINS = [
   /^http:\/\/localhost:\d+$/,
-  /^https:\/\/(www\.|staging\.)?hustlevillage\.app$/,
+  /^https:\/\/(www\.|staging\.|ashesi\.|ashesi-staging\.)?hustlevillage\.app$/,
 ];
 
 /** Base URL for Supabase emailRedirectTo (signup confirm, resend). Uses the browser's Origin when

@@ -7,10 +7,11 @@ import { logger } from '../config/logger.js';
  */
 const getAllServices = async (req) => {
   try {
-    const { category, search, limit, offset, sortBy, priceMin, priceMax, minRating } = req.query;
+    const { category, search, limit, offset, sortBy, priceMin, priceMax, minRating, community } = req.query;
 
     const filters = {
       category: category || null,
+      community: community || null,
       search: search || null,
       limit: limit ? parseInt(limit) : 12,
       offset: offset ? parseInt(offset) : 0,

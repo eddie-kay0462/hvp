@@ -25,6 +25,8 @@ test('trusted origins are echoed back unchanged', () => {
     'https://hustlevillage.app',
     'https://www.hustlevillage.app',
     'https://staging.hustlevillage.app',
+    'https://ashesi.hustlevillage.app',
+    'https://ashesi-staging.hustlevillage.app',
   ]) {
     assert.equal(getAuthEmailRedirectOrigin(origin), origin, `${origin} should be trusted`);
   }
@@ -37,6 +39,8 @@ test('untrusted / attacker-controlled origins fall back, never echo (no open red
     'https://evilhustlevillage.app', // prefix attack
     'http://hustlevillage.app', // wrong scheme for the apex
     'https://sub.staging.hustlevillage.app', // deeper subdomain not allowlisted
+    'https://evil.ashesi.hustlevillage.app', // deeper subdomain not allowlisted
+    'https://knust.hustlevillage.app', // campus not launched yet
     'http://localhost.evil.com',
   ]) {
     assert.equal(

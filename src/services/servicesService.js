@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import { logger } from '../config/logger.js';
+import { getCommunityMemberIds } from './communityService.js';
 
 /**
  * Get all services with optional filters
@@ -24,7 +25,23 @@ export const getAllServices = async (filters = {}) => {
       priceMin,
       priceMax,
       minRating,
+      community,
     } = filters;
+
+    // Campus sites only list vendors who joined that community.
+    let communityMemberIds = null;
+    if (community) {
+      const members = await getCommunityMemberIds(community);
+      if (members.status !== 200) return members;
+      communityMemberIds = members.data;
+      if (communityMemberIds.length === 0) {
+        return {
+          status: 200,
+          msg: 'Services retrieved successfully',
+          data: { services: [], count: 0, total: 0, limit, offset },
+        };
+      }
+    }
 
     // Base fetch: all verified + active services matching category/search, newest
     // first. Sorting, price/rating filtering, and pagination are applied below so
@@ -41,6 +58,9 @@ export const getAllServices = async (filters = {}) => {
 
     if (category) {
       query = query.eq('category', category);
+    }
+    if (communityMemberIds) {
+      query = query.in('user_id', communityMemberIds);
     }
     if (search) {
       const searchPattern = `%${search}%`;
